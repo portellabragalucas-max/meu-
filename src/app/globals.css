@@ -1,0 +1,360 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   NEXORA - Futuristic SaaS Design System
+   ============================================ */
+
+:root {
+  /* Core colors */
+  --background: #05080F;
+  --background-light: #0A1020;
+  --card-bg: rgba(15, 25, 45, 0.6);
+  --card-border: rgba(0, 180, 255, 0.15);
+  
+  /* Neon accents */
+  --neon-blue: #00B4FF;
+  --neon-purple: #7F00FF;
+  --neon-cyan: #00FFC8;
+  --neon-pink: #FF00AA;
+  
+  /* Text colors */
+  --text-primary: #FFFFFF;
+  --text-secondary: #8892A6;
+  --text-muted: #4A5568;
+  
+  /* Glassmorphism */
+  --glass-blur: 12px;
+  --glass-bg: rgba(15, 25, 45, 0.6);
+  --glass-border: rgba(0, 180, 255, 0.15);
+}
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: 'Inter', sans-serif;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  
+  /* Subtle grid pattern background */
+  background-image: 
+    linear-gradient(rgba(0, 180, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 180, 255, 0.02) 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-position: -1px -1px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 180, 255, 0.3);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 180, 255, 0.5);
+}
+
+/* ============================================
+   Typography
+   ============================================ */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* ============================================
+   Glassmorphism Components
+   ============================================ */
+
+@layer components {
+  /* Glass card base */
+  .glass-card {
+    @apply relative overflow-hidden;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: all 0.3s ease;
+  }
+  
+  .glass-card:hover {
+    border-color: rgba(0, 180, 255, 0.3);
+    box-shadow: 0 0 30px rgba(0, 180, 255, 0.1);
+  }
+  
+  /* Neon glow effects */
+  .neon-glow-blue {
+    box-shadow: 0 0 20px rgba(0, 180, 255, 0.3),
+                0 0 40px rgba(0, 180, 255, 0.1);
+  }
+  
+  .neon-glow-purple {
+    box-shadow: 0 0 20px rgba(127, 0, 255, 0.3),
+                0 0 40px rgba(127, 0, 255, 0.1);
+  }
+  
+  .neon-glow-cyan {
+    box-shadow: 0 0 20px rgba(0, 255, 200, 0.3),
+                0 0 40px rgba(0, 255, 200, 0.1);
+  }
+  
+  /* Neon text */
+  .neon-text-blue {
+    color: var(--neon-blue);
+    text-shadow: 0 0 10px rgba(0, 180, 255, 0.5),
+                 0 0 20px rgba(0, 180, 255, 0.3);
+  }
+  
+  .neon-text-purple {
+    color: var(--neon-purple);
+    text-shadow: 0 0 10px rgba(127, 0, 255, 0.5),
+                 0 0 20px rgba(127, 0, 255, 0.3);
+  }
+  
+  .neon-text-cyan {
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px rgba(0, 255, 200, 0.5),
+                 0 0 20px rgba(0, 255, 200, 0.3);
+  }
+  
+  /* Buttons */
+  .btn-primary {
+    @apply px-6 py-3 font-medium rounded-xl transition-all duration-300;
+    background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+    color: white;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(0, 180, 255, 0.4),
+                0 0 60px rgba(127, 0, 255, 0.2);
+  }
+  
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+  
+  .btn-secondary {
+    @apply px-6 py-3 font-medium rounded-xl transition-all duration-300;
+    background: transparent;
+    color: var(--neon-blue);
+    border: 1px solid rgba(0, 180, 255, 0.3);
+    cursor: pointer;
+  }
+  
+  .btn-secondary:hover {
+    background: rgba(0, 180, 255, 0.1);
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 20px rgba(0, 180, 255, 0.2);
+  }
+  
+  /* Input fields */
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl transition-all duration-300;
+    background: rgba(15, 25, 45, 0.8);
+    border: 1px solid rgba(0, 180, 255, 0.15);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+  }
+  
+  .input-field:focus {
+    outline: none;
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 20px rgba(0, 180, 255, 0.2);
+  }
+  
+  .input-field::placeholder {
+    color: var(--text-muted);
+  }
+  
+  /* Stats card */
+  .stats-card {
+    @apply glass-card p-6;
+    position: relative;
+  }
+  
+  .stats-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+    border-radius: 16px 16px 0 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .stats-card:hover::before {
+    opacity: 1;
+  }
+  
+  /* Sidebar nav item */
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200;
+    color: var(--text-secondary);
+  }
+  
+  .nav-item:hover {
+    background: rgba(0, 180, 255, 0.1);
+    color: var(--text-primary);
+  }
+  
+  .nav-item.active {
+    background: rgba(0, 180, 255, 0.15);
+    color: var(--neon-blue);
+    border-left: 3px solid var(--neon-blue);
+  }
+  
+  /* Progress bar */
+  .progress-bar {
+    @apply w-full h-2 rounded-full overflow-hidden;
+    background: rgba(0, 180, 255, 0.1);
+  }
+  
+  .progress-bar-fill {
+    @apply h-full rounded-full transition-all duration-500;
+    background: linear-gradient(90deg, var(--neon-blue), var(--neon-cyan));
+  }
+  
+  /* Badge */
+  .badge {
+    @apply px-3 py-1 text-xs font-medium rounded-full;
+    background: rgba(0, 180, 255, 0.15);
+    color: var(--neon-blue);
+    border: 1px solid rgba(0, 180, 255, 0.3);
+  }
+  
+  .badge-success {
+    background: rgba(0, 255, 200, 0.15);
+    color: var(--neon-cyan);
+    border-color: rgba(0, 255, 200, 0.3);
+  }
+  
+  .badge-warning {
+    background: rgba(255, 170, 0, 0.15);
+    color: #FFAA00;
+    border-color: rgba(255, 170, 0, 0.3);
+  }
+  
+  .badge-danger {
+    background: rgba(255, 0, 100, 0.15);
+    color: #FF0064;
+    border-color: rgba(255, 0, 100, 0.3);
+  }
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 180, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 180, 255, 0.5);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-border {
+  position: relative;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  body {
+    background-size: 30px 30px;
+  }
+  
+  .glass-card {
+    border-radius: 12px;
+  }
+}
