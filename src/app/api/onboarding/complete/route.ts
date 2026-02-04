@@ -1,15 +1,19 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { getServerSession } from 'next-auth';
 import { createDefaultOnboardingSetup } from '@/services/onboarding';
 import type { OnboardingAnswers } from '@/types';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
+import { authOptions } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const answers = body.answers as OnboardingAnswers;
-    const userId: string = body.userId || 'local-demo';
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     if (!answers) {
       return NextResponse.json({ error: 'Respostas não enviadas' }, { status: 400 });

@@ -17,7 +17,9 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
+import { PresetConfigWizard } from '@/components/onboarding';
 import { cn } from '@/lib/utils';
+import type { PresetWizardAnswers, StudyPreferences, UserSettings } from '@/types';
 
 interface Preset {
   id: string;
@@ -38,6 +40,12 @@ interface PresetSelectorProps {
   onImport: (presetId: string, options?: { source: 'api' | 'local' }) => Promise<void>;
   onSkip: () => void;
   userId: string;
+  baseSettings: UserSettings;
+  onApplyPreferences: (
+    settings: UserSettings,
+    studyPrefs: StudyPreferences,
+    answers: PresetWizardAnswers
+  ) => void;
 }
 
 // Preset icons mapping
@@ -111,6 +119,8 @@ export default function PresetSelector({
   onImport,
   onSkip,
   userId,
+  baseSettings,
+  onApplyPreferences,
 }: PresetSelectorProps) {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
@@ -119,6 +129,7 @@ export default function PresetSelector({
   const [error, setError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState<string | null>(null);
   const [presetSource, setPresetSource] = useState<'api' | 'local'>('local');
+  const [showWizard, setShowWizard] = useState(false);
 
   // Fetch presets on mount (with fallback to mock data)
   useEffect(() => {
@@ -228,6 +239,7 @@ export default function PresetSelector({
                 onClick={() => {
                   setSelectedPreset(preset.id);
                   setShowDetails(isExpanded ? null : preset.id);
+                  setShowWizard(true);
                 }}
               >
                 <div className="flex items-start gap-4">
@@ -325,6 +337,7 @@ export default function PresetSelector({
             onClick={() => {
               setSelectedPreset('custom');
               setShowDetails(null);
+              setShowWizard(false);
             }}
           >
             <div className="flex items-start gap-4">
@@ -392,17 +405,11 @@ export default function PresetSelector({
           {selectedPreset && selectedPreset !== 'custom' && (
             <Button
               variant="primary"
-              onClick={handleImport}
+              onClick={() => setShowWizard(true)}
               disabled={isImporting}
-              leftIcon={
-                isImporting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4" />
-                )
-              }
+              leftIcon={<Check className="w-4 h-4" />}
             >
-              {isImporting ? 'Importando...' : 'Importar disciplinas'}
+              Configurar modelo
             </Button>
           )}
           {selectedPreset === 'custom' && (
@@ -412,6 +419,18 @@ export default function PresetSelector({
           )}
         </div>
       </div>
+
+      <PresetConfigWizard
+        isOpen={showWizard && !!selectedPreset && selectedPreset !== 'custom'}
+        presetId={selectedPreset || ''}
+        presetName={presets.find((preset) => preset.id === selectedPreset)?.name || 'Modelo'}
+        baseSettings={baseSettings}
+        onClose={() => setShowWizard(false)}
+        onApply={(settings, studyPrefs, answers) => {
+          onApplyPreferences(settings, studyPrefs, answers);
+          handleImport();
+        }}
+      />
     </div>
   );
 }

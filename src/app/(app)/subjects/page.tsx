@@ -13,7 +13,8 @@ import { SubjectCard, SubjectForm, PresetSelector } from '@/components/subjects'
 import { EmptySubjects } from '@/components/onboarding';
 import { useOnboarding, useLocalStorage } from '@/hooks';
 import { cn, generateId } from '@/lib/utils';
-import type { Subject, StudyPreferences } from '@/types';
+import type { PresetWizardAnswers, Subject, StudyPreferences, UserSettings } from '@/types';
+import { defaultSettings } from '@/lib/defaultSettings';
 
 // Dados mockados das disciplinas
 const initialSubjects: Subject[] = [];
@@ -41,14 +42,13 @@ export default function SubjectsPage() {
   const [showPresetSelector, setShowPresetSelector] = useState(false);
   const [autoOpenedPresetSelector, setAutoOpenedPresetSelector] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
   const [studyPrefs, setStudyPrefs] = useLocalStorage<StudyPreferences>('nexora_study_prefs', {
     hoursPerDay: 2,
     daysOfWeek: [1, 2, 3, 4, 5],
     mode: 'random' as 'random' | 'exam',
     examDate: '',
   });
-  const [applyPrefsToSubjects, setApplyPrefsToSubjects] = useState(true);
+  const [userSettings, setUserSettings] = useLocalStorage<UserSettings>('nexora_user_settings', defaultSettings);
 
   // Mostrar preset selector automaticamente quando não há disciplinas
   useEffect(() => {
@@ -104,16 +104,6 @@ export default function SubjectsPage() {
     '#00DDFF', '#FF6600'
   ];
 
-  const weekDays = [
-    { label: 'Dom', value: 0 },
-    { label: 'Seg', value: 1 },
-    { label: 'Ter', value: 2 },
-    { label: 'Qua', value: 3 },
-    { label: 'Qui', value: 4 },
-    { label: 'Sex', value: 5 },
-    { label: 'Sab', value: 6 },
-  ];
-
   // Handler para importar preset
   const handleImportPreset = async (
     presetId: string,
@@ -129,7 +119,7 @@ export default function SubjectsPage() {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ userId: 'user1' }),
+            body: JSON.stringify({}),
           });
 
           if (response.ok) {
@@ -162,7 +152,6 @@ export default function SubjectsPage() {
               
               setShowPresetSelector(false);
               markFirstSubjectAdded();
-              setShowQuestionnaire(true);
               return;
             }
           }
@@ -202,7 +191,6 @@ export default function SubjectsPage() {
       
       setShowPresetSelector(false);
       markFirstSubjectAdded();
-      setShowQuestionnaire(true);
 
     } catch (error) {
       console.error('Error importing preset:', error);
@@ -213,75 +201,29 @@ export default function SubjectsPage() {
     }
   };
 
+  const handleApplyPreferences = async (
+    settings: UserSettings,
+    prefs: StudyPreferences,
+    _answers: PresetWizardAnswers
+  ) => {
+    setUserSettings(settings);
+    setStudyPrefs(prefs);
+    try {
+      await fetch('/api/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings }),
+      });
+    } catch (error) {
+      console.warn('Falha ao salvar preferências no servidor:', error);
+    }
+  };
+
   // Handler para pular seleção de preset
   const handleSkipPreset = () => {
     setShowPresetSelector(false);
   };
 
-  const handleQuestionnaireSave = () => {
-    const normalizedPrefs = {
-      ...studyPrefs,
-      examDate: studyPrefs.mode === 'exam' ? studyPrefs.examDate : '',
-    };
-    setStudyPrefs(normalizedPrefs);
-    if (applyPrefsToSubjects && subjects.length > 0) {
-      const totalWeeklyHours = normalizedPrefs.hoursPerDay * normalizedPrefs.daysOfWeek.length;
-      const totalPriority = subjects.reduce((sum, s) => sum + (s.priority || 1), 0) || 1;
-      const minPerSubject =
-        totalWeeklyHours >= subjects.length
-          ? Math.max(1, Math.floor(totalWeeklyHours * 0.05))
-          : 0;
-      const remainingHours = Math.max(0, totalWeeklyHours - minPerSubject * subjects.length);
-
-      setSubjects((prev) => {
-        const allocations = prev.map((subject) => {
-          const weight = (subject.priority || 1) / totalPriority;
-          const allocated = minPerSubject + remainingHours * weight;
-          return Number(allocated.toFixed(1));
-        })
-        let diff = Number(
-          (totalWeeklyHours - allocations.reduce((sum, value) => sum + value, 0)).toFixed(1)
-        );
-        if (Math.abs(diff) >= 0.1) {
-          const highestPriorityIndex = prev.reduce(
-            (bestIndex, subject, index) =>
-              (subject.priority || 1) > (prev[bestIndex]?.priority || 1) ? index : bestIndex,
-            0
-          );
-          allocations[highestPriorityIndex] = Number(
-            (allocations[highestPriorityIndex] + diff).toFixed(1)
-          );
-          diff = 0;
-        }
-
-        return prev.map((subject, index) => ({
-          ...subject,
-          studyPrefs: normalizedPrefs,
-          targetHours: Math.max(0, allocations[index]),
-        }));
-      });
-    }
-    setShowQuestionnaire(false);
-  };
-
-  const toggleDay = (day: number) => {
-    setStudyPrefs((prev) => {
-      const exists = prev.daysOfWeek.includes(day);
-      return {
-        ...prev,
-        daysOfWeek: exists
-          ? prev.daysOfWeek.filter((d) => d !== day)
-          : [...prev.daysOfWeek, day],
-      };
-    });
-  };
-
-  const setAllDays = (checked: boolean) => {
-    setStudyPrefs((prev) => ({
-      ...prev,
-      daysOfWeek: checked ? weekDays.map((d) => d.value) : [],
-    }));
-  };
 
   // Filtrar disciplinas
   const filteredSubjects = subjects.filter((s) =>
@@ -347,7 +289,9 @@ export default function SubjectsPage() {
   };
 
   // Calcular totais
-  const weeklyGoalFromPrefs = studyPrefs.hoursPerDay * studyPrefs.daysOfWeek.length;
+  const weeklyGoalFromPrefs = userSettings.dailyHoursByWeekday
+    ? Object.values(userSettings.dailyHoursByWeekday).reduce((sum, value) => sum + value, 0)
+    : studyPrefs.hoursPerDay * studyPrefs.daysOfWeek.length;
   const totalTargetHours = weeklyGoalFromPrefs > 0
     ? weeklyGoalFromPrefs
     : subjects.reduce((sum, s) => sum + s.targetHours, 0);
@@ -380,6 +324,7 @@ export default function SubjectsPage() {
               onClick={() => {
                 setShowPresetSelector(true);
               }}
+             
             >
               {subjects.length === 0 ? 'Usar Predefinição' : 'Importar Predefinição'}
             </Button>
@@ -389,6 +334,7 @@ export default function SubjectsPage() {
               variant="primary"
               onClick={handleAddSubject}
               leftIcon={<Plus className="w-4 h-4" />}
+             
             >
               Adicionar Disciplina
             </Button>
@@ -453,6 +399,8 @@ export default function SubjectsPage() {
             onImport={handleImportPreset}
             onSkip={handleSkipPreset}
             userId="user1" // Mock - em produção viria do contexto
+            baseSettings={userSettings}
+            onApplyPreferences={handleApplyPreferences}
           />
         </div>
       ) : subjects.length === 0 ? (
@@ -499,175 +447,6 @@ export default function SubjectsPage() {
         )}
       </AnimatePresence>
 
-      {/* Questionário após importar predefinição */}
-      <AnimatePresence>
-        {showQuestionnaire && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowQuestionnaire(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg"
-            >
-              <Card className="relative" padding="lg">
-                <h2 className="text-xl font-heading font-bold text-white mb-4">
-                  Configure seu planejamento
-                </h2>
-                <p className="text-sm text-text-secondary mb-6">
-                  Ajuste sua disponibilidade para gerar uma agenda mais precisa.
-                </p>
-
-                <div className="space-y-5">
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">
-                      Horas disponíveis por dia
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="12"
-                      value={studyPrefs.hoursPerDay}
-                      onChange={(e) =>
-                        setStudyPrefs((prev) => ({
-                          ...prev,
-                          hoursPerDay: Number(e.target.value),
-                        }))
-                      }
-                      className="input-field"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-text-secondary">
-                        Dias da semana
-                      </label>
-                      <label className="text-xs text-text-secondary flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={studyPrefs.daysOfWeek.length === 7}
-                          onChange={(e) => setAllDays(e.target.checked)}
-                        />
-                        Todos
-                      </label>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {weekDays.map((day) => (
-                        <button
-                          key={day.value}
-                          type="button"
-                          onClick={() => toggleDay(day.value)}
-                          className={cn(
-                            'px-3 py-1.5 rounded-lg border text-sm transition-colors',
-                            studyPrefs.daysOfWeek.includes(day.value)
-                              ? 'border-neon-blue/60 text-white bg-neon-blue/10'
-                              : 'border-card-border text-text-secondary hover:border-neon-blue/40'
-                          )}
-                        >
-                          {day.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">
-                      Período de estudo
-                    </label>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setStudyPrefs((prev) => ({ ...prev, mode: 'random' }))
-                        }
-                        className={cn(
-                          'flex-1 px-3 py-2 rounded-lg border text-sm transition-colors',
-                          studyPrefs.mode === 'random'
-                            ? 'border-neon-blue/60 text-white bg-neon-blue/10'
-                            : 'border-card-border text-text-secondary hover:border-neon-blue/40'
-                        )}
-                      >
-                        Sem data fixa
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setStudyPrefs((prev) => ({ ...prev, mode: 'exam' }))
-                        }
-                        className={cn(
-                          'flex-1 px-3 py-2 rounded-lg border text-sm transition-colors',
-                          studyPrefs.mode === 'exam'
-                            ? 'border-neon-blue/60 text-white bg-neon-blue/10'
-                            : 'border-card-border text-text-secondary hover:border-neon-blue/40'
-                        )}
-                      >
-                        Tenho data de prova
-                      </button>
-                    </div>
-                    {studyPrefs.mode === 'exam' && (
-                      <div className="mt-3">
-                        <label className="block text-sm font-medium text-text-secondary mb-2">
-                          Data da prova
-                        </label>
-                        <input
-                          type="date"
-                          value={studyPrefs.examDate}
-                          onChange={(e) =>
-                            setStudyPrefs((prev) => ({
-                              ...prev,
-                              examDate: e.target.value,
-                            }))
-                          }
-                          className="input-field"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-lg border border-card-border p-3">
-                    <div>
-                      <p className="text-sm text-white font-medium">
-                        Aplicar às disciplinas
-                      </p>
-                      <p className="text-xs text-text-secondary">
-                        Salva essas preferências dentro de cada disciplina importada
-                      </p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={applyPrefsToSubjects}
-                      onChange={(e) => setApplyPrefsToSubjects(e.target.checked)}
-                    />
-                  </div>                </div>
-
-                <div className="flex gap-3 pt-6">
-                  <Button
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() => setShowQuestionnaire(false)}
-                  >
-                    Mais tarde
-                  </Button>
-                  <Button
-                    variant="primary"
-                    className="flex-1"
-                    onClick={handleQuestionnaireSave}
-                  >
-                    Salvar
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }

@@ -5,8 +5,10 @@
  * Exibe estatísticas do usuário, nível e ações rápidas
  */
 
-import { useState, useMemo } from 'react';
+import Image from 'next/image';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { signOut } from 'next-auth/react';
 import {
   Flame,
   Zap,
@@ -15,11 +17,20 @@ import {
   Search,
   Plus,
   User,
+  LogOut,
 } from 'lucide-react';
 import { percentage, formatNumber } from '@/lib/utils';
 import { QuickSessionModal } from '@/components/session';
 import { useLocalStorage } from '@/hooks';
 import type { Subject } from '@/types';
+
+interface NotificationItem {
+  id: string;
+  title: string;
+  message?: string;
+  createdAt: string;
+  read?: boolean;
+}
 
 interface TopBarProps {
   user: {
@@ -34,12 +45,42 @@ interface TopBarProps {
 
 export default function TopBar({ user }: TopBarProps) {
   const [showQuickSession, setShowQuickSession] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications] = useLocalStorage<NotificationItem[]>(
+    'nexora_notifications',
+    []
+  );
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [subjects] = useLocalStorage<Subject[]>('nexora_subjects', []);
   const xpProgress = percentage(user.xp, user.xpToNextLevel);
   const quickSessionSubjects = useMemo(
     () => subjects.map((subject) => ({ id: subject.id, name: subject.name, color: subject.color })),
     [subjects]
   );
+  const unreadCount = notifications.filter((item) => !item.read).length;
+
+  useEffect(() => {
+    if (!showNotifications) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (panelRef.current?.contains(target)) return;
+      if (buttonRef.current?.contains(target)) return;
+      setShowNotifications(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showNotifications]);
 
   return (
     <>
@@ -134,26 +175,67 @@ export default function TopBar({ user }: TopBarProps) {
             Sessão Rápida
           </motion.button>
 
-          {/* Notificações */}
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="relative p-2 rounded-xl hover:bg-card-bg transition-colors"
-          >
-            <Bell className="w-5 h-5 text-text-secondary" />
-            {/* Indicador de notificação */}
-            <span className="absolute top-1 right-1 w-2 h-2 bg-neon-cyan rounded-full" />
-          </motion.button>
-
+          {/* Notificacoes */}
+          <div className="relative">
+            <motion.button
+              ref={buttonRef}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setShowNotifications((prev) => !prev)}
+              className="relative p-2 rounded-xl hover:bg-card-bg transition-colors"
+            >
+              <Bell className="w-5 h-5 text-text-secondary" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-neon-cyan rounded-full" />
+              )}
+            </motion.button>
+            {showNotifications && (
+              <motion.div
+                ref={panelRef}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                className="absolute right-0 mt-3 w-80 rounded-2xl border border-card-border bg-slate-900/95 shadow-2xl backdrop-blur-lg p-4 z-50"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-white">Notificacoes</p>
+                  <span className="text-xs text-text-muted">
+                    {unreadCount > 0 ? `${unreadCount} novas` : 'Sem novas'}
+                  </span>
+                </div>
+                {notifications.length === 0 ? (
+                  <div className="text-sm text-text-muted">Nenhuma notificacao por enquanto.</div>
+                ) : (
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                    {notifications.map((item) => (
+                      <div
+                        key={item.id}
+                        className="rounded-xl border border-card-border bg-card-bg/60 p-3"
+                      >
+                        <p className="text-sm font-medium text-white">{item.title}</p>
+                        {item.message ? (
+                          <p className="text-xs text-text-secondary mt-1">{item.message}</p>
+                        ) : null}
+                        <p className="text-[11px] text-text-muted mt-2">{item.createdAt}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </div>
           {/* Perfil do Usuário */}
           <motion.div
             whileHover={{ scale: 1.05 }}
             className="flex items-center gap-3 cursor-pointer p-2 rounded-xl hover:bg-card-bg transition-colors"
+            onClick={() => signOut({ callbackUrl: '/login' })}
           >
             {user.avatar ? (
-              <img
+              <Image
                 src={user.avatar}
                 alt={user.name}
+                width={32}
+                height={32}
                 className="w-8 h-8 rounded-full object-cover border-2 border-neon-blue/50"
               />
             ) : (
@@ -164,6 +246,7 @@ export default function TopBar({ user }: TopBarProps) {
             <span className="text-sm font-medium text-white hidden lg:block">
               {user.name}
             </span>
+            <LogOut className="w-4 h-4 text-text-muted hidden lg:block" />
           </motion.div>
         </div>
       </header>
@@ -177,4 +260,3 @@ export default function TopBar({ user }: TopBarProps) {
     </>
   );
 }
-

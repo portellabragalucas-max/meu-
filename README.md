@@ -18,6 +18,7 @@ Nexora is a futuristic SaaS web application that helps students optimize their s
 - **📈 Analytics** - Productivity charts, heatmaps, and AI insights
 - **🎮 Gamification** - XP, levels, achievements, and streaks
 - **⚙️ Settings** - Customizable study preferences and AI tuning
+- **🧠 Preset Config Wizard** - Questionário inteligente para ajustar preferências ao escolher um modelo
 
 ## 🛠️ Tech Stack
 
@@ -239,6 +240,26 @@ Preparation for Brazilian public service exams:
 - **Color Distribution**: Colors are distributed evenly across imported subjects
 - **Flexible**: Presets are suggestions only - everything can be edited after import
 
+### Preset Config Wizard (Questionário Inteligente)
+
+Ao clicar em um modelo (ENEM, Medicina, Concursos, Vestibular), o Nexora abre um wizard que configura automaticamente as preferências da página **/settings**.
+
+**Perguntas**
+- Disponibilidade diaria (valor exato + aplicar em massa + personalizar por dia)
+- Dias da semana (derivados das horas configuradas por dia)
+- Melhor horário + janela real de estudo
+- Tempo de foco e intervalo
+- Objetivo + data da prova (opcional)
+
+**Heurísticas**
+- **ENEM**: blocos 50–90, intervalo 10–15, meta 3–5h
+- **Medicina**: blocos 90–120, intervalo 10, meta 5–7h
+- **Concursos**: blocos 60–90, meta 4–6h
+
+**Persistência**
+- Preferências são salvas localmente e enviadas via API quando o banco está disponível.
+- Mudanças refletem imediatamente em **/settings**.
+
 ## 📊 Study Algorithm
 
 The AI scheduling algorithm considers:
@@ -255,6 +276,26 @@ The AI scheduling algorithm considers:
 - Minimum block: 30 minutes
 - Auto-break insertion after each block
 - Harder subjects → shorter blocks
+
+## 🧭 Study Roadmap Engine (Trilha Cronológica)
+
+Sistema inteligente que cria uma trilha pedagógica progressiva:
+
+- Alterna áreas (exatas → humanas → biológicas → linguagens)
+- Evita blocos consecutivos da mesma matéria
+- Máximo de 2 blocos por matéria no mesmo dia
+- Evolução por fases:
+  - Semanas 1–2: fundamentos
+  - Semanas 3–5: aprofundamento
+  - Semanas 6+: consolidação (exercícios/simulados)
+- Revisões automáticas (24h / 7 dias / 30 dias)
+
+### Regras de qualidade
+
+- Nunca 3 blocos seguidos da mesma matéria
+- Revisões sempre inseridas
+- Matérias com maior peso aparecem mais
+- Distribuição equilibrada de áreas
 
 ## 🔧 Available Scripts
 
@@ -277,6 +318,11 @@ The AI scheduling algorithm considers:
 - **POST `/api/presets/[id]/import`** - Import a preset's subjects to a user
   - Body: `{ userId: string }`
   - Returns: Imported subjects with mapped priorities and difficulties
+
+### Preferences
+
+- **POST `/api/preferences`** - Save user study preferences
+  - Body: `{ userId: string, settings: UserSettings }`
 
 ## 🔐 Environment Variables
 
@@ -321,6 +367,26 @@ CMD ["npm", "start"]
 3. Make your changes
 4. Submit a pull request
 
+## ✅ Testes manuais (Preset Wizard)
+
+1. **ENEM** → finalize o wizard → abra **/settings** e confirme:
+   - Meta diária entre 3–5h
+   - Bloco entre 50–90
+2. **Medicina** → finalize o wizard → confirme:
+   - Meta diária entre 5–7h
+   - Bloco entre 90–120
+3. **Concursos** → finalize o wizard → confirme:
+   - Meta diária entre 4–6h
+   - Bloco entre 60–90
+
+## ✅ Testes manuais (Roadmap Engine)
+
+1. Gerar cronograma em **/planner** com várias matérias:
+   - Verificar alternância de áreas no mesmo dia.
+2. Confirmar que não há 3 blocos seguidos da mesma matéria.
+3. Conferir inserção de revisões 24h / 7d / 30d.
+4. Matérias de maior peso aparecem mais vezes na semana.
+
 ## 📄 License
 
 MIT License - feel free to use this project for learning and development.
@@ -331,3 +397,12 @@ MIT License - feel free to use this project for learning and development.
   <p>Built with ❤️ using Next.js, TypeScript, and Tailwind CSS</p>
   <p><strong>Nexora</strong> - Study Smarter, Not Harder</p>
 </div>
+
+## Autenticacao (Google + Email)
+
+Configurar variaveis no .env conforme .env.example.
+
+
+## Deploy (Guia rapido)
+
+Veja `SETUP_VERCEL.md` para configurar Vercel + Google + Email.

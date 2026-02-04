@@ -5,13 +5,14 @@
  * Cronometro dedicado para um bloco de estudo
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Play, Pause, Square, CheckCircle2, Coffee } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { formatDuration } from '@/lib/utils';
-import type { StudyBlock } from '@/types';
+import type { StudyBlock, UserSettings } from '@/types';
 import { useLocalStorage } from '@/hooks';
+import { defaultSettings } from '@/lib/defaultSettings';
 
 interface StudyBlockSessionModalProps {
   isOpen: boolean;
@@ -36,8 +37,10 @@ export default function StudyBlockSessionModal({
     'nexora_session_timers',
     {}
   );
+  const [userSettings] = useLocalStorage<UserSettings>('nexora_user_settings', defaultSettings);
   const timersRef = useRef(timers);
   const initialTotalRef = useRef(totalSeconds);
+  const audioRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     timersRef.current = timers;
@@ -65,19 +68,113 @@ export default function StudyBlockSessionModal({
     }));
   }, [block, timeRemaining, sessionState, setTimers]);
 
-  const finishSession = (spentSeconds: number) => {
-    if (completedOnce) return;
-    const minutesSpent = Math.max(0, spentSeconds / 60);
-    setCompletedOnce(true);
-    setSessionState('completed');
-    playAlarm();
-    if (block && onComplete) {
-      onComplete(block.id, minutesSpent);
-    }
-    setTimeout(() => {
-      onClose();
-    }, 400);
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
+
+  const ensureAudioContext = useCallback(() => {
+    try {
+      if (!audioRef.current) {
+        audioRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      if (audioRef.current.state === 'suspended') {
+        audioRef.current.resume();
+      }
+    } catch (error) {
+      console.warn('Erro ao preparar audio:', error);
+    }
+  }, []);
+
+  const playAlarm = useCallback(() => {
+    try {
+      ensureAudioContext();
+      if (!audioRef.current) return;
+      const context = audioRef.current;
+      const now = context.currentTime;
+      const sound = userSettings.alarmSound || 'pulse';
+
+      const scheduleBeep = (start: number, duration: number, freq: number, type: OscillatorType) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.35, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(start);
+        oscillator.stop(start + duration);
+        oscillator.onended = () => {
+          oscillator.disconnect();
+          gain.disconnect();
+        };
+      };
+
+      if (sound === 'beep') {
+        const duration = 1.0;
+        const gap = 0.25;
+        const repeats = 4; // ~5s total
+        for (let i = 0; i < repeats; i += 1) {
+          const start = now + i * (duration + gap);
+          scheduleBeep(start, duration, 880, 'sine');
+        }
+        return;
+      }
+
+      if (sound === 'chime') {
+        const cycle = 0.9;
+        const repeats = 6; // ~5.4s total
+        for (let i = 0; i < repeats; i += 1) {
+          const start = now + i * cycle;
+          scheduleBeep(start, 0.35, 880, 'sine');
+          scheduleBeep(start + 0.4, 0.45, 660, 'sine');
+        }
+        return;
+      }
+
+      if (sound === 'soft') {
+        const duration = 0.25;
+        const gap = 0.15;
+        const repeats = 12; // ~4.8s + tail
+        for (let i = 0; i < repeats; i += 1) {
+          const start = now + i * (duration + gap);
+          scheduleBeep(start, duration, 520, 'sine');
+        }
+        return;
+      }
+
+      // pulse (default)
+      const beepDuration = 0.24;
+      const gap = 0.08;
+      const repeats = 16; // ~5.1s
+      for (let i = 0; i < repeats; i += 1) {
+        const start = now + i * (beepDuration + gap);
+        scheduleBeep(start, beepDuration, 880, 'square');
+      }
+    } catch (error) {
+      console.warn('Erro ao tocar alarme:', error);
+    }
+  }, [ensureAudioContext, userSettings.alarmSound]);
+
+  const finishSession = useCallback(
+    (spentSeconds: number) => {
+      if (completedOnce) return;
+      const minutesSpent = Math.max(0, spentSeconds / 60);
+      setCompletedOnce(true);
+      setSessionState('completed');
+      playAlarm();
+      if (block && onComplete) {
+        onComplete(block.id, minutesSpent);
+      }
+      setTimeout(() => {
+        onClose();
+      }, 400);
+    },
+    [completedOnce, block, onComplete, onClose, playAlarm]
+  );
 
   useEffect(() => {
     if (sessionState !== 'running') return;
@@ -92,31 +189,7 @@ export default function StudyBlockSessionModal({
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [sessionState, block, onComplete, completedOnce, onClose]);
-
-  const formatTimer = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
-
-  const playAlarm = () => {
-    try {
-      const context = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(880, context.currentTime);
-      gain.gain.setValueAtTime(0.2, context.currentTime);
-      oscillator.connect(gain);
-      gain.connect(context.destination);
-      oscillator.start();
-      oscillator.stop(context.currentTime + 0.9);
-      oscillator.onended = () => context.close();
-    } catch (error) {
-      console.warn('Erro ao tocar alarme:', error);
-    }
-  };
+  }, [sessionState, block, onComplete, completedOnce, onClose, finishSession]);
 
   if (!isOpen || !block) return null;
 
@@ -176,7 +249,10 @@ export default function StudyBlockSessionModal({
                   <Button
                     variant="primary"
                     className="flex-1"
-                    onClick={() => setSessionState('running')}
+                    onClick={() => {
+                      ensureAudioContext();
+                      setSessionState('running');
+                    }}
                   >
                     Iniciar
                   </Button>
@@ -185,13 +261,13 @@ export default function StudyBlockSessionModal({
 
               {(sessionState === 'running' || sessionState === 'paused') && (
                 <div className="flex gap-3">
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onClick={() => finishSession(initialTotalRef.current - timeRemaining)}
-              >
-                Finalizar
-              </Button>
+                  <Button
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => finishSession(initialTotalRef.current - timeRemaining)}
+                  >
+                    Finalizar
+                  </Button>
                   <Button
                     variant="primary"
                     className="flex-1"

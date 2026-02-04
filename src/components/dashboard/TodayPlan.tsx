@@ -130,38 +130,36 @@ export default function TodayPlan({
                       {config.label}
                     </Badge>
 
-                    {!block.isBreak && (
-                      <div className="flex gap-2">
-                        {onStartBlock && (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => onStartBlock(block)}
-                          >
-                            <Play className="w-3 h-3" />
-                            Iniciar
-                          </Button>
-                        )}
-                        {block.status === 'scheduled' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onSkipBlock(block.id)}
-                          >
-                            Pular
-                          </Button>
-                        )}
-                        {onCompleteBlock && block.status !== 'completed' && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => onCompleteBlock(block.id)}
-                          >
-                            Concluir
-                          </Button>
-                        )}
-                      </div>
-                    )}
+                    <div className="flex gap-2">
+                      {onStartBlock && (
+                        <Button
+                          variant={block.isBreak ? 'secondary' : 'primary'}
+                          size="sm"
+                          onClick={() => onStartBlock(block)}
+                        >
+                          <Play className="w-3 h-3" />
+                          Iniciar
+                        </Button>
+                      )}
+                      {block.status === 'scheduled' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onSkipBlock(block.id)}
+                        >
+                          Pular
+                        </Button>
+                      )}
+                      {onCompleteBlock && block.status !== 'completed' && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => onCompleteBlock(block.id)}
+                        >
+                          Concluir
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
 

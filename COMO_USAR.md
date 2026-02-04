@@ -68,3 +68,10 @@ A aplicação está configurada para usar **dados mockados** (simulados), então
 ## 🎉 Pronto!
 
 Agora é só acessar `http://localhost:3000` e começar a usar!
+
+
+## ?? Wizard de Modelos (Preferencias)
+
+- Ao escolher um modelo (ENEM/Medicina/Concursos), abre um wizard de configuracao.
+- Voce pode definir horas por dia com **Aplicar em massa** e **Personalizar por dia**.
+- O resumo mostra total semanal e media diaria antes de aplicar.

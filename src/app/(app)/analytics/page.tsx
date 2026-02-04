@@ -129,6 +129,7 @@ export default function AnalyticsPage() {
       <motion.div
         variants={itemVariants}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+       
       >
         <StatsCard
           title="Tempo Total de Estudo"

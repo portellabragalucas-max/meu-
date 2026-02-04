@@ -6,20 +6,12 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { motion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import { cn } from '@/lib/utils';
 
-// Dados mockados do usuário - em produção viria do contexto de autenticação
-const mockUser = {
-  name: 'Estudante',
-  avatar: undefined,
-  level: 0,
-  xp: 0,
-  xpToNextLevel: 0,
-  streak: 0,
-};
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -28,6 +20,7 @@ interface MainLayoutProps {
 export default function MainLayout({ children }: MainLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const { data: session } = useSession();
 
   // Gerenciar sidebar responsiva
   useEffect(() => {
@@ -62,7 +55,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
         className="min-h-screen flex flex-col"
       >
         {/* Barra Superior */}
-        <TopBar user={mockUser} />
+        <TopBar
+          user={{
+            name: session?.user?.name || 'Estudante',
+            avatar: session?.user?.image ?? undefined,
+            level: 0,
+            xp: 0,
+            xpToNextLevel: 0,
+            streak: 0,
+          }}
+        />
 
         {/* Conteúdo da Página */}
         <main className="flex-1 p-6 overflow-auto">
@@ -86,6 +88,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
         />
       )}
+
     </div>
   );
 }

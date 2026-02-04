@@ -10,12 +10,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum StudyBlockType {
+  AULA
+  EXERCICIOS
+  REVISAO
+  SIMULADO_AREA
+  SIMULADO_COMPLETO
+  ANALISE
+}
+
 // User profile with gamification stats
 model User {
   id     String  @id @default(cuid())
   email  String  @unique
   name   String
   avatar String?
+  image  String?
+  emailVerified DateTime?
 
   // Gamification
   xp            Int       @default(0)
@@ -43,6 +54,26 @@ model User {
   studyBlocks   StudyBlock[]
   studySessions StudySession[]
   achievements  UserAchievement[]
+  preferences  UserPreferences?
+  accounts     Account[]
+  sessions     Session[]
+}
+
+model UserPreferences {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  dailyGoalHours  Float    @default(4.0)
+  dailyHoursByWeekday Json?
+  preferredStart  String   @default("09:00")
+  preferredEnd    String   @default("21:00")
+  maxBlockMinutes Int      @default(120)
+  breakMinutes    Int      @default(15)
+  alarmSound      String?  @default("pulse")
+  restDays        String   @default("[]")
+  examDate        String?
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // Study subjects with priority and difficulty settings
@@ -87,6 +118,11 @@ model StudyBlock {
   startTime       String // "09:00" format
   endTime         String // "11:00" format
   durationMinutes Int
+
+  type           StudyBlockType? @default(AULA)
+  description    String?
+  sequenceIndex  Int?
+  relatedSubjectId String?
 
   // Status
   status  String  @default("scheduled") // scheduled, in-progress, completed, skipped
@@ -247,4 +283,43 @@ model UserProfile {
   focus_subjects     String // JSON array
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }

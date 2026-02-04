@@ -8,7 +8,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
-import { GripVertical, Coffee, Trash2, Edit, Play } from 'lucide-react';
+import { GripVertical, Coffee, Trash2, Edit, Play, BookOpen, PenTool, Repeat, Timer } from 'lucide-react';
 import { cn, formatDuration } from '@/lib/utils';
 import type { StudyBlock } from '@/types';
 
@@ -46,6 +46,17 @@ export default function TimeBlock({
     completed: 'border-neon-cyan/50 bg-neon-cyan/5',
     skipped: 'border-red-500/30 bg-red-500/5 opacity-50',
   };
+
+  const typeBadge = block.type
+    ? {
+        AULA: { label: 'Aula', icon: BookOpen, className: 'bg-neon-blue/15 text-neon-blue border-neon-blue/30' },
+        EXERCICIOS: { label: 'Exercicios', icon: PenTool, className: 'bg-neon-purple/15 text-neon-purple border-neon-purple/30' },
+        REVISAO: { label: 'Revisao', icon: Repeat, className: 'bg-emerald-400/15 text-emerald-300 border-emerald-400/30' },
+        SIMULADO_AREA: { label: 'Simulado (Area)', icon: Timer, className: 'bg-amber-400/15 text-amber-300 border-amber-400/30' },
+        SIMULADO_COMPLETO: { label: 'Simulado (Completo)', icon: Timer, className: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
+        ANALISE: { label: 'Correcao', icon: Repeat, className: 'bg-slate-400/15 text-slate-200 border-slate-400/30' },
+      }[block.type]
+    : null;
 
   return (
     <motion.div
@@ -98,15 +109,37 @@ export default function TimeBlock({
             <span className="text-text-muted">
               {formatDuration(block.durationMinutes)}
             </span>
+            {typeBadge && !block.isBreak && (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                  typeBadge.className
+                )}
+              >
+                <typeBadge.icon className="w-3 h-3" />
+                {typeBadge.label}
+              </span>
+            )}
           </div>
+
+          {!block.isBreak && block.description && (
+            <p className="mt-2 text-xs text-text-muted line-clamp-2">
+              {block.description}
+            </p>
+          )}
         </div>
 
         {/* Ações */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {onStart && !block.isBreak && (
+          {onStart && (
             <button
               onClick={() => onStart(block)}
-              className="p-2 rounded-lg hover:bg-neon-blue/10 text-neon-blue hover:text-neon-cyan transition-colors"
+              className={cn(
+                'p-2 rounded-lg transition-colors',
+                block.isBreak
+                  ? 'hover:bg-neon-cyan/10 text-neon-cyan hover:text-neon-cyan'
+                  : 'hover:bg-neon-blue/10 text-neon-blue hover:text-neon-cyan'
+              )}
             >
               <Play className="w-4 h-4" />
             </button>

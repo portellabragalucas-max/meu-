@@ -6,8 +6,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({
+        success: true,
+        data: [],
+        note: 'DATABASE_URL not set',
+      });
+    }
+
     const presets = await prisma.studyPreset.findMany({
       include: {
         subjects: {
@@ -26,13 +36,11 @@ export async function GET() {
       data: presets,
     });
   } catch (error) {
-    console.error('Error fetching presets:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch presets',
-      },
-      { status: 500 }
-    );
+    console.warn('Error fetching presets:', error);
+    return NextResponse.json({
+      success: false,
+      data: [],
+      error: 'Failed to fetch presets',
+    });
   }
 }

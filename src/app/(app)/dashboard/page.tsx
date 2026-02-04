@@ -257,6 +257,28 @@ export default function DashboardPage() {
         };
       });
     }
+
+    if (!targetBlock.isBreak) {
+      const sameDayBreaks = plannerBlocks
+        .filter(
+          (block) =>
+            block.isBreak &&
+            block.status !== 'completed' &&
+            isSameDay(new Date(block.date), new Date(targetBlock.date))
+        )
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+      const nextBreak = sameDayBreaks.find(
+        (block) => block.startTime >= targetBlock.endTime
+      );
+
+      if (nextBreak) {
+        setTimeout(() => {
+          setSessionBlock(nextBreak);
+          setIsSessionOpen(true);
+        }, 450);
+      }
+    }
   };
 
   const handleAddSubject = () => {
@@ -310,8 +332,8 @@ export default function DashboardPage() {
         isOpen={isSessionOpen}
         block={sessionBlock}
         onClose={() => setIsSessionOpen(false)}
-        onComplete={(blockId) => {
-          handleCompleteBlock(blockId);
+        onComplete={(blockId, minutesSpent) => {
+          handleCompleteBlock(blockId, minutesSpent);
         }}
       />
       {/* Modal de Boas-vindas */}

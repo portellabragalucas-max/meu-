@@ -5,8 +5,8 @@
  * Perfil do usuário, preferências de estudo e parâmetros da IA
  */
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
   Clock,
@@ -17,79 +17,290 @@ import {
   Save,
   RefreshCw,
   RotateCcw,
+  CheckCircle2,
 } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
-import { useOnboarding } from '@/hooks';
+import { useOnboarding, useLocalStorage } from '@/hooks';
 import { cn } from '@/lib/utils';
+import type { DailyHoursByWeekday, StudyPreferences, UserSettings, WeekdayKey } from '@/types';
+import { defaultSettings } from '@/lib/defaultSettings';
 
-// Configurações mockadas do usuário
-const initialSettings = {
-  // Perfil
-  name: 'Estudante',
-  email: 'estudante@exemplo.com',
-  avatar: '',
-  
-  // Preferências de Estudo
-  dailyGoalHours: 4,
-  preferredStart: '09:00',
-  preferredEnd: '21:00',
-  maxBlockMinutes: 120,
-  breakMinutes: 15,
-  excludeDays: [0], // Domingo
-  
-  // Configurações da IA
-  aiDifficulty: 'adaptive',
-  focusMode: false,
-  autoSchedule: true,
-  smartBreaks: true,
-  
-  // Notificações
-  dailyReminder: true,
-  streakReminder: true,
-  achievementAlerts: true,
-  weeklyReport: true,
-};
+const initialSettings: UserSettings = defaultSettings;
 
 const aiDifficultyOptions = [
-  { value: 'easy', label: 'Leve', description: 'Sessões mais curtas, mais pausas' },
-  { value: 'medium', label: 'Moderado', description: 'Equilíbrio entre estudo e descanso' },
-  { value: 'hard', label: 'Intenso', description: 'Sessões longas, menos pausas' },
+  { value: 'easy', label: 'Leve', description: 'Sessoes mais curtas, mais pausas' },
+  { value: 'medium', label: 'Moderado', description: 'Equilibrio entre estudo e descanso' },
+  { value: 'hard', label: 'Intenso', description: 'Sessoes longas, menos pausas' },
   { value: 'adaptive', label: 'Adaptativo', description: 'A IA ajusta com base no seu desempenho' },
+] as const;
+
+const alarmSoundOptions = [
+  {
+    value: 'pulse' as const,
+    label: 'Pulse',
+    description: 'Bipes repetidos e mais chamativos',
+  },
+  {
+    value: 'beep' as const,
+    label: 'Beep',
+    description: 'Um aviso simples e direto',
+  },
+  {
+    value: 'chime' as const,
+    label: 'Chime',
+    description: 'Toque curto em dois tons',
+  },
+  {
+    value: 'soft' as const,
+    label: 'Soft',
+    description: 'Aviso suave e discreto',
+  },
 ];
 
-const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+const weekDayKeys: WeekdayKey[] = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+
+const clampHours = (value: number) => Math.min(12, Math.max(0, Math.round(value * 2) / 2));
+
+const formatHours = (value: number) => {
+  const safe = Math.max(0, value);
+  const hours = Math.floor(safe);
+  const minutes = Math.round((safe - hours) * 60);
+  if (minutes <= 0) return `${hours}h`;
+  return `${hours}h${String(minutes).padStart(2, '0')}`;
+};
+
+const buildDailyHoursByWeekday = (dailyGoalHours: number, excludeDays: number[]): DailyHoursByWeekday => {
+  return weekDayKeys.reduce((acc, key, index) => {
+    acc[key] = excludeDays.includes(index) ? 0 : clampHours(dailyGoalHours);
+    return acc;
+  }, {} as DailyHoursByWeekday);
+};
+
 
 export default function SettingsPage() {
   const { resetOnboarding } = useOnboarding();
-  const [settings, setSettings] = useState(initialSettings);
+  const [settings, setSettings] = useLocalStorage<UserSettings>('nexora_user_settings', initialSettings);
+  const [studyPrefs, setStudyPrefs] = useLocalStorage<StudyPreferences>('nexora_study_prefs', {
+    hoursPerDay: initialSettings.dailyGoalHours,
+    daysOfWeek: [1, 2, 3, 4, 5],
+    mode: 'random',
+    examDate: '',
+  });
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [hasRemotePrefs, setHasRemotePrefs] = useState(false);
+  const [pendingAlarmSound, setPendingAlarmSound] = useState<UserSettings['alarmSound']>(
+    settings.alarmSound || 'pulse'
+  );
+  const [alarmApplied, setAlarmApplied] = useState(false);
+  const audioRef = useRef<AudioContext | null>(null);
 
-  const updateSetting = <K extends keyof typeof settings>(
-    key: K,
-    value: typeof settings[K]
-  ) => {
+  const dailyHoursByWeekday =
+    settings.dailyHoursByWeekday ??
+    buildDailyHoursByWeekday(settings.dailyGoalHours, settings.excludeDays ?? []);
+
+  const weeklyTotalHours = Object.values(dailyHoursByWeekday).reduce(
+    (sum, value) => sum + value,
+    0
+  );
+  const activeDayValues = Object.values(dailyHoursByWeekday).filter((value) => value > 0);
+  const averageDailyHours =
+    activeDayValues.length > 0 ? weeklyTotalHours / activeDayValues.length : 0;
+
+  const updateSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
     setHasChanges(true);
   };
 
+  const updateDailyHours = (nextHours: DailyHoursByWeekday) => {
+    const activeDays = weekDayKeys
+      .map((key, index) => ({ key, index, value: nextHours[key] }))
+      .filter((entry) => entry.value > 0);
+    const nextExcludeDays = weekDayKeys
+      .map((key, index) => (nextHours[key] > 0 ? null : index))
+      .filter((value): value is number => value !== null);
+    const nextAverage =
+      activeDays.length > 0
+        ? activeDays.reduce((sum, entry) => sum + entry.value, 0) / activeDays.length
+        : settings.dailyGoalHours;
+
+    setSettings((prev) => ({
+      ...prev,
+      dailyHoursByWeekday: nextHours,
+      excludeDays: nextExcludeDays,
+      dailyGoalHours: Number(nextAverage.toFixed(1)),
+    }));
+    setHasChanges(true);
+  };
+
+  const updateDayHours = (dayIndex: number, hours: number) => {
+    const key = weekDayKeys[dayIndex];
+    const next = { ...dailyHoursByWeekday, [key]: clampHours(hours) };
+    updateDailyHours(next);
+  };
+
+  const handleDailyGoalChange = (value: number) => {
+    const next = { ...dailyHoursByWeekday };
+    weekDayKeys.forEach((key, index) => {
+      next[key] = settings.excludeDays.includes(index) ? 0 : clampHours(value);
+    });
+    updateDailyHours(next);
+  };
+
+  useEffect(() => {
+    if (settings.dailyHoursByWeekday) return;
+    const fallback = buildDailyHoursByWeekday(
+      settings.dailyGoalHours,
+      settings.excludeDays ?? []
+    );
+    setSettings((prev) => ({ ...prev, dailyHoursByWeekday: fallback }));
+  }, [settings.dailyHoursByWeekday, settings.dailyGoalHours, settings.excludeDays, setSettings]);
+
+  useEffect(() => {
+    setPendingAlarmSound(settings.alarmSound || 'pulse');
+  }, [settings.alarmSound]);
+
+  useEffect(() => {
+    if (!alarmApplied) return;
+    const timeout = setTimeout(() => setAlarmApplied(false), 1200);
+    return () => clearTimeout(timeout);
+  }, [alarmApplied]);
+
+  const ensureAudioContext = () => {
+    try {
+      if (!audioRef.current) {
+        audioRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      if (audioRef.current.state === 'suspended') {
+        audioRef.current.resume();
+      }
+    } catch (error) {
+      console.warn('Erro ao preparar audio:', error);
+    }
+  };
+
+  const playAlarmPreview = (sound: UserSettings['alarmSound']) => {
+    try {
+      ensureAudioContext();
+      if (!audioRef.current) return;
+      const context = audioRef.current;
+      const now = context.currentTime;
+      const scheduleBeep = (start: number, duration: number, freq: number, type: OscillatorType) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.35, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(start);
+        oscillator.stop(start + duration);
+        oscillator.onended = () => {
+          oscillator.disconnect();
+          gain.disconnect();
+        };
+      };
+
+      if (sound === 'beep') {
+        const duration = 1.0;
+        const gap = 0.25;
+        const repeats = 4;
+        for (let i = 0; i < repeats; i += 1) {
+          const start = now + i * (duration + gap);
+          scheduleBeep(start, duration, 880, 'sine');
+        }
+        return;
+      }
+      if (sound === 'chime') {
+        const cycle = 0.9;
+        const repeats = 6;
+        for (let i = 0; i < repeats; i += 1) {
+          const start = now + i * cycle;
+          scheduleBeep(start, 0.35, 880, 'sine');
+          scheduleBeep(start + 0.4, 0.45, 660, 'sine');
+        }
+        return;
+      }
+      if (sound === 'soft') {
+        const duration = 0.25;
+        const gap = 0.15;
+        const repeats = 12;
+        for (let i = 0; i < repeats; i += 1) {
+          const start = now + i * (duration + gap);
+          scheduleBeep(start, duration, 520, 'sine');
+        }
+        return;
+      }
+
+      const beepDuration = 0.24;
+      const gap = 0.08;
+      const repeats = 16;
+      for (let i = 0; i < repeats; i += 1) {
+        const start = now + i * (beepDuration + gap);
+        scheduleBeep(start, beepDuration, 880, 'square');
+      }
+    } catch (error) {
+      console.warn('Erro ao tocar alarme:', error);
+    }
+  };
+
   const toggleExcludeDay = (dayIndex: number) => {
-    const newExcludeDays = settings.excludeDays.includes(dayIndex)
-      ? settings.excludeDays.filter((d) => d !== dayIndex)
-      : [...settings.excludeDays, dayIndex];
-    updateSetting('excludeDays', newExcludeDays);
+    const key = weekDayKeys[dayIndex];
+    const isRest = dailyHoursByWeekday[key] === 0;
+    const next = {
+      ...dailyHoursByWeekday,
+      [key]: isRest ? clampHours(settings.dailyGoalHours || 2) : 0,
+    };
+    updateDailyHours(next);
   };
 
   const handleSave = async () => {
     setSaving(true);
-    // Simular chamada de API
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      await fetch('/api/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings }),
+      });
+    } catch (error) {
+      console.warn('Falha ao salvar preferências no servidor:', error);
+    }
+    const activeDays = weekDayKeys
+      .map((key, index) => ({ key, index }))
+      .filter((entry) => dailyHoursByWeekday[entry.key] > 0)
+      .map((entry) => entry.index);
+    setStudyPrefs({
+      hoursPerDay: averageDailyHours || settings.dailyGoalHours,
+      daysOfWeek: activeDays,
+      mode: settings.examDate ? 'exam' : 'random',
+      examDate: settings.examDate || '',
+    });
     setSaving(false);
     setHasChanges(false);
   };
 
   const handleReset = () => {
     setSettings(initialSettings);
+    const fallbackHours =
+      initialSettings.dailyHoursByWeekday ??
+      buildDailyHoursByWeekday(initialSettings.dailyGoalHours, initialSettings.excludeDays ?? []);
+    const activeDays = weekDayKeys
+      .map((key, index) => ({ key, index }))
+      .filter((entry) => fallbackHours[entry.key] > 0)
+      .map((entry) => entry.index);
+    const avgHours = activeDays.length
+      ? activeDays.reduce((sum, index) => sum + fallbackHours[weekDayKeys[index]], 0) /
+        activeDays.length
+      : initialSettings.dailyGoalHours;
+    setStudyPrefs({
+      hoursPerDay: Number(avgHours.toFixed(1)),
+      daysOfWeek: activeDays,
+      mode: 'random',
+      examDate: '',
+    });
     setHasChanges(false);
   };
 
@@ -154,6 +365,22 @@ export default function SettingsPage() {
         )}
       </div>
 
+      {!hasRemotePrefs && (
+        <Card className="border-neon-cyan/40 bg-neon-cyan/5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-white font-medium">Ainda não configurado</p>
+              <p className="text-xs text-text-secondary">
+                Escolha um modelo na página de disciplinas para aplicar um plano automático.
+              </p>
+            </div>
+            <Button variant="secondary" onClick={() => (window.location.href = '/subjects')}>
+              Configurar agora
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {/* Seção de Perfil */}
       <Card>
         <div className="flex items-center gap-3 mb-6">
@@ -212,19 +439,94 @@ export default function SettingsPage() {
           {/* Meta Diária */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">
-              Meta Diária de Estudo: {settings.dailyGoalHours} horas
+              Meta diaria de estudo: {formatHours(settings.dailyGoalHours)}
             </label>
             <input
               type="range"
               min="1"
               max="12"
+              step="0.5"
               value={settings.dailyGoalHours}
-              onChange={(e) => updateSetting('dailyGoalHours', Number(e.target.value))}
+              onChange={(e) => handleDailyGoalChange(Number(e.target.value))}
               className="w-full accent-neon-purple"
             />
             <div className="flex justify-between text-xs text-text-muted mt-1">
               <span>1h</span>
               <span>12h</span>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-card-border bg-card-bg/50 p-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-white">Horas por dia</p>
+                <p className="text-xs text-text-muted">
+                  Ajuste por dia quando sua rotina variar.
+                </p>
+              </div>
+              <div className="text-xs text-text-secondary">
+                Total semanal: <span className="text-white">{formatHours(weeklyTotalHours)}</span>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {weekDays.map((label, index) => {
+                const key = weekDayKeys[index];
+                const hours = dailyHoursByWeekday[key] ?? 0;
+                const isActive = hours > 0;
+
+                return (
+                  <div
+                    key={label}
+                    className="flex flex-col md:flex-row md:items-center gap-3 justify-between rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-3"
+                  >
+                    <button
+                      onClick={() => updateDayHours(index, isActive ? 0 : settings.dailyGoalHours)}
+                      className={cn(
+                        'w-12 h-10 rounded-lg border text-sm transition',
+                        isActive
+                          ? 'border-neon-purple/60 text-white'
+                          : 'border-slate-800 text-text-muted'
+                      )}
+                    >
+                      {label}
+                    </button>
+                    <div className="flex flex-1 items-center gap-3">
+                      <input
+                        type="range"
+                        min={0}
+                        max={12}
+                        step={0.5}
+                        value={hours}
+                        onChange={(e) => updateDayHours(index, Number(e.target.value))}
+                        className={cn(
+                          'w-full accent-neon-purple',
+                          !isActive && 'opacity-40'
+                        )}
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        max={12}
+                        step={0.5}
+                        value={hours}
+                        onChange={(e) => updateDayHours(index, Number(e.target.value))}
+                        className="input-field w-24"
+                      />
+                      <span className="text-xs text-text-muted min-w-[52px]">{formatHours(hours)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-text-muted">
+              <span>
+                Media diaria: <span className="text-white">{formatHours(averageDailyHours)}</span>
+              </span>
+              <span>
+                Dias ativos: <span className="text-white">{activeDayValues.length}</span>
+              </span>
             </div>
           </div>
 
@@ -472,6 +774,61 @@ export default function SettingsPage() {
               </button>
             </div>
           ))}
+          <div className="p-4 rounded-xl bg-card-bg border border-card-border space-y-4">
+            <div>
+              <div className="font-medium text-white">Som do alarme</div>
+              <div className="text-sm text-text-secondary">
+                Escolha o som usado quando um bloco terminar
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {alarmSoundOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setPendingAlarmSound(option.value)}
+                  className={cn(
+                    'rounded-xl border px-4 py-3 text-left transition',
+                    (pendingAlarmSound || 'pulse') === option.value
+                      ? 'border-neon-cyan bg-neon-cyan/10 text-white'
+                      : 'border-slate-800 text-text-secondary hover:border-neon-cyan/60'
+                  )}
+                >
+                  <div className="font-semibold">{option.label}</div>
+                  <div className="text-xs text-text-muted mt-1">{option.description}</div>
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => playAlarmPreview(pendingAlarmSound || 'pulse')}
+              >
+                Ouvir antes
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  updateSetting('alarmSound', pendingAlarmSound || 'pulse');
+                  setAlarmApplied(true);
+                }}
+              >
+                {alarmApplied ? 'Aplicado' : 'Aplicar som'}
+              </Button>
+              <AnimatePresence>
+                {alarmApplied && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                    className="flex items-center gap-2 text-neon-cyan text-xs"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Som aplicado com sucesso
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
       </Card>
 

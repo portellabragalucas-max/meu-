@@ -48,6 +48,11 @@ export interface Subject {
   color: string;
   icon: string;
   studyPrefs?: StudyPreferences;
+  area?: string;
+  nivel?: string;
+  pesoNoExame?: number;
+  prerequisitos?: string[];
+  tipo?: string;
   
   // Study parameters
   priority: number;      // 1-10
@@ -70,11 +75,20 @@ export interface StudyPreferences {
   daysOfWeek: number[];
   mode: 'random' | 'exam';
   examDate?: string;
+  goal?: 'enem' | 'medicina' | 'concurso' | 'outros';
 }
 
 // ============================================
 // Study Block Types
 // ============================================
+
+export type StudyBlockType =
+  | 'AULA'
+  | 'EXERCICIOS'
+  | 'REVISAO'
+  | 'SIMULADO_AREA'
+  | 'SIMULADO_COMPLETO'
+  | 'ANALISE';
 
 export interface StudyBlock {
   id: string;
@@ -87,6 +101,15 @@ export interface StudyBlock {
   startTime: string;
   endTime: string;
   durationMinutes: number;
+  
+  // Roadmap metadata
+  sessionType?: 'teoria' | 'pratica' | 'revisao' | 'simulado';
+  phase?: string;
+  area?: string;
+  type?: StudyBlockType;
+  description?: string;
+  sequenceIndex?: number;
+  relatedSubjectId?: string;
   
   // Status
   status: BlockStatus;
@@ -274,6 +297,51 @@ export interface OnboardingResult {
   subjects: Subject[];
   schedule: GeneratedSchedule;
   studyPrefs: StudyPreferences;
+}
+
+// ============================================
+// Preset Wizard Types
+// ============================================
+
+export type BestTimeWindow = 'manha' | 'tarde' | 'noite' | 'misto';
+export type FocusDuration = 25 | 50 | 90 | 120;
+export type BreakDuration = 5 | 10 | 15 | 20;
+export type WeekdayKey = 'dom' | 'seg' | 'ter' | 'qua' | 'qui' | 'sex' | 'sab';
+export type DailyHoursByWeekday = Record<WeekdayKey, number>;
+
+export interface PresetWizardAnswers {
+  dailyHoursByWeekday: DailyHoursByWeekday;
+  bestTime: BestTimeWindow;
+  availableStart: string;
+  availableEnd: string;
+  focusMinutes: FocusDuration;
+  breakMinutes: BreakDuration;
+  targetDailyHours: number;
+  goal: 'enem' | 'medicina' | 'concurso' | 'outros';
+  examDate?: string;
+}
+
+export interface UserSettings {
+  name: string;
+  email: string;
+  avatar?: string;
+  dailyGoalHours: number;
+  dailyHoursByWeekday?: DailyHoursByWeekday;
+  preferredStart: string;
+  preferredEnd: string;
+  maxBlockMinutes: number;
+  breakMinutes: number;
+  excludeDays: number[];
+  aiDifficulty: 'easy' | 'medium' | 'hard' | 'adaptive';
+  focusMode: boolean;
+  autoSchedule: boolean;
+  smartBreaks: boolean;
+  dailyReminder: boolean;
+  streakReminder: boolean;
+  achievementAlerts: boolean;
+  weeklyReport: boolean;
+  alarmSound?: 'pulse' | 'beep' | 'chime' | 'soft';
+  examDate?: string;
 }
 
 // ============================================

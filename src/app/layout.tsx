@@ -5,6 +5,7 @@
 
 import type { Metadata } from 'next';
 import './globals.css';
+import AuthProvider from '@/components/providers/AuthProvider';
 
 export const metadata: Metadata = {
   title: 'Nexora - AI Study Optimization',
@@ -25,7 +26,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="font-body antialiased">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

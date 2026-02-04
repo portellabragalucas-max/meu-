@@ -9,7 +9,9 @@
  */
 
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
+import { authOptions } from '@/lib/auth';
 import { subjectColors } from '@/lib/utils';
 
 // Map preset priority (1-5) to subject priority (1-10)
@@ -47,16 +49,10 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = await request.json();
-
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
     if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'userId is required',
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     // Verify user exists

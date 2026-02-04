@@ -5,16 +5,61 @@
  * Agenda semanal com IA e arrastar e soltar
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { WeeklyPlanner } from '@/components/planner';
-import { generateWeeklySchedule } from '@/services/studyAlgorithm';
+import { generateChronologicalSchedule, getPhaseForDate } from '@/services/roadmapEngine';
 import { useLocalStorage } from '@/hooks';
-import { getWeekStart, timeToMinutes, minutesToTime } from '@/lib/utils';
-import type { StudyBlock, Subject, StudyPreferences } from '@/types';
+import { cn, getWeekStart, timeToMinutes, minutesToTime } from '@/lib/utils';
+import type {
+  AnalyticsStore,
+  StudyBlock,
+  Subject,
+  StudyPreferences,
+  UserSettings,
+  WeekdayKey,
+} from '@/types';
+import { defaultSettings } from '@/lib/defaultSettings';
 
 // Blocos iniciais vazios
 const initialBlocks: StudyBlock[] = [];
+const weekDayKeys: WeekdayKey[] = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+const emptyAnalytics: AnalyticsStore = { daily: {} };
+
+const toLocalKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate()
+  ).padStart(2, '0')}`;
+
+const getHoursForDate = (
+  date: Date,
+  dailyHoursByWeekday: UserSettings['dailyHoursByWeekday'],
+  fallbackHours: number
+) => {
+  if (!dailyHoursByWeekday) return fallbackHours;
+  const key = weekDayKeys[date.getDay()];
+  const value = dailyHoursByWeekday[key];
+  return typeof value === 'number' ? value : fallbackHours;
+};
+
+const buildDailyLimitByDate = (
+  startDate: Date,
+  endDate: Date,
+  dailyHoursByWeekday: UserSettings['dailyHoursByWeekday'],
+  fallbackHours: number
+) => {
+  const limits: Record<string, number> = {};
+  const cursor = new Date(startDate);
+  cursor.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+  while (cursor <= end) {
+    const hours = getHoursForDate(cursor, dailyHoursByWeekday, fallbackHours);
+    limits[toLocalKey(cursor)] = Math.max(0, Math.round(hours * 60));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return limits;
+};
 
 export default function PlannerPage() {
   const [subjects] = useLocalStorage<Subject[]>('nexora_subjects', []);
@@ -28,11 +73,108 @@ export default function PlannerPage() {
     'nexora_planner_blocks',
     initialBlocks
   );
-  const [, setScheduleRange] = useLocalStorage<{ startDate: string; endDate: string } | null>(
+  const [scheduleRange, setScheduleRange] = useLocalStorage<{ startDate: string; endDate: string } | null>(
     'nexora_schedule_range',
     null
   );
+  const [userSettings] = useLocalStorage<UserSettings>('nexora_user_settings', defaultSettings);
+  const [dailyLimits] = useLocalStorage<Record<string, number>>('nexora_daily_limits', {});
+  const [analytics] = useLocalStorage<AnalyticsStore>('nexora_analytics', emptyAnalytics);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [firstCycleAllSubjects, setFirstCycleAllSubjects] = useLocalStorage<boolean>(
+    'nexora_first_cycle_all_subjects',
+    true
+  );
+  const lastAiSignature = useRef<string | null>(null);
+
+  const activeDaysFromSettings = useMemo(() => {
+    if (userSettings.dailyHoursByWeekday) {
+      return weekDayKeys
+        .map((key, index) => ({ key, index }))
+        .filter((entry) => (userSettings.dailyHoursByWeekday?.[entry.key] ?? 0) > 0)
+        .map((entry) => entry.index);
+    }
+    return studyPrefs.daysOfWeek ?? [];
+  }, [studyPrefs.daysOfWeek, userSettings.dailyHoursByWeekday]);
+
+  const averageDailyHours = userSettings.dailyHoursByWeekday
+    ? (() => {
+        const values = Object.values(userSettings.dailyHoursByWeekday).filter((value) => value > 0);
+        if (values.length === 0) return studyPrefs.hoursPerDay;
+        return values.reduce((sum, value) => sum + value, 0) / values.length;
+      })()
+    : studyPrefs.hoursPerDay;
+
+  const aiProfile = useMemo(() => {
+    const baseBlock = userSettings.maxBlockMinutes || 90;
+    const baseBreak = userSettings.breakMinutes || 15;
+    const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+    let difficulty = userSettings.aiDifficulty;
+    if (difficulty === 'adaptive') {
+      const today = new Date();
+      let totalHours = 0;
+      for (let i = 6; i >= 0; i -= 1) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const key = date.toISOString().split('T')[0];
+        totalHours += analytics.daily[key]?.hours ?? 0;
+      }
+      const activeCount = activeDaysFromSettings.length || 7;
+      const weeklyGoal = Math.max(0.5, averageDailyHours) * activeCount;
+      const ratio = weeklyGoal > 0 ? totalHours / weeklyGoal : 0;
+      if (ratio < 0.4) difficulty = 'easy';
+      else if (ratio > 0.8) difficulty = 'hard';
+      else difficulty = 'medium';
+    }
+
+    let blockMinutes = baseBlock;
+    let breakMinutes = baseBreak;
+
+    if (difficulty === 'easy') {
+      blockMinutes = clamp(baseBlock * 0.8, 25, 60);
+      breakMinutes = clamp(baseBreak * 1.3, 10, 25);
+    } else if (difficulty === 'hard') {
+      blockMinutes = clamp(baseBlock * 1.2, 45, 150);
+      breakMinutes = clamp(baseBreak * 0.7, 5, 15);
+    } else {
+      blockMinutes = clamp(baseBlock, 25, 120);
+      breakMinutes = clamp(baseBreak, 5, 20);
+    }
+
+    if (userSettings.focusMode) {
+      blockMinutes = clamp(blockMinutes + 10, 25, 150);
+      breakMinutes = clamp(breakMinutes - 2, 5, 20);
+    }
+
+    if (userSettings.smartBreaks) {
+      breakMinutes = blockMinutes >= 90 ? 15 : blockMinutes >= 60 ? 10 : 5;
+    }
+
+    return { blockMinutes, breakMinutes, difficulty };
+  }, [
+    analytics.daily,
+    averageDailyHours,
+    activeDaysFromSettings.length,
+    userSettings.aiDifficulty,
+    userSettings.breakMinutes,
+    userSettings.focusMode,
+    userSettings.maxBlockMinutes,
+    userSettings.smartBreaks,
+  ]);
+
+  const phaseInfo = getPhaseForDate(
+    new Date(),
+    scheduleRange?.startDate ? new Date(scheduleRange.startDate) : getWeekStart(new Date())
+  );
+  const aiModeLabel = useMemo(() => {
+    const map = { easy: 'Leve', medium: 'Moderado', hard: 'Intenso', adaptive: 'Adaptativo' };
+    const resolved = map[aiProfile.difficulty as keyof typeof map] || 'Moderado';
+    if (userSettings.aiDifficulty === 'adaptive') {
+      return `Adaptativo (${resolved})`;
+    }
+    return resolved;
+  }, [aiProfile.difficulty, userSettings.aiDifficulty]);
 
   useEffect(() => {
     if (blocks.length === 0) return;
@@ -40,14 +182,9 @@ export default function PlannerPage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const allowedDays = studyPrefs.daysOfWeek ?? [];
+    const allowedDays = activeDaysFromSettings;
     const isAllowedDay = (date: Date) =>
       allowedDays.length === 0 || allowedDays.includes(date.getDay());
-
-    const toLocalKey = (date: Date) =>
-      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-        date.getDate()
-      ).padStart(2, '0')}`;
 
     const missedBlocks = blocks
       .filter((block) => {
@@ -132,7 +269,7 @@ export default function PlannerPage() {
     });
 
     setBlocks(updatedBlocks);
-  }, [blocks, setBlocks, studyPrefs.daysOfWeek]);
+  }, [blocks, setBlocks, studyPrefs.daysOfWeek, activeDaysFromSettings]);
  
   useEffect(() => {
     if (subjects.length === 0 && blocks.length > 0) {
@@ -142,7 +279,25 @@ export default function PlannerPage() {
 
     if (subjects.length === 0) return;
 
+    const simuladoSubject: Subject = {
+      id: 'simulado',
+      userId: 'user1',
+      name: 'Simulado',
+      color: '#FF7A00',
+      icon: 'target',
+      priority: 5,
+      difficulty: 6,
+      targetHours: 0,
+      completedHours: 0,
+      totalHours: 0,
+      sessionsCount: 0,
+      averageScore: 0,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
     const subjectsById = new Map(subjects.map((s) => [s.id, s]));
+    subjectsById.set(simuladoSubject.id, simuladoSubject);
     setBlocks((prev) => {
       const next = prev
         .filter((block) => block.isBreak || subjectsById.has(block.subjectId))
@@ -151,7 +306,7 @@ export default function PlannerPage() {
             ? block
             : {
                 ...block,
-                subject: subjectsById.get(block.subjectId),
+                subject: subjectsById.get(block.subjectId) ?? simuladoSubject,
               }
         );
 
@@ -181,9 +336,13 @@ export default function PlannerPage() {
     // Em produção, salvaria no banco de dados
   };
 
-  const handleGenerateSchedule = async (range?: { startDate: Date; endDate: Date }) => {
+  const handleGenerateSchedule = useCallback(async (range?: { startDate: Date; endDate: Date }) => {
     if (subjects.length === 0) {
       alert('Adicione disciplinas antes de gerar a agenda.');
+      return;
+    }
+    if (!userSettings.autoSchedule) {
+      alert('Agendamento automatico desativado. Ative nas configuracoes de IA para gerar o cronograma.');
       return;
     }
     setIsGenerating(true);
@@ -192,7 +351,12 @@ export default function PlannerPage() {
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
     // Gerar agenda usando o algoritmo
-    const activeDays = studyPrefs.daysOfWeek ?? [];
+    const activeDays = userSettings.dailyHoursByWeekday
+      ? weekDayKeys
+          .map((key, index) => ({ key, index }))
+          .filter((entry) => (userSettings.dailyHoursByWeekday?.[entry.key] ?? 0) > 0)
+          .map((entry) => entry.index)
+      : studyPrefs.daysOfWeek ?? [];
     const excludeDays =
       activeDays.length > 0
         ? [0, 1, 2, 3, 4, 5, 6].filter((day) => !activeDays.includes(day))
@@ -201,16 +365,83 @@ export default function PlannerPage() {
     const startDate = range?.startDate ?? getWeekStart(new Date());
     const endDate = range?.endDate ?? new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
 
-    const schedule = generateWeeklySchedule({
-      userId: 'user1',
-      subjects,
-      preferredStart: '09:00',
-      preferredEnd: '18:00',
-      maxBlockMinutes: 120,
-      breakMinutes: 15,
-      excludeDays,
+    const baseLimits = buildDailyLimitByDate(
       startDate,
       endDate,
+      userSettings.dailyHoursByWeekday,
+      studyPrefs.hoursPerDay
+    );
+    const mergedLimits = { ...baseLimits, ...dailyLimits };
+
+    const schedule = generateChronologicalSchedule({
+      subjects,
+      preferences: studyPrefs,
+      startDate,
+      endDate,
+      preferredStart: userSettings.preferredStart || '09:00',
+      preferredEnd: userSettings.preferredEnd || minutesToTime(timeToMinutes('09:00') + 6 * 60),
+      maxBlockMinutes: aiProfile.blockMinutes,
+      breakMinutes: aiProfile.breakMinutes,
+      restDays: userSettings.excludeDays || excludeDays,
+      dailyLimitByDate: mergedLimits,
+      firstCycleAllSubjects,
+      completedLessonsTotal: blocks.filter(
+        (block) =>
+          block.status === 'completed' &&
+          !block.isBreak &&
+          (block.type === 'AULA' || block.sessionType === 'teoria')
+      ).length,
+      completedLessonsBySubject: blocks.reduce<Record<string, number>>((acc, block) => {
+        if (
+          block.status === 'completed' &&
+          !block.isBreak &&
+          (block.type === 'AULA' || block.sessionType === 'teoria')
+        ) {
+          acc[block.subjectId] = (acc[block.subjectId] || 0) + 1;
+        }
+        return acc;
+      }, {}),
+      simuladoRules: (() => {
+        if (studyPrefs.goal === 'medicina') {
+          return {
+            minLessonsBeforeSimulated: 20,
+            minLessonsPerSubject: 3,
+            minDaysBeforeSimulated: 14,
+            frequencyDays: 7,
+            minLessonsBeforeAreaSimulated: 8,
+            minDaysBeforeAreaSimulated: 7,
+          };
+        }
+        if (studyPrefs.goal === 'concurso') {
+          return {
+            minLessonsBeforeSimulated: 16,
+            minLessonsPerSubject: 2,
+            minDaysBeforeSimulated: 14,
+            frequencyDays: 14,
+            minLessonsBeforeAreaSimulated: 6,
+            minDaysBeforeAreaSimulated: 7,
+          };
+        }
+        if (studyPrefs.goal === 'enem') {
+          return {
+            minLessonsBeforeSimulated: 20,
+            minLessonsPerSubject: 2,
+            minDaysBeforeSimulated: 14,
+            frequencyDays: 7,
+            minLessonsBeforeAreaSimulated: 8,
+            minDaysBeforeAreaSimulated: 7,
+          };
+        }
+        return {
+          minLessonsBeforeSimulated: 20,
+          minLessonsPerSubject: 2,
+          minDaysBeforeSimulated: 14,
+          frequencyDays: 14,
+          minLessonsBeforeAreaSimulated: 6,
+          minDaysBeforeAreaSimulated: 7,
+        };
+      })(),
+      debug: false,
     });
 
     setBlocks((prev) => {
@@ -237,22 +468,181 @@ export default function PlannerPage() {
       endDate: endDate.toISOString().split('T')[0],
     });
     setIsGenerating(false);
-  };
+  }, [
+    subjects,
+    userSettings.autoSchedule,
+    userSettings.dailyHoursByWeekday,
+    userSettings.preferredStart,
+    userSettings.preferredEnd,
+    userSettings.excludeDays,
+    studyPrefs,
+    aiProfile.blockMinutes,
+    aiProfile.breakMinutes,
+    dailyLimits,
+    blocks,
+    firstCycleAllSubjects,
+    setBlocks,
+    setScheduleRange,
+  ]);
 
+  const aiSignature = useMemo(
+    () =>
+      [
+        userSettings.aiDifficulty,
+        userSettings.focusMode,
+        userSettings.smartBreaks,
+        userSettings.maxBlockMinutes,
+        userSettings.breakMinutes,
+      ].join('|'),
+    [
+      userSettings.aiDifficulty,
+      userSettings.focusMode,
+      userSettings.smartBreaks,
+      userSettings.maxBlockMinutes,
+      userSettings.breakMinutes,
+    ]
+  );
+
+  useEffect(() => {
+    if (!userSettings.autoSchedule) {
+      lastAiSignature.current = aiSignature;
+      return;
+    }
+    if (lastAiSignature.current === null) {
+      lastAiSignature.current = aiSignature;
+      return;
+    }
+    if (lastAiSignature.current === aiSignature) return;
+    lastAiSignature.current = aiSignature;
+    if (subjects.length === 0) return;
+    const start = scheduleRange?.startDate ? new Date(scheduleRange.startDate) : getWeekStart(new Date());
+    const end = scheduleRange?.endDate
+      ? new Date(scheduleRange.endDate)
+      : new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
+    handleGenerateSchedule({ startDate: start, endDate: end });
+  }, [
+    aiSignature,
+    userSettings.autoSchedule,
+    subjects.length,
+    scheduleRange?.startDate,
+    scheduleRange?.endDate,
+    handleGenerateSchedule,
+  ]);
+
+
+
+  const roadmapSummary = useMemo(() => {
+    return subjects.map((subject) => {
+      const subjectBlocks = blocks
+        .filter((block) => !block.isBreak && block.subjectId === subject.id)
+        .sort((a, b) => {
+          const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+          if (dateDiff !== 0) return dateDiff;
+          return a.startTime.localeCompare(b.startTime);
+        });
+      const counts = subjectBlocks.reduce(
+        (acc, block) => {
+          if (block.type) acc[block.type] = (acc[block.type] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
+      const nextBlock = subjectBlocks.find((block) => block.status !== 'completed');
+      return { subject, counts, nextBlock };
+    });
+  }, [blocks, subjects]);
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="h-[calc(100vh-120px)]"
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[calc(100vh-120px)] space-y-4">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-2xl border border-neon-cyan/20 bg-slate-900/60 p-4 shadow-lg"
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs text-text-secondary">Trilha de Aprovacao</p>
+              <h3 className="text-lg font-semibold text-white">{phaseInfo.label}</h3>
+              <p className="text-xs text-text-muted">
+                Alternancia inteligente de areas + revisao espacada para melhor retencao.
+              </p>
+              <p className="text-xs text-text-secondary mt-2">
+                IA: <span className="text-white font-medium">{aiModeLabel}</span>
+              </p>
+            </div>
+            <div className="px-3 py-1 rounded-full bg-neon-purple/10 border border-neon-purple/30 text-neon-purple text-xs">
+              Roadmap ativo
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-white/5 bg-white/5 p-3">
+            <div>
+              <p className="text-xs text-text-secondary">Primeiro ciclo completo</p>
+              <p className="text-sm text-text-muted">
+                Garante 1 aula de cada materia antes de repetir.
+              </p>
+            </div>
+            <button
+              className={cn(
+                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                firstCycleAllSubjects ? 'bg-neon-cyan' : 'bg-white/10'
+              )}
+              onClick={() => setFirstCycleAllSubjects((prev) => !prev)}
+              aria-label="Alternar primeiro ciclo completo"
+            >
+              <span
+                className={cn(
+                  'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                  firstCycleAllSubjects ? 'translate-x-6' : 'translate-x-1'
+                )}
+              />
+            </button>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {roadmapSummary.map((item) => (
+              <div
+                key={item.subject.id}
+                className="rounded-xl border border-white/5 bg-slate-900/50 p-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-flex h-2 w-2 rounded-full"
+                      style={{ backgroundColor: item.subject.color }}
+                    />
+                    <p className="text-sm font-medium text-white">{item.subject.name}</p>
+                  </div>
+                  <span className="text-xs text-text-muted">
+                    Proximo: {item.nextBlock?.type ?? 'AULA'}
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-text-secondary">
+                  <span>Aula {item.counts.AULA ?? 0}</span>
+                  <span>Exercicios {item.counts.EXERCICIOS ?? 0}</span>
+                  <span>Revisao {item.counts.REVISAO ?? 0}</span>
+                  <span>Simulado {item.counts.SIMULADO ?? 0}</span>
+                </div>
+                {item.nextBlock?.date && (
+                  <p className="mt-1 text-[11px] text-text-muted">
+                    {new Date(item.nextBlock.date).toLocaleDateString('pt-BR')} - {item.nextBlock.startTime}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
       <WeeklyPlanner
         initialBlocks={blocks}
         onBlocksChange={handleBlocksChange}
         onGenerateSchedule={handleGenerateSchedule}
         isGenerating={isGenerating}
         subjects={subjects}
-        defaultDailyLimitMinutes={studyPrefs.hoursPerDay * 60}
-        allowedDays={studyPrefs.daysOfWeek}
+        defaultDailyLimitMinutes={Math.round(averageDailyHours * 60)}
+        dailyHoursByWeekday={userSettings.dailyHoursByWeekday}
+        allowedDays={activeDaysFromSettings}
       />
     </motion.div>
   );

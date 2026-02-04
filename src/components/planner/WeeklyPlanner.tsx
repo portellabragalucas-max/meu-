@@ -35,7 +35,7 @@ import DayColumn from './DayColumn';
 import TimeBlock from './TimeBlock';
 import BlockFormModal, { type BlockFormData } from './BlockFormModal';
 import { StudyBlockSessionModal } from '@/components/session';
-import type { StudyBlock, Subject } from '@/types';
+import type { DailyHoursByWeekday, StudyBlock, Subject, WeekdayKey } from '@/types';
 
 interface WeeklyPlannerProps {
   initialBlocks: StudyBlock[];
@@ -44,6 +44,8 @@ interface WeeklyPlannerProps {
   isGenerating?: boolean;
   subjects?: Subject[];
   defaultDailyLimitMinutes?: number;
+  defaultDailyLimitsByDate?: Record<string, number>;
+  dailyHoursByWeekday?: DailyHoursByWeekday;
   allowedDays?: number[];
 }
 
@@ -54,6 +56,8 @@ export default function WeeklyPlanner({
   isGenerating = false,
   subjects = [],
   defaultDailyLimitMinutes = 0,
+  defaultDailyLimitsByDate,
+  dailyHoursByWeekday,
   allowedDays = [],
 }: WeeklyPlannerProps) {
   const [currentWeekStart, setCurrentWeekStart] = useState(getWeekStart());
@@ -100,6 +104,7 @@ export default function WeeklyPlanner({
   );
   const [sessionBlock, setSessionBlock] = useState<StudyBlock | null>(null);
   const [isSessionOpen, setIsSessionOpen] = useState(false);
+  const weekDayKeys: WeekdayKey[] = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
   // Obter datas da semana
   const weekDates = useMemo(
@@ -195,6 +200,13 @@ export default function WeeklyPlanner({
     const key = toLocalKey(date);
     const stored = dailyLimits[key];
     if (typeof stored === 'number') return stored;
+    const fallback = defaultDailyLimitsByDate?.[key];
+    if (typeof fallback === 'number') return fallback;
+    if (dailyHoursByWeekday) {
+      const dayKey = weekDayKeys[date.getDay()];
+      const hours = dailyHoursByWeekday[dayKey];
+      if (typeof hours === 'number') return Math.max(0, Math.round(hours * 60));
+    }
     return defaultDailyLimitMinutes;
   };
 
@@ -493,15 +505,43 @@ export default function WeeklyPlanner({
   };
 
   const handleCompleteBlock = (blockId: string, minutesSpent?: number) => {
+    const completedBlock = blocks.find((block) => block.id === blockId);
     setBlocks((prev) => {
       const next = prev.map((block) =>
         block.id === blockId
-          ? { ...block, status: 'completed' as const, updatedAt: new Date(), durationMinutes: minutesSpent ? Math.round(minutesSpent) : block.durationMinutes }
+          ? {
+              ...block,
+              status: 'completed' as const,
+              updatedAt: new Date(),
+              durationMinutes: minutesSpent ? Math.round(minutesSpent) : block.durationMinutes,
+            }
           : block
       );
       onBlocksChange(next);
       return next;
     });
+
+    if (completedBlock && !completedBlock.isBreak) {
+      const sameDayBreaks = blocks
+        .filter(
+          (block) =>
+            block.isBreak &&
+            block.status !== 'completed' &&
+            isSameDay(new Date(block.date), new Date(completedBlock.date))
+        )
+        .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+
+      const nextBreak = sameDayBreaks.find(
+        (block) => timeToMinutes(block.startTime) >= timeToMinutes(completedBlock.endTime)
+      );
+
+      if (nextBreak) {
+        setTimeout(() => {
+          setSessionBlock(nextBreak);
+          setIsSessionOpen(true);
+        }, 450);
+      }
+    }
   };
   const handleSaveBlock = (data: BlockFormData) => {
     const endTime = minutesToTime(
@@ -598,6 +638,7 @@ export default function WeeklyPlanner({
             onClick={() => setIsScheduleModalOpen(true)}
             loading={isGenerating}
             leftIcon={<Sparkles className="w-4 h-4" />}
+           
           >
             Gerar Agenda
           </Button>
@@ -605,6 +646,7 @@ export default function WeeklyPlanner({
             variant="secondary"
             onClick={() => setIsRescheduleModalOpen(true)}
             leftIcon={<ArrowRightLeft className="w-4 h-4" />}
+           
           >
             Reagendar pendências
           </Button>
@@ -727,7 +769,7 @@ export default function WeeklyPlanner({
         block={sessionBlock}
         onClose={() => setIsSessionOpen(false)}
         onComplete={(blockId, minutesSpent) => {
-          handleCompleteBlock(blockId, minutesSpent ? minutesSpent * 60 : undefined);
+          handleCompleteBlock(blockId, minutesSpent ?? undefined);
         }}
       />
 
