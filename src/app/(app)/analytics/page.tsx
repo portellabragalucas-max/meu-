@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * Analytics Page
@@ -43,25 +43,22 @@ const itemVariants = {
 export default function AnalyticsPage() {
   const [analytics] = useLocalStorage<AnalyticsStore>('nexora_analytics', emptyAnalytics);
   const [subjects] = useLocalStorage<Subject[]>('nexora_subjects', []);
-  const [now, setNow] = useState<Date | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setNow(new Date());
+    setMounted(true);
   }, []);
 
-  if (!now) {
-    return (
-      <div className="space-y-6">
-        <div className="glass-card p-6 animate-pulse">
-          <h1 className="text-2xl font-heading font-bold text-white">AnÃ¡lises</h1>
-          <p className="text-sm text-text-secondary mt-1">Carregando insights...</p>
-        </div>
-      </div>
-    );
-  }
+  const now = useMemo(() => (mounted ? new Date() : null), [mounted]);
 
   const productivityData = useMemo(() => {
-    const data = [];
+    if (!now) return [];
+    const data = [] as {
+      date: string;
+      focusScore: number;
+      productivityScore: number;
+      hours: number;
+    }[];
     const today = now;
 
     for (let i = 13; i >= 0; i--) {
@@ -94,7 +91,12 @@ export default function AnalyticsPage() {
   );
 
   const heatmapData = useMemo(() => {
-    const data = [];
+    if (!now) return [];
+    const data = [] as {
+      date: string;
+      hours: number;
+      level: 0 | 1 | 2 | 3 | 4;
+    }[];
     const today = now;
 
     for (let i = 84; i >= 0; i--) {
@@ -114,17 +116,34 @@ export default function AnalyticsPage() {
 
     return data;
   }, [analytics, now]);
-  // Calcular estatísticas de resumo
+
   const totalHours = productivityData.reduce((sum, d) => sum + d.hours, 0);
-  const avgFocus = Math.round(
-    productivityData.reduce((sum, d) => sum + d.focusScore, 0) /
-      productivityData.length
-  );
-  const avgProductivity = Math.round(
-    productivityData.reduce((sum, d) => sum + d.productivityScore, 0) /
-      productivityData.length
-  );
+  const avgFocus =
+    productivityData.length > 0
+      ? Math.round(
+          productivityData.reduce((sum, d) => sum + d.focusScore, 0) /
+            productivityData.length
+        )
+      : 0;
+  const avgProductivity =
+    productivityData.length > 0
+      ? Math.round(
+          productivityData.reduce((sum, d) => sum + d.productivityScore, 0) /
+            productivityData.length
+        )
+      : 0;
   const sessionsCompleted = productivityData.filter((d) => d.hours > 0).length;
+
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        <div className="glass-card p-6 animate-pulse">
+          <h1 className="text-2xl font-heading font-bold text-white">Análises</h1>
+          <p className="text-sm text-text-secondary mt-1">Carregando insights...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -145,7 +164,6 @@ export default function AnalyticsPage() {
       <motion.div
         variants={itemVariants}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-       
       >
         <StatsCard
           title="Tempo Total de Estudo"
@@ -208,12 +226,8 @@ export default function AnalyticsPage() {
                 <Clock className="w-5 h-5 text-neon-blue" />
                 <span className="font-medium text-white">Pico de Performance</span>
               </div>
-              <p className="text-2xl font-heading font-bold text-neon-blue">
-                --
-              </p>
-              <p className="text-sm text-text-secondary mt-1">
-                Sem dados ainda
-              </p>
+              <p className="text-2xl font-heading font-bold text-neon-blue">--</p>
+              <p className="text-sm text-text-secondary mt-1">Sem dados ainda</p>
             </div>
 
             {/* Melhor Disciplina */}
@@ -222,12 +236,8 @@ export default function AnalyticsPage() {
                 <Award className="w-5 h-5 text-neon-purple" />
                 <span className="font-medium text-white">Melhor Disciplina</span>
               </div>
-              <p className="text-2xl font-heading font-bold text-neon-purple">
-                --
-              </p>
-              <p className="text-sm text-text-secondary mt-1">
-                Sem dados ainda
-              </p>
+              <p className="text-2xl font-heading font-bold text-neon-purple">--</p>
+              <p className="text-sm text-text-secondary mt-1">Sem dados ainda</p>
             </div>
 
             {/* Consistência */}
@@ -237,9 +247,7 @@ export default function AnalyticsPage() {
                 <span className="font-medium text-white">Consistência</span>
               </div>
               <p className="text-2xl font-heading font-bold text-neon-cyan">0%</p>
-              <p className="text-sm text-text-secondary mt-1">
-                Sem dados ainda
-              </p>
+              <p className="text-sm text-text-secondary mt-1">Sem dados ainda</p>
             </div>
           </div>
 
@@ -255,13 +263,3 @@ export default function AnalyticsPage() {
     </motion.div>
   );
 }
-
-
-
-
-
-
-
-
-
-
