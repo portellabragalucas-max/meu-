@@ -100,7 +100,7 @@ export default function TodayPlan({
                   />
                 )}
 
-                <div className="flex items-start justify-between ml-2">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between ml-2">
                   <div className="flex-1">
                     {/* Título do Bloco */}
                     <div className="flex items-center gap-2">
@@ -124,18 +124,19 @@ export default function TodayPlan({
                   </div>
 
                   {/* Status e Ações */}
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="flex flex-col items-start md:items-end gap-2 w-full md:w-auto">
                     <Badge variant={config.badge as 'default' | 'success' | 'warning' | 'danger'} size="sm">
                       <Icon className="w-3 h-3 mr-1" />
                       {config.label}
                     </Badge>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2 w-full md:w-auto justify-start md:justify-end">
                       {onStartBlock && (
                         <Button
                           variant={block.isBreak ? 'secondary' : 'primary'}
                           size="sm"
                           onClick={() => onStartBlock(block)}
+                          className="min-h-[40px]"
                         >
                           <Play className="w-3 h-3" />
                           Iniciar
@@ -146,6 +147,7 @@ export default function TodayPlan({
                           variant="ghost"
                           size="sm"
                           onClick={() => onSkipBlock(block.id)}
+                          className="min-h-[40px]"
                         >
                           Pular
                         </Button>
@@ -155,6 +157,7 @@ export default function TodayPlan({
                           variant="secondary"
                           size="sm"
                           onClick={() => onCompleteBlock(block.id)}
+                          className="min-h-[40px]"
                         >
                           Concluir
                         </Button>
