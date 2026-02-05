@@ -1,4 +1,4 @@
-'use client';
+ï»¿'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
 import type { MouseEvent, TouchEvent, PointerEvent } from 'react';
@@ -10,7 +10,9 @@ export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const handleNavigate = (href: string) => (event: MouseEvent | TouchEvent | PointerEvent) => {
+  const handleNavigate = (href: string) => (
+    event: MouseEvent | TouchEvent | PointerEvent
+  ) => {
     event.preventDefault();
     if (pathname === href || pathname.startsWith(`${href}/`)) return;
     router.push(href);
@@ -30,7 +32,7 @@ export default function BottomNav() {
         'bg-background-light/90 backdrop-blur-glass',
         'border-t border-card-border'
       )}
-      aria-label="Navegação principal"
+      aria-label="Navegacao principal"
     >
       <div className="flex items-center justify-around px-2 py-2">
         {navItems.map((item) => {
@@ -68,4 +70,3 @@ export default function BottomNav() {
     </nav>
   );
 }
-
