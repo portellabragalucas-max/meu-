@@ -789,7 +789,7 @@ export default function SettingsPage() {
                 <button
                   onClick={() => updateSetting(item.key, !settings[item.key])}
                   className={cn(
-                    'w-12 h-6 rounded-full transition-all relative',
+                    'w-14 h-8 md:w-12 md:h-6 rounded-full transition-all relative',
                     settings[item.key]
                       ? 'bg-neon-cyan'
                       : 'bg-card-border'
@@ -798,8 +798,8 @@ export default function SettingsPage() {
                   <motion.div
                     layout
                     className={cn(
-                      'absolute top-1 w-4 h-4 rounded-full bg-white',
-                      settings[item.key] ? 'right-1' : 'left-1'
+                      'absolute top-1.5 md:top-1 w-5 h-5 md:w-4 md:h-4 rounded-full bg-white',
+                      settings[item.key] ? 'right-1.5 md:right-1' : 'left-1.5 md:left-1'
                     )}
                   />
                 </button>
@@ -861,7 +861,7 @@ export default function SettingsPage() {
               <button
                 onClick={() => updateSetting(item.key, !settings[item.key])}
                 className={cn(
-                  'w-12 h-6 rounded-full transition-all relative',
+                  'w-14 h-8 md:w-12 md:h-6 rounded-full transition-all relative',
                   settings[item.key]
                     ? 'bg-orange-500'
                     : 'bg-card-border'
@@ -870,8 +870,8 @@ export default function SettingsPage() {
                 <motion.div
                   layout
                   className={cn(
-                    'absolute top-1 w-4 h-4 rounded-full bg-white',
-                    settings[item.key] ? 'right-1' : 'left-1'
+                    'absolute top-1.5 md:top-1 w-5 h-5 md:w-4 md:h-4 rounded-full bg-white',
+                    settings[item.key] ? 'right-1.5 md:right-1' : 'left-1.5 md:left-1'
                   )}
                 />
               </button>

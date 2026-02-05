@@ -178,7 +178,7 @@ export default function DayColumn({
           onClick={() => onAddBlock(date)}
           className={cn(
             'w-full flex items-center justify-center gap-2',
-            'p-3 rounded-xl border border-dashed',
+            'p-3 rounded-xl border border-dashed min-h-[44px]',
             'text-sm text-text-secondary',
             'border-card-border hover:border-neon-blue/50',
             'hover:bg-neon-blue/5 hover:text-neon-blue',
