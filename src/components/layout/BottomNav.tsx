@@ -9,14 +9,18 @@ export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
 
+  const handleNavigate = (href: string) => () => {
+    router.push(href);
+  };
+
   return (
     <nav
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-[80] md:hidden pointer-events-auto',
+        'fixed bottom-0 left-0 right-0 z-[9999] md:hidden pointer-events-auto isolate',
         'bg-background-light/90 backdrop-blur-glass',
         'border-t border-card-border'
       )}
-      aria-label="NavegaÃ§Ã£o principal"
+      aria-label="Navega��o principal"
     >
       <div className="flex items-center justify-around px-2 py-2">
         {navItems.map((item) => {
@@ -27,7 +31,9 @@ export default function BottomNav() {
             <button
               key={item.id}
               type="button"
-              onClick={() => router.push(item.href)}
+              onClick={handleNavigate(item.href)}
+              onTouchEnd={handleNavigate(item.href)}
+              onPointerUp={handleNavigate(item.href)}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
                 'relative flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-xl',
