@@ -93,6 +93,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [hasRemotePrefs, setHasRemotePrefs] = useState(false);
   const [hasLocalPrefs, setHasLocalPrefs] = useState(false);
+  const hasAttemptedRemotePrefs = useRef(false);
   const [pendingAlarmSound, setPendingAlarmSound] = useState<UserSettings['alarmSound']>(
     settings.alarmSound || 'pulse'
   );
@@ -178,8 +179,10 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (hasRemotePrefs) return;
+    if (hasAttemptedRemotePrefs.current) return;
     let isMounted = true;
     const loadRemotePrefs = async () => {
+      hasAttemptedRemotePrefs.current = true;
       try {
         const response = await fetch('/api/preferences');
         if (!response.ok) return;
