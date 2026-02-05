@@ -6,7 +6,7 @@
  */
 
 import { motion } from 'framer-motion';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import {
   Clock,
   Target,
@@ -43,10 +43,26 @@ const itemVariants = {
 export default function AnalyticsPage() {
   const [analytics] = useLocalStorage<AnalyticsStore>('nexora_analytics', emptyAnalytics);
   const [subjects] = useLocalStorage<Subject[]>('nexora_subjects', []);
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setNow(new Date());
+  }, []);
+
+  if (!now) {
+    return (
+      <div className="space-y-6">
+        <div className="glass-card p-6 animate-pulse">
+          <h1 className="text-2xl font-heading font-bold text-white">AnÃ¡lises</h1>
+          <p className="text-sm text-text-secondary mt-1">Carregando insights...</p>
+        </div>
+      </div>
+    );
+  }
 
   const productivityData = useMemo(() => {
     const data = [];
-    const today = new Date();
+    const today = now;
 
     for (let i = 13; i >= 0; i--) {
       const date = new Date(today);
@@ -63,7 +79,7 @@ export default function AnalyticsPage() {
     }
 
     return data;
-  }, [analytics]);
+  }, [analytics, now]);
 
   const subjectDistribution = useMemo(
     () =>
@@ -79,7 +95,7 @@ export default function AnalyticsPage() {
 
   const heatmapData = useMemo(() => {
     const data = [];
-    const today = new Date();
+    const today = now;
 
     for (let i = 84; i >= 0; i--) {
       const date = new Date(today);
@@ -97,7 +113,7 @@ export default function AnalyticsPage() {
     }
 
     return data;
-  }, [analytics]);
+  }, [analytics, now]);
   // Calcular estatísticas de resumo
   const totalHours = productivityData.reduce((sum, d) => sum + d.hours, 0);
   const avgFocus = Math.round(
