@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '@/lib/auth';
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ success: true, data: null });
   } catch (error) {
-    return NextResponse.json({ success: false, error: 'Falha ao carregar preferências.' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Falha ao carregar preferÃªncias.' }, { status: 500 });
   }
 }
 
@@ -42,7 +42,18 @@ export async function POST(request: Request) {
     }
 
     if (!settings) {
-      return NextResponse.json({ success: false, error: 'Configurações ausentes.' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'ConfiguraÃ§Ãµes ausentes.' }, { status: 400 });
+    }
+
+    try {
+      if (settings.name) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { name: settings.name },
+        });
+      }
+    } catch (error) {
+      console.warn('Preferences API: falha ao atualizar perfil do usuÃ¡rio.', error);
     }
 
     try {
@@ -75,12 +86,14 @@ export async function POST(request: Request) {
         });
       }
     } catch (error) {
-      console.warn('Preferences API: banco indisponível, usando fallback local.', error);
+      console.warn('Preferences API: banco indisponÃ­vel, usando fallback local.', error);
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Erro ao salvar preferências:', error);
-    return NextResponse.json({ success: false, error: 'Falha ao salvar preferências.' }, { status: 500 });
+    console.error('Erro ao salvar preferÃªncias:', error);
+    return NextResponse.json({ success: false, error: 'Falha ao salvar preferÃªncias.' }, { status: 500 });
   }
 }
+
+

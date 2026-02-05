@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSession } from 'next-auth/react';
 import {
   User,
   Clock,
@@ -80,6 +81,7 @@ const buildDailyHoursByWeekday = (dailyGoalHours: number, excludeDays: number[])
 
 export default function SettingsPage() {
   const { resetOnboarding } = useOnboarding();
+  const { data: session } = useSession();
   const [settings, setSettings] = useLocalStorage<UserSettings>('nexora_user_settings', initialSettings);
   const [studyPrefs, setStudyPrefs] = useLocalStorage<StudyPreferences>('nexora_study_prefs', {
     hoursPerDay: initialSettings.dailyGoalHours,
@@ -90,6 +92,7 @@ export default function SettingsPage() {
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasRemotePrefs, setHasRemotePrefs] = useState(false);
+  const [hasLocalPrefs, setHasLocalPrefs] = useState(false);
   const [pendingAlarmSound, setPendingAlarmSound] = useState<UserSettings['alarmSound']>(
     settings.alarmSound || 'pulse'
   );
@@ -107,6 +110,7 @@ export default function SettingsPage() {
   const activeDayValues = Object.values(dailyHoursByWeekday).filter((value) => value > 0);
   const averageDailyHours =
     activeDayValues.length > 0 ? weeklyTotalHours / activeDayValues.length : 0;
+  const emailValue = settings.email || session?.user?.email || '';
 
   const updateSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -156,6 +160,100 @@ export default function SettingsPage() {
     );
     setSettings((prev) => ({ ...prev, dailyHoursByWeekday: fallback }));
   }, [settings.dailyHoursByWeekday, settings.dailyGoalHours, settings.excludeDays, setSettings]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setHasLocalPrefs(Boolean(window.localStorage.getItem('nexora_user_settings')));
+  }, []);
+
+  useEffect(() => {
+    if (!session?.user) return;
+    setSettings((prev) => ({
+      ...prev,
+      name: prev.name && prev.name.trim().length > 0 ? prev.name : session.user?.name || 'Estudante',
+      email: prev.email && prev.email.trim().length > 0 ? prev.email : session.user?.email || '',
+      avatar: prev.avatar || session.user?.image || undefined,
+    }));
+  }, [session?.user, setSettings]);
+
+  useEffect(() => {
+    if (hasRemotePrefs) return;
+    let isMounted = true;
+    const loadRemotePrefs = async () => {
+      try {
+        const response = await fetch('/api/preferences');
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (!payload?.success || !payload?.data) return;
+
+        const remote = payload.data;
+        const restDays =
+          typeof remote.restDays === 'string'
+            ? (() => {
+                try {
+                  const parsed = JSON.parse(remote.restDays);
+                  return Array.isArray(parsed) ? parsed : [];
+                } catch {
+                  return [];
+                }
+              })()
+            : Array.isArray(remote.restDays)
+              ? remote.restDays
+              : [];
+        const remoteDailyHours =
+          typeof remote.dailyHoursByWeekday === 'string'
+            ? (() => {
+                try {
+                  return JSON.parse(remote.dailyHoursByWeekday);
+                } catch {
+                  return null;
+                }
+              })()
+            : remote.dailyHoursByWeekday ?? null;
+
+        if (!isMounted) return;
+        setSettings((prev) => ({
+          ...prev,
+          dailyGoalHours: remote.dailyGoalHours ?? prev.dailyGoalHours,
+          preferredStart: remote.preferredStart ?? prev.preferredStart,
+          preferredEnd: remote.preferredEnd ?? prev.preferredEnd,
+          maxBlockMinutes: remote.maxBlockMinutes ?? prev.maxBlockMinutes,
+          breakMinutes: remote.breakMinutes ?? prev.breakMinutes,
+          alarmSound: remote.alarmSound ?? prev.alarmSound,
+          dailyHoursByWeekday: remoteDailyHours ?? prev.dailyHoursByWeekday,
+          excludeDays: restDays.length > 0 ? restDays : prev.excludeDays,
+          examDate: remote.examDate ?? prev.examDate,
+        }));
+        const resolvedDaily =
+          remoteDailyHours ??
+          buildDailyHoursByWeekday(
+            remote.dailyGoalHours ?? settings.dailyGoalHours,
+            restDays.length > 0 ? restDays : settings.excludeDays
+          );
+        const activeDays = weekDayKeys
+          .map((key, index) => ({ key, index }))
+          .filter((entry) => (resolvedDaily[entry.key] ?? 0) > 0)
+          .map((entry) => entry.index);
+        setStudyPrefs({
+          hoursPerDay: remote.dailyGoalHours ?? settings.dailyGoalHours,
+          daysOfWeek: activeDays,
+          mode: remote.examDate ? 'exam' : 'random',
+          examDate: remote.examDate || '',
+        });
+        setHasRemotePrefs(true);
+      } catch (error) {
+        console.warn('Erro ao carregar preferências remotas:', error);
+      }
+    };
+
+    if (!hasChanges) {
+      loadRemotePrefs();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [hasChanges, hasRemotePrefs, setSettings, setStudyPrefs, settings.dailyGoalHours, settings.excludeDays]);
 
   useEffect(() => {
     setPendingAlarmSound(settings.alarmSound || 'pulse');
@@ -265,6 +363,8 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ settings }),
       });
+      setHasRemotePrefs(true);
+      setHasLocalPrefs(true);
     } catch (error) {
       console.warn('Falha ao salvar preferências no servidor:', error);
     }
@@ -365,7 +465,7 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {!hasRemotePrefs && (
+      {!hasRemotePrefs && !hasLocalPrefs && (
         <Card className="border-neon-cyan/40 bg-neon-cyan/5">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -411,9 +511,9 @@ export default function SettingsPage() {
             </label>
             <input
               type="email"
-              value={settings.email}
-              onChange={(e) => updateSetting('email', e.target.value)}
-              className="input-field"
+              value={emailValue}
+              readOnly
+              className="input-field opacity-80 cursor-not-allowed"
             />
           </div>
         </div>
