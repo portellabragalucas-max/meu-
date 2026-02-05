@@ -1,4 +1,4 @@
-﻿-- CreateEnum
+-- CreateEnum
 CREATE TYPE "StudyBlockType" AS ENUM ('AULA', 'EXERCICIOS', 'REVISAO', 'SIMULADO_AREA', 'SIMULADO_COMPLETO', 'ANALISE');
 
 -- CreateTable
@@ -334,4 +334,7 @@ ALTER TABLE "Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId"
 
 -- AddForeignKey
 ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+
+
 
