@@ -443,7 +443,7 @@ export default function DashboardPage() {
             {/* Cards de estatísticas */}
             <motion.div
               variants={itemVariants}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+              className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
               data-tutorial="stats"
             >
               <StatsCard

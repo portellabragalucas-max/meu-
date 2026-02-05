@@ -58,17 +58,17 @@ export default function StatsCard({
   const styles = colorStyles[color];
 
   return (
-    <Card className={cn('stats-card', className)} glow={styles.glow as 'blue' | 'purple' | 'cyan' | 'none'}>
+    <Card className={cn('stats-card p-4 sm:p-6', className)} glow={styles.glow as 'blue' | 'purple' | 'cyan' | 'none'}>
       <div className="flex items-start justify-between">
         {/* Icon */}
         <motion.div
           whileHover={{ scale: 1.1, rotate: 5 }}
           className={cn(
-            'w-12 h-12 rounded-xl flex items-center justify-center',
+            'w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center',
             styles.iconBg
           )}
         >
-          <Icon className={cn('w-6 h-6', styles.iconColor)} />
+          <Icon className={cn('w-5 h-5 sm:w-6 sm:h-6', styles.iconColor)} />
         </motion.div>
 
         {/* Trend Indicator */}
@@ -90,11 +90,11 @@ export default function StatsCard({
       </div>
 
       {/* Value */}
-      <div className="mt-4">
+      <div className="mt-3">
         <motion.h3
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-3xl font-heading font-bold text-white"
+          className="text-2xl sm:text-3xl font-heading font-bold text-white"
         >
           {value}
         </motion.h3>
