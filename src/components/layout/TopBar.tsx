@@ -195,7 +195,7 @@ export default function TopBar({ user }: TopBarProps) {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
-                className="absolute right-0 mt-3 w-[min(90vw,20rem)] rounded-2xl border border-card-border bg-slate-900/95 shadow-2xl backdrop-blur-lg p-4 z-50"
+                className="absolute mt-3 w-[min(92vw,20rem)] rounded-2xl border border-card-border bg-slate-900/95 shadow-2xl backdrop-blur-lg p-4 z-50 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-0"
               >
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-semibold text-white">Notificacoes</p>
