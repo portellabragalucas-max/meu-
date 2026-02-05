@@ -5,6 +5,18 @@ const nextConfig = {
     // Optimize package imports for faster builds
     optimizePackageImports: ['lucide-react', 'recharts', 'framer-motion'],
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+      },
+    ],
+  },
 }
 
 module.exports = nextConfig

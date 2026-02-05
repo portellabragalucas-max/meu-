@@ -12,7 +12,7 @@ export default function BottomNav() {
   return (
     <nav
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-[60] md:hidden pointer-events-auto',
+        'fixed bottom-0 left-0 right-0 z-[80] md:hidden pointer-events-auto',
         'bg-background-light/90 backdrop-blur-glass',
         'border-t border-card-border'
       )}
@@ -39,7 +39,7 @@ export default function BottomNav() {
               {isActive && (
                 <motion.div
                   layoutId="bottom-nav-active"
-                  className="absolute inset-0 rounded-xl bg-neon-blue/10"
+                  className="absolute inset-0 rounded-xl bg-neon-blue/10 pointer-events-none"
                 />
               )}
               <Icon className="w-5 h-5 relative z-10" />
