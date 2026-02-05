@@ -42,6 +42,7 @@
 html {
   font-family: 'Inter', sans-serif;
   scroll-behavior: smooth;
+  height: 100%;
 }
 
 body {
@@ -49,6 +50,8 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  width: 100%;
   
   /* Subtle grid pattern background */
   background-image: 
@@ -56,6 +59,14 @@ body {
     linear-gradient(90deg, rgba(0, 180, 255, 0.02) 1px, transparent 1px);
   background-size: 50px 50px;
   background-position: -1px -1px;
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
 }
 
 /* Custom scrollbar */

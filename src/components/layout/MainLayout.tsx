@@ -10,6 +10,7 @@ import { useSession } from 'next-auth/react';
 import { motion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import BottomNav from './BottomNav';
 import { cn } from '@/lib/utils';
 
 
@@ -38,19 +39,22 @@ export default function MainLayout({ children }: MainLayoutProps) {
   }, []);
 
   const sidebarWidth = sidebarCollapsed ? 80 : 260;
+  const contentOffset = isMobile ? 0 : sidebarWidth;
 
   return (
     <div className="min-h-screen bg-background">
       {/* Sidebar */}
-      <Sidebar
-        isCollapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
+      {!isMobile && (
+        <Sidebar
+          isCollapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
+      )}
 
       {/* Área de Conteúdo Principal */}
       <motion.div
         initial={false}
-        animate={{ marginLeft: sidebarWidth }}
+        animate={{ marginLeft: contentOffset }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className="min-h-screen flex flex-col"
       >
@@ -67,7 +71,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         />
 
         {/* Conteúdo da Página */}
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 px-4 md:px-6 pb-24 md:pb-6 pt-4 md:pt-6 overflow-x-hidden overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -88,6 +92,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
         />
       )}
+
+      <BottomNav />
 
     </div>
   );

@@ -1,35 +1,23 @@
-'use client';
+﻿'use client';
 
 /**
  * Sidebar Component
- * Barra lateral retrátil com logo e navegação
+ * Barra lateral retrÃ¡til com logo e navegaÃ§Ã£o
  */
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard,
-  Calendar,
-  BookOpen,
-  BarChart3,
-  Settings,
   ChevronLeft,
   ChevronRight,
   Sparkles,
   Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { navItems } from './navItems';
 
-// Configuração dos itens de navegação
-const navItems = [
-  { id: 'dashboard', label: 'Painel', icon: LayoutDashboard, href: '/dashboard' },
-  { id: 'planner', label: 'Agenda Inteligente', icon: Calendar, href: '/planner' },
-  { id: 'subjects', label: 'Disciplinas', icon: BookOpen, href: '/subjects' },
-  { id: 'analytics', label: 'Análises', icon: BarChart3, href: '/analytics' },
-  { id: 'settings', label: 'Configurações', icon: Settings, href: '/settings' },
-];
+
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -52,10 +40,10 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       )}
       data-tutorial="sidebar"
     >
-      {/* Seção do Logo */}
+      {/* SeÃ§Ã£o do Logo */}
       <div className="flex items-center justify-between p-4 h-16 border-b border-card-border">
         <Link href="/dashboard" className="flex items-center gap-3">
-          {/* Ícone do Logo */}
+          {/* Ãcone do Logo */}
           <div className="relative">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
@@ -81,7 +69,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         </Link>
       </div>
 
-      {/* Navegação */}
+      {/* NavegaÃ§Ã£o */}
       <nav className="flex-1 p-4 space-y-2">
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -106,7 +94,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                   />
                 )}
 
-                {/* Ícone */}
+                {/* Ãcone */}
                 <Icon
                   className={cn(
                     'w-5 h-5 relative z-10 flex-shrink-0',
@@ -114,7 +102,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                   )}
                 />
 
-                {/* Rótulo */}
+                {/* RÃ³tulo */}
                 <AnimatePresence>
                   {!isCollapsed && (
                     <motion.span
@@ -151,7 +139,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         })}
       </nav>
 
-      {/* Botão de Recolher */}
+      {/* BotÃ£o de Recolher */}
       <div className="p-4 border-t border-card-border">
         <motion.button
           whileHover={{ scale: 1.05 }}
@@ -178,3 +166,4 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     </motion.aside>
   );
 }
+

@@ -130,12 +130,12 @@ export default function TimeBlock({
         </div>
 
         {/* Ações */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           {onStart && (
             <button
               onClick={() => onStart(block)}
               className={cn(
-                'p-2 rounded-lg transition-colors',
+                'p-2.5 rounded-lg transition-colors',
                 block.isBreak
                   ? 'hover:bg-neon-cyan/10 text-neon-cyan hover:text-neon-cyan'
                   : 'hover:bg-neon-blue/10 text-neon-blue hover:text-neon-cyan'
@@ -147,7 +147,7 @@ export default function TimeBlock({
           {onEdit && !block.isBreak && (
             <button
               onClick={() => onEdit(block)}
-              className="p-2 rounded-lg hover:bg-white/5 text-text-secondary hover:text-white transition-colors"
+              className="p-2.5 rounded-lg hover:bg-white/5 text-text-secondary hover:text-white transition-colors"
             >
               <Edit className="w-4 h-4" />
             </button>
@@ -155,7 +155,7 @@ export default function TimeBlock({
           {onDelete && (
             <button
               onClick={() => onDelete(block.id)}
-              className="p-2 rounded-lg hover:bg-red-500/10 text-text-secondary hover:text-red-400 transition-colors"
+              className="p-2.5 rounded-lg hover:bg-red-500/10 text-text-secondary hover:text-red-400 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
             </button>

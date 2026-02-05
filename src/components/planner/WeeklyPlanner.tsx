@@ -62,6 +62,7 @@ export default function WeeklyPlanner({
 }: WeeklyPlannerProps) {
   const [currentWeekStart, setCurrentWeekStart] = useState(getWeekStart());
   const [blocks, setBlocks] = useState(initialBlocks);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Sincronizar quando o pai atualizar os blocos (ex: apÃ³s gerar agenda)
   useEffect(() => {
@@ -83,6 +84,15 @@ export default function WeeklyPlanner({
       return prev;
     });
   }, [initialBlocks]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [activeBlock, setActiveBlock] = useState<StudyBlock | null>(null);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [editingBlock, setEditingBlock] = useState<StudyBlock | null>(null);
@@ -621,7 +631,7 @@ export default function WeeklyPlanner({
   return (
     <div className="h-full flex flex-col">
       {/* CabeÃ§alho */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-heading font-bold text-white">
             Agenda Inteligente
@@ -631,13 +641,14 @@ export default function WeeklyPlanner({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           {/* BotÃ£o de Gerar Agenda */}
           <Button
             variant="primary"
             onClick={() => setIsScheduleModalOpen(true)}
             loading={isGenerating}
             leftIcon={<Sparkles className="w-4 h-4" />}
+            className="w-full sm:w-auto"
            
           >
             Gerar Agenda
@@ -646,6 +657,7 @@ export default function WeeklyPlanner({
             variant="secondary"
             onClick={() => setIsRescheduleModalOpen(true)}
             leftIcon={<ArrowRightLeft className="w-4 h-4" />}
+            className="w-full sm:w-auto"
            
           >
             Reagendar pendências
@@ -655,8 +667,8 @@ export default function WeeklyPlanner({
 
       {/* NavegaÃ§Ã£o da Semana */}
       <Card className="mb-6" padding="sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center justify-between md:justify-start gap-2">
             <Button
               variant="ghost"
               size="sm"
@@ -665,7 +677,7 @@ export default function WeeklyPlanner({
               <ChevronLeft className="w-4 h-4" />
             </Button>
 
-            <span className="text-lg font-heading font-bold text-white px-4">
+            <span className="text-base md:text-lg font-heading font-bold text-white px-2 md:px-4">
               {formatDate(weekDates[0])} - {formatDate(weekDates[6])}
             </span>
 
@@ -684,43 +696,49 @@ export default function WeeklyPlanner({
               size="sm"
               onClick={goToCurrentWeek}
               leftIcon={<RefreshCw className="w-4 h-4" />}
+              className="w-full md:w-auto"
             >
               Semana Atual
             </Button>
           )}
 
-          {/* EstatÃ­sticas da Semana */}
-          <div className="flex items-center gap-6 text-sm">
-            <div>
-              <span className="text-text-secondary">Total de Horas: </span>
-              <span className="font-bold text-white">
-                {(
-                  blocks
-                    .filter((b) => !b.isBreak)
-                    .reduce((sum, b) => sum + b.durationMinutes, 0) / 60
-                ).toFixed(1)}
-                h
-              </span>
+          {/* Estatisticas da Semana */}
+          {!isMobile && (
+            <div className="flex items-center justify-between md:justify-end gap-6 text-sm">
+              <div>
+                <span className="text-text-secondary">Total de Horas: </span>
+                <span className="font-bold text-white">
+                  {(blocks.filter((b) => !b.isBreak).reduce((sum, b) => sum + b.durationMinutes, 0) / 60).toFixed(1)}h
+                </span>
+              </div>
+              <div>
+                <span className="text-text-secondary">Sessoes: </span>
+                <span className="font-bold text-white">
+                  {blocks.filter((b) => !b.isBreak).length}
+                </span>
+              </div>
             </div>
-            <div>
-              <span className="text-text-secondary">SessÃµes: </span>
-              <span className="font-bold text-white">
-                {blocks.filter((b) => !b.isBreak).length}
-              </span>
-            </div>
-          </div>
+          )}
         </div>
+        {isMobile && (
+          <div className="flex items-center justify-between text-xs text-text-secondary">
+            <span>
+              Total: {(blocks.filter((b) => !b.isBreak).reduce((sum, b) => sum + b.durationMinutes, 0) / 60).toFixed(1)}h
+            </span>
+            <span>{blocks.filter((b) => !b.isBreak).length} sessoes</span>
+          </div>
+        )}
       </Card>
 
       {/* Grade do Planner */}
-      <div className="flex-1 overflow-x-auto">
+      <div className="flex-1 overflow-x-hidden md:overflow-x-auto">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-4 min-h-[500px] pb-4">
+          <div className="flex flex-col md:flex-row gap-4 min-h-[500px] pb-4">
             {weekDates.map((date) => {
               const dateKey = date.toISOString().split('T')[0];
       const dayBlocks = blocksByDay.get(dateKey) || [];

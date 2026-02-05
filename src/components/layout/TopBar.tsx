@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * TopBar Component
- * Exibe estatísticas do usuário, nível e ações rápidas
+ * Exibe estatÃ­sticas do usuÃ¡rio, nÃ­vel e aÃ§Ãµes rÃ¡pidas
  */
 
 import Image from 'next/image';
@@ -84,22 +84,22 @@ export default function TopBar({ user }: TopBarProps) {
 
   return (
     <>
-      <header className="h-16 flex items-center justify-between px-6 border-b border-card-border bg-background-light/50 backdrop-blur-glass">
-        {/* Seção Esquerda - Busca */}
+      <header className="h-16 flex items-center justify-between px-4 md:px-6 border-b border-card-border bg-background-light/50 backdrop-blur-glass safe-area-top">
+        {/* SeÃ§Ã£o Esquerda - Busca */}
         <div className="flex items-center gap-4">
-          <div className="relative">
+          <div className="relative hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
             <input
               type="text"
-              placeholder="Buscar disciplinas, sessões..."
+              placeholder="Buscar disciplinas, sessÃµes..."
               className="input-field pl-10 w-64 py-2 text-sm"
             />
           </div>
         </div>
 
-        {/* Seção Central - Estatísticas Rápidas */}
-        <div className="flex items-center gap-6">
-          {/* Sequência */}
+        {/* SeÃ§Ã£o Central - EstatÃ­sticas RÃ¡pidas */}
+        <div className="hidden lg:flex items-center gap-6">
+          {/* SequÃªncia */}
           <motion.div
             whileHover={{ scale: 1.05 }}
             className="flex items-center gap-2 cursor-pointer"
@@ -113,12 +113,12 @@ export default function TopBar({ user }: TopBarProps) {
             </div>
           </motion.div>
 
-          {/* Nível e XP */}
+          {/* NÃ­vel e XP */}
           <motion.div
             whileHover={{ scale: 1.02 }}
             className="flex items-center gap-3 cursor-pointer"
           >
-            <div className="relative">
+            <div className="relative hidden md:block">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center">
                 <span className="text-sm font-bold text-white">{user.level}</span>
               </div>
@@ -154,7 +154,7 @@ export default function TopBar({ user }: TopBarProps) {
               </svg>
             </div>
             <div className="text-sm">
-              <div className="font-bold text-white">Nível {user.level}</div>
+              <div className="font-bold text-white">NÃ­vel {user.level}</div>
               <div className="text-text-secondary text-xs">
                 {formatNumber(user.xp)} / {formatNumber(user.xpToNextLevel)} XP
               </div>
@@ -162,17 +162,17 @@ export default function TopBar({ user }: TopBarProps) {
           </motion.div>
         </div>
 
-        {/* Seção Direita - Ações e Perfil */}
+        {/* SeÃ§Ã£o Direita - AÃ§Ãµes e Perfil */}
         <div className="flex items-center gap-4">
-          {/* Botão de Ação Rápida */}
+          {/* BotÃ£o de AÃ§Ã£o RÃ¡pida */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowQuickSession(true)}
-            className="btn-primary py-2 px-4 flex items-center gap-2 text-sm"
+            className="btn-primary py-2 px-3 md:px-4 flex items-center gap-2 text-sm"
           >
             <Plus className="w-4 h-4" />
-            Sessão Rápida
+            <span className="hidden md:inline">SessÃ£o RÃ¡pida</span>
           </motion.button>
 
           {/* Notificacoes */}
@@ -195,7 +195,7 @@ export default function TopBar({ user }: TopBarProps) {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
-                className="absolute right-0 mt-3 w-80 rounded-2xl border border-card-border bg-slate-900/95 shadow-2xl backdrop-blur-lg p-4 z-50"
+                className="absolute right-0 mt-3 w-[min(90vw,20rem)] rounded-2xl border border-card-border bg-slate-900/95 shadow-2xl backdrop-blur-lg p-4 z-50"
               >
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-semibold text-white">Notificacoes</p>
@@ -224,7 +224,7 @@ export default function TopBar({ user }: TopBarProps) {
               </motion.div>
             )}
           </div>
-          {/* Perfil do Usuário */}
+          {/* Perfil do UsuÃ¡rio */}
           <motion.div
             whileHover={{ scale: 1.05 }}
             className="flex items-center gap-3 cursor-pointer p-2 rounded-xl hover:bg-card-bg transition-colors"
@@ -251,7 +251,7 @@ export default function TopBar({ user }: TopBarProps) {
         </div>
       </header>
 
-      {/* Modal de Sessão Rápida */}
+      {/* Modal de SessÃ£o RÃ¡pida */}
       <QuickSessionModal
         isOpen={showQuickSession}
         onClose={() => setShowQuickSession(false)}
@@ -260,3 +260,4 @@ export default function TopBar({ user }: TopBarProps) {
     </>
   );
 }
+

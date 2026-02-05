@@ -330,13 +330,23 @@ Sistema inteligente que cria uma trilha pedagógica progressiva:
 |----------|-------------|---------|
 | `DATABASE_URL` | Database connection string | `file:./dev.db` |
 
-## 📱 Responsive Design
+## 📱 Mobile e PWA
 
-The app is built mobile-first with responsive breakpoints:
+O Nexora foi ajustado para uso mobile-first com navegação dedicada e componentes touch-friendly.
 
-- **Mobile**: < 768px (collapsible sidebar)
-- **Tablet**: 768px - 1024px
-- **Desktop**: > 1024px (full sidebar)
+- **Mobile**: < 640px (bottom navigation + layout em pilha)
+- **Tablet**: 640px - 1024px
+- **Desktop**: > 1024px (sidebar completa)
+
+### PWA (instalável)
+
+- Manifest em `src/app/manifest.ts`
+- Ícone em `public/icon.svg`
+- Service Worker simples em `public/sw.js`
+
+Para instalar no celular:
+1. Abra o app no navegador mobile
+2. Menu do navegador -> "Adicionar à tela inicial"
 
 ## 🚀 Deployment
 

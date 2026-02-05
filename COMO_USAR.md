@@ -75,3 +75,9 @@ Agora é só acessar `http://localhost:3000` e começar a usar!
 - Ao escolher um modelo (ENEM/Medicina/Concursos), abre um wizard de configuracao.
 - Voce pode definir horas por dia com **Aplicar em massa** e **Personalizar por dia**.
 - O resumo mostra total semanal e media diaria antes de aplicar.
+
+## 📱 Uso no celular
+
+- Navegação inferior (bottom bar) substitui a sidebar.
+- O cronograma fica em lista vertical, um dia embaixo do outro.
+- Toques nos botões são maiores para facilitar o uso.

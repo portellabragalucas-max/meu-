@@ -339,7 +339,7 @@ export default function PresetConfigWizard({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-2 sm:px-4"
         variants={overlayVariants}
         initial="hidden"
         animate="visible"
@@ -350,9 +350,9 @@ export default function PresetConfigWizard({
           initial="hidden"
           animate="visible"
           exit="hidden"
-          className="w-full max-w-3xl max-h-[85vh] overflow-hidden"
+          className="w-full h-full md:h-auto md:max-w-3xl md:max-h-[85vh] overflow-hidden"
         >
-          <Card className="bg-gradient-to-br from-slate-900/95 via-slate-950/95 to-slate-900/95 border-slate-800 shadow-2xl p-6 max-h-[85vh] overflow-hidden flex flex-col">
+          <Card className="bg-gradient-to-br from-slate-900/95 via-slate-950/95 to-slate-900/95 border-slate-800 shadow-2xl p-4 sm:p-6 h-full md:h-auto md:max-h-[85vh] overflow-hidden flex flex-col rounded-none md:rounded-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm text-neon-cyan">Modelo selecionado</p>
@@ -379,7 +379,7 @@ export default function PresetConfigWizard({
               </div>
             </div>
 
-            <div className="mt-6 min-h-[280px] overflow-y-auto pr-2 flex-1">
+            <div className="mt-6 min-h-[280px] overflow-y-auto pr-1 sm:pr-2 flex-1">
               {step === 0 && (
                 <div className="space-y-6">
                   <Card className="p-4 bg-slate-900/50 border-slate-800">
