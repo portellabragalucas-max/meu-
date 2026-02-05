@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
+import type { MouseEvent, TouchEvent, PointerEvent } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { navItems } from './navItems';
@@ -9,8 +10,17 @@ export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const handleNavigate = (href: string) => () => {
+  const handleNavigate = (href: string) => (event: MouseEvent | TouchEvent | PointerEvent) => {
+    event.preventDefault();
+    if (pathname === href || pathname.startsWith(`${href}/`)) return;
     router.push(href);
+    if (typeof window !== 'undefined') {
+      window.setTimeout(() => {
+        if (window.location.pathname !== href) {
+          window.location.assign(href);
+        }
+      }, 120);
+    }
   };
 
   return (
@@ -58,3 +68,4 @@ export default function BottomNav() {
     </nav>
   );
 }
+
