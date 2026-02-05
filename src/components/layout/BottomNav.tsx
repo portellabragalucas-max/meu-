@@ -12,7 +12,7 @@ export default function BottomNav() {
   return (
     <nav
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-50 md:hidden',
+        'fixed bottom-0 left-0 right-0 z-[60] md:hidden pointer-events-auto',
         'bg-background-light/90 backdrop-blur-glass',
         'border-t border-card-border'
       )}

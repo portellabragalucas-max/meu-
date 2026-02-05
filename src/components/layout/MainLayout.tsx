@@ -56,7 +56,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         initial={false}
         animate={{ marginLeft: contentOffset }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="min-h-screen flex flex-col"
+        className="min-h-screen flex flex-col relative z-0"
       >
         {/* Barra Superior */}
         <TopBar
