@@ -1,29 +1,12 @@
 ﻿'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
-import type { MouseEvent, TouchEvent, PointerEvent } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { navItems } from './navItems';
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
-
-  const handleNavigate = (href: string) => (
-    event: MouseEvent | TouchEvent | PointerEvent
-  ) => {
-    event.preventDefault();
-    if (pathname === href || pathname.startsWith(`${href}/`)) return;
-    router.push(href);
-    if (typeof window !== 'undefined') {
-      window.setTimeout(() => {
-        if (window.location.pathname !== href) {
-          window.location.assign(href);
-        }
-      }, 120);
-    }
-  };
 
   return (
     <nav
@@ -40,12 +23,9 @@ export default function BottomNav() {
           const Icon = item.icon;
 
           return (
-            <button
+            <a
               key={item.id}
-              type="button"
-              onClick={handleNavigate(item.href)}
-              onTouchEnd={handleNavigate(item.href)}
-              onPointerUp={handleNavigate(item.href)}
+              href={item.href}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
                 'relative flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-xl',
@@ -62,7 +42,7 @@ export default function BottomNav() {
               )}
               <Icon className="w-5 h-5 relative z-10" />
               <span className="relative z-10">{item.label}</span>
-            </button>
+            </a>
           );
         })}
       </div>
