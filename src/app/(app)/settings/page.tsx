@@ -171,7 +171,7 @@ export default function SettingsPage() {
     if (!session?.user) return;
     setSettings((prev) => ({
       ...prev,
-      name: prev.name && prev.name.trim().length > 0 ? prev.name : session.user?.name || 'Estudante',
+      name: (prev.name ?? session.user?.name) || 'Estudante',
       email: prev.email && prev.email.trim().length > 0 ? prev.email : session.user?.email || '',
       avatar: prev.avatar || session.user?.image || undefined,
     }));
