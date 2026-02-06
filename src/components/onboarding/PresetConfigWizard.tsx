@@ -352,7 +352,7 @@ export default function PresetConfigWizard({
           exit="hidden"
           className="w-full md:max-w-3xl md:max-h-[85vh] max-h-[calc(100dvh-2rem)]"
         >
-          <Card className="bg-gradient-to-br from-slate-900/95 via-slate-950/95 to-slate-900/95 border-slate-800 shadow-2xl p-4 sm:p-6 h-[calc(100dvh-2rem)] md:h-auto max-h-[calc(100dvh-2rem)] md:max-h-[85vh] overflow-hidden flex flex-col min-h-0 rounded-none md:rounded-2xl">
+          <Card className="bg-gradient-to-br from-slate-900/95 via-slate-950/95 to-slate-900/95 border-slate-800 shadow-2xl p-4 sm:p-6 h-[calc(100dvh-2rem)] md:h-auto max-h-[calc(100dvh-2rem)] md:max-h-[85vh] overflow-hidden flex flex-col min-h-0 rounded-none md:rounded-2xl pb-24 md:pb-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm text-neon-cyan">Modelo selecionado</p>
@@ -379,7 +379,7 @@ export default function PresetConfigWizard({
               </div>
             </div>
 
-            <div className="mt-6 flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2 scroll-touch">
+            <div className="mt-6 flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2 pb-24 md:pb-6 scroll-touch">
               {step === 0 && (
                 <div className="space-y-6">
                   <Card className="p-4 bg-slate-900/50 border-slate-800">
@@ -848,7 +848,7 @@ export default function PresetConfigWizard({
               </div>
             )}
 
-            <div className="mt-6 flex items-center justify-between">
+            <div className="mt-6 flex items-center justify-between sticky bottom-0 bg-gradient-to-b from-transparent via-slate-950/70 to-slate-950/90 pt-3 pb-6 md:pb-3">
               <div className="text-xs text-text-muted flex items-center gap-2">
                 <Clock className="w-4 h-4" />
                 Etapa {step + 1} de {stepTitles.length}
