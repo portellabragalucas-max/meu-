@@ -94,7 +94,6 @@ export default function SettingsPage() {
   const [hasRemotePrefs, setHasRemotePrefs] = useState(false);
   const [hasLocalPrefs, setHasLocalPrefs] = useState(false);
   const hasAttemptedRemotePrefs = useRef(false);
-  const [profileName, setProfileName] = useState('');
   const [pendingAlarmSound, setPendingAlarmSound] = useState<UserSettings['alarmSound']>(
     settings.alarmSound || 'pulse'
   );
@@ -172,15 +171,12 @@ export default function SettingsPage() {
     if (!session?.user) return;
     setSettings((prev) => ({
       ...prev,
-      name: (prev.name ?? session.user?.name) || 'Estudante',
+      // only fill from session when name was never set
+      name: prev.name == null ? session.user?.name || 'Estudante' : prev.name,
       email: prev.email && prev.email.trim().length > 0 ? prev.email : session.user?.email || '',
       avatar: prev.avatar || session.user?.image || undefined,
     }));
   }, [session?.user, setSettings]);
-
-  useEffect(() => {
-    setProfileName(settings.name ?? '');
-  }, [settings.name]);
 
   useEffect(() => {
     if (hasRemotePrefs) return;
@@ -508,17 +504,8 @@ export default function SettingsPage() {
             </label>
             <input
               type="text"
-              value={profileName}
-              onChange={(e) => {
-                setProfileName(e.target.value);
-                setHasChanges(true);
-              }}
-              onBlur={() => updateSetting('name', profileName)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.currentTarget.blur();
-                }
-              }}
+              value={settings.name ?? ''}
+              onChange={(e) => updateSetting('name', e.target.value)}
               className="input-field"
             />
           </div>
