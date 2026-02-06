@@ -352,7 +352,7 @@ export default function PresetConfigWizard({
           exit="hidden"
           className="w-full md:max-w-3xl md:max-h-[85vh] max-h-[calc(100dvh-2rem)]"
         >
-          <Card className="bg-gradient-to-br from-slate-900/95 via-slate-950/95 to-slate-900/95 border-slate-800 shadow-2xl p-4 sm:p-6 max-h-[calc(100dvh-2rem)] md:max-h-[85vh] overflow-hidden flex flex-col rounded-none md:rounded-2xl">
+          <Card className="bg-gradient-to-br from-slate-900/95 via-slate-950/95 to-slate-900/95 border-slate-800 shadow-2xl p-4 sm:p-6 h-[calc(100dvh-2rem)] md:h-auto max-h-[calc(100dvh-2rem)] md:max-h-[85vh] overflow-hidden flex flex-col min-h-0 rounded-none md:rounded-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm text-neon-cyan">Modelo selecionado</p>
@@ -379,7 +379,7 @@ export default function PresetConfigWizard({
               </div>
             </div>
 
-            <div className="mt-6 flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2">
+            <div className="mt-6 flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2 scroll-touch">
               {step === 0 && (
                 <div className="space-y-6">
                   <Card className="p-4 bg-slate-900/50 border-slate-800">
