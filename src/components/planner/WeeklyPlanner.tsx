@@ -63,8 +63,9 @@ export default function WeeklyPlanner({
   const [currentWeekStart, setCurrentWeekStart] = useState(getWeekStart());
   const [blocks, setBlocks] = useState(initialBlocks);
   const [isMobile, setIsMobile] = useState(false);
+  const [mobileDayIndex, setMobileDayIndex] = useState(0);
 
-  // Sincronizar quando o pai atualizar os blocos (ex: apÃ³s gerar agenda)
+  // Sincronizar quando o pai atualizar os blocos (ex: após gerar agenda)
   useEffect(() => {
     setBlocks((prev) => {
       if (prev.length !== initialBlocks.length) return initialBlocks;
@@ -115,12 +116,21 @@ export default function WeeklyPlanner({
   const [sessionBlock, setSessionBlock] = useState<StudyBlock | null>(null);
   const [isSessionOpen, setIsSessionOpen] = useState(false);
   const weekDayKeys: WeekdayKey[] = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+  const weekIndexFromDate = (date: Date) => (date.getDay() + 6) % 7;
 
   // Obter datas da semana
   const weekDates = useMemo(
     () => getWeekDates(currentWeekStart),
     [currentWeekStart]
   );
+  useEffect(() => {
+    if (!isMobile) return;
+    const today = new Date();
+    const todayIndex = weekDates.findIndex((date) => isSameDay(date, today));
+    if (todayIndex >= 0) {
+      setMobileDayIndex(todayIndex);
+    }
+  }, [isMobile, weekDates]);
   const formatDatePt = (date: Date) =>
     date.toLocaleDateString('pt-BR', {
       weekday: 'long',
@@ -186,6 +196,15 @@ export default function WeeklyPlanner({
     
     return grouped;
   }, [blocks, weekDates]);
+
+  const mobileDay = weekDates[mobileDayIndex] ?? weekDates[0];
+  const mobileDayKey = mobileDay ? mobileDay.toISOString().split('T')[0] : '';
+  const mobileDayBlocks = mobileDayKey ? blocksByDay.get(mobileDayKey) ?? [] : [];
+  const mobileStudyMinutes = mobileDayBlocks
+    .filter((block) => !block.isBreak)
+    .reduce((sum, block) => sum + block.durationMinutes, 0);
+  const mobileSessions = mobileDayBlocks.filter((block) => !block.isBreak).length;
+  const visibleDates = isMobile ? [mobileDay] : weekDates;
 
   useEffect(() => {
     if (blocks.length === 0) return;
@@ -425,7 +444,7 @@ export default function WeeklyPlanner({
     }
   };
 
-  // NavegaÃ§Ã£o
+  // Navegação
   const goToPreviousWeek = () => {
     const newStart = new Date(currentWeekStart);
     newStart.setDate(newStart.getDate() - 7);
@@ -439,7 +458,39 @@ export default function WeeklyPlanner({
   };
 
   const goToCurrentWeek = () => {
-    setCurrentWeekStart(getWeekStart());
+    const today = new Date();
+    setCurrentWeekStart(getWeekStart(today));
+    if (isMobile) {
+      setMobileDayIndex(weekIndexFromDate(today));
+    }
+  };
+
+  const goToPreviousDay = () => {
+    if (!isMobile) {
+      goToPreviousWeek();
+      return;
+    }
+    setMobileDayIndex((prev) => {
+      if (prev > 0) return prev - 1;
+      const newStart = new Date(currentWeekStart);
+      newStart.setDate(newStart.getDate() - 7);
+      setCurrentWeekStart(newStart);
+      return 6;
+    });
+  };
+
+  const goToNextDay = () => {
+    if (!isMobile) {
+      goToNextWeek();
+      return;
+    }
+    setMobileDayIndex((prev) => {
+      if (prev < 6) return prev + 1;
+      const newStart = new Date(currentWeekStart);
+      newStart.setDate(newStart.getDate() + 7);
+      setCurrentWeekStart(newStart);
+      return 0;
+    });
   };
 
   // Handlers de arrastar
@@ -625,24 +676,25 @@ export default function WeeklyPlanner({
     setEditingBlock(null);
   };
 
-  // Verificar se estÃ¡ visualizando a semana atual
+  // Verificar se está visualizando a semana atual
   const isCurrentWeek = isSameDay(currentWeekStart, getWeekStart());
+  const isViewingToday = isMobile && mobileDay ? isSameDay(mobileDay, new Date()) : false;
 
   return (
     <div className="h-full flex flex-col">
-      {/* CabeÃ§alho */}
+      {/* Cabeçalho */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-heading font-bold text-white">
             Agenda Inteligente
           </h1>
           <p className="text-sm text-text-secondary mt-1">
-            OtimizaÃ§Ã£o de cronograma de estudos com IA
+            Otimização de cronograma de estudos com IA
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          {/* BotÃ£o de Gerar Agenda */}
+          {/* Botão de Gerar Agenda */}
           <Button
             variant="primary"
             onClick={() => setIsScheduleModalOpen(true)}
@@ -665,32 +717,34 @@ export default function WeeklyPlanner({
         </div>
       </div>
 
-      {/* NavegaÃ§Ã£o da Semana */}
+      {/* Navegação da Semana */}
       <Card className="mb-6" padding="sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center justify-between md:justify-start gap-2">
             <Button
               variant="ghost"
               size="sm"
-              onClick={goToPreviousWeek}
+              onClick={isMobile ? goToPreviousDay : goToPreviousWeek}
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
 
             <span className="text-base md:text-lg font-heading font-bold text-white px-2 md:px-4">
-              {formatDate(weekDates[0])} - {formatDate(weekDates[6])}
+              {isMobile
+                ? formatDatePt(mobileDay)
+                : `${formatDate(weekDates[0])} - ${formatDate(weekDates[6])}`}
             </span>
 
             <Button
               variant="ghost"
               size="sm"
-              onClick={goToNextWeek}
+              onClick={isMobile ? goToNextDay : goToNextWeek}
             >
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
 
-          {!isCurrentWeek && (
+          {!isMobile && !isCurrentWeek && (
             <Button
               variant="secondary"
               size="sm"
@@ -699,6 +753,18 @@ export default function WeeklyPlanner({
               className="w-full md:w-auto"
             >
               Semana Atual
+            </Button>
+          )}
+
+          {isMobile && !isViewingToday && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={goToCurrentWeek}
+              leftIcon={<RefreshCw className="w-4 h-4" />}
+              className="w-full md:w-auto"
+            >
+              Hoje
             </Button>
           )}
 
@@ -723,9 +789,9 @@ export default function WeeklyPlanner({
         {isMobile && (
           <div className="flex items-center justify-between text-xs text-text-secondary">
             <span>
-              Total: {(blocks.filter((b) => !b.isBreak).reduce((sum, b) => sum + b.durationMinutes, 0) / 60).toFixed(1)}h
+              Total: {(mobileStudyMinutes / 60).toFixed(1)}h
             </span>
-            <span>{blocks.filter((b) => !b.isBreak).length} sessoes</span>
+            <span>{mobileSessions} sessoes</span>
           </div>
         )}
       </Card>
@@ -739,7 +805,7 @@ export default function WeeklyPlanner({
           onDragEnd={handleDragEnd}
         >
           <div className="flex flex-col md:flex-row gap-4 min-h-[500px] pb-4">
-            {weekDates.map((date) => {
+            {visibleDates.map((date) => {
               const dateKey = date.toISOString().split('T')[0];
       const dayBlocks = blocksByDay.get(dateKey) || [];
 
@@ -1000,6 +1066,7 @@ export default function WeeklyPlanner({
     </div>
   );
 }
+
 
 
 
