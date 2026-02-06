@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Map as MapIcon, X } from 'lucide-react';
 import { WeeklyPlanner } from '@/components/planner';
 import { generateChronologicalSchedule, getPhaseForDate } from '@/services/roadmapEngine';
 import { useLocalStorage } from '@/hooks';
@@ -78,6 +79,8 @@ export default function PlannerPage() {
     null
   );
   const [userSettings] = useLocalStorage<UserSettings>('nexora_user_settings', defaultSettings);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showRoadmap, setShowRoadmap] = useState(true);
   const [dailyLimits] = useLocalStorage<Record<string, number>>('nexora_daily_limits', {});
   const [analytics] = useLocalStorage<AnalyticsStore>('nexora_analytics', emptyAnalytics);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -529,6 +532,19 @@ export default function PlannerPage() {
     handleGenerateSchedule,
   ]);
 
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    setShowRoadmap(!isMobile);
+  }, [isMobile]);
+
 
 
   const roadmapSummary = useMemo(() => {
@@ -557,27 +573,52 @@ export default function PlannerPage() {
       animate={{ opacity: 1 }}
       className="min-h-[calc(100vh-120px)] space-y-4 pb-4"
     >
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl border border-neon-cyan/20 bg-slate-900/60 p-4 shadow-lg"
-      >
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs text-text-secondary">Trilha de Aprovacao</p>
-              <h3 className="text-lg font-semibold text-white">{phaseInfo.label}</h3>
-              <p className="text-xs text-text-muted">
-                Alternancia inteligente de areas + revisao espacada para melhor retencao.
-              </p>
-              <p className="text-xs text-text-secondary mt-2">
-                IA: <span className="text-white font-medium">{aiModeLabel}</span>
-              </p>
+      {isMobile && !showRoadmap && (
+        <button
+          className="flex items-center gap-2 rounded-full border border-neon-cyan/30 bg-slate-900/60 px-3 py-2 text-xs text-neon-cyan shadow-sm"
+          onClick={() => setShowRoadmap(true)}
+          aria-label="Abrir trilha de aprovação"
+        >
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-neon-cyan/15 text-neon-cyan">
+            <MapIcon className="h-4 w-4" />
+          </span>
+          <span>Base (Fundamentos)</span>
+        </button>
+      )}
+
+      {(!isMobile || showRoadmap) && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-neon-cyan/20 bg-slate-900/60 p-4 shadow-lg"
+        >
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs text-text-secondary">Trilha de Aprovacao</p>
+                <h3 className="text-lg font-semibold text-white">{phaseInfo.label}</h3>
+                <p className="text-xs text-text-muted">
+                  Alternancia inteligente de areas + revisao espacada para melhor retencao.
+                </p>
+                <p className="text-xs text-text-secondary mt-2">
+                  IA: <span className="text-white font-medium">{aiModeLabel}</span>
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="px-3 py-1 rounded-full bg-neon-purple/10 border border-neon-purple/30 text-neon-purple text-xs">
+                  Roadmap ativo
+                </div>
+                {isMobile && (
+                  <button
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-text-secondary"
+                    onClick={() => setShowRoadmap(false)}
+                    aria-label="Minimizar trilha de aprovação"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="px-3 py-1 rounded-full bg-neon-purple/10 border border-neon-purple/30 text-neon-purple text-xs">
-              Roadmap ativo
-            </div>
-          </div>
 
           <div className="flex items-center justify-between gap-4 rounded-xl border border-white/5 bg-white/5 p-3">
             <div>
@@ -636,7 +677,8 @@ export default function PlannerPage() {
             ))}
           </div>
         </div>
-      </motion.div>
+        </motion.div>
+      )}
 
       <WeeklyPlanner
         initialBlocks={blocks}
