@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * SubjectDistribution Component
@@ -51,34 +51,36 @@ export default function SubjectDistribution({ data }: SubjectDistributionProps) 
 
   return (
     <Card className="h-full">
-      <h2 className="text-xl font-heading font-bold text-white mb-2">
+      <h2 className="text-xl max-[480px]:text-lg font-heading font-bold text-white mb-2">
         Distribuição por Disciplina
       </h2>
-      <p className="text-sm text-text-secondary mb-6">
+      <p className="text-sm max-[480px]:text-xs text-text-secondary mb-6">
         Tempo dedicado a cada disciplina esta semana
       </p>
 
-      <div className="h-72">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={dataWithPercentage}
-              dataKey="hours"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={90}
-              paddingAngle={2}
-              stroke="none"
-            >
-              {dataWithPercentage.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-          </PieChart>
-        </ResponsiveContainer>
+      <div className="h-72 max-[480px]:h-56 max-[480px]:overflow-x-auto">
+        <div className="h-full max-[480px]:min-w-[520px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={dataWithPercentage}
+                dataKey="hours"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={90}
+                paddingAngle={2}
+                stroke="none"
+              >
+                {dataWithPercentage.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Legenda */}

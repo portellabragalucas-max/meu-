@@ -448,34 +448,42 @@ export default function DashboardPage() {
             >
               <StatsCard
                 title="Horas Semanais"
+                titleShort="Horas"
                 value={`${weeklyHours.toFixed(1)}h`}
                 subtitle={`de ${weeklyGoal.toFixed(1)}h de meta`}
                 icon={Clock}
                 trend={{ value: 0, isPositive: false }}
                 color="blue"
+                variant="mobile"
               />
               <StatsCard
                 title="Pontuação de Foco"
+                titleShort="Foco"
                 value={`${focusScore}%`}
                 subtitle="Sem dados ainda"
                 icon={Brain}
                 trend={{ value: 0, isPositive: false }}
                 color="purple"
+                variant="mobile"
               />
               <StatsCard
                 title="Sequência Atual"
+                titleShort="Sequência"
                 value={`${streak} dias`}
                 subtitle="Recorde pessoal: 0 dias"
                 icon={Flame}
                 color="orange"
+                variant="mobile"
               />
               <StatsCard
                 title="Tarefas Concluídas"
+                titleShort="Tarefas"
                 value={completedThisWeek.toString()}
                 subtitle="Esta semana"
                 icon={Target}
                 trend={{ value: 0, isPositive: false }}
                 color="cyan"
+                variant="mobile"
               />
             </motion.div>
 
@@ -589,6 +597,8 @@ export default function DashboardPage() {
     </>
   );
 }
+
+
 
 
 

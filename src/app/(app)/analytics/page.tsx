@@ -53,12 +53,7 @@ export default function AnalyticsPage() {
 
   const productivityData = useMemo(() => {
     if (!now) return [];
-    const data = [] as {
-      date: string;
-      focusScore: number;
-      productivityScore: number;
-      hours: number;
-    }[];
+    const data: { date: string; focusScore: number; productivityScore: number; hours: number }[] = [];
     const today = now;
 
     for (let i = 13; i >= 0; i--) {
@@ -92,11 +87,7 @@ export default function AnalyticsPage() {
 
   const heatmapData = useMemo(() => {
     if (!now) return [];
-    const data = [] as {
-      date: string;
-      hours: number;
-      level: 0 | 1 | 2 | 3 | 4;
-    }[];
+    const data: { date: string; hours: number; level: 0 | 1 | 2 | 3 | 4 }[] = [];
     const today = now;
 
     for (let i = 84; i >= 0; i--) {
@@ -163,38 +154,46 @@ export default function AnalyticsPage() {
       {/* Estatísticas de Resumo */}
       <motion.div
         variants={itemVariants}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+        className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
       >
         <StatsCard
           title="Tempo Total de Estudo"
+          titleShort="Tempo"
           value={`${totalHours.toFixed(1)}h`}
           subtitle="Últimos 14 dias"
           icon={Clock}
           trend={{ value: 0, isPositive: false }}
           color="blue"
+          variant="mobile"
         />
         <StatsCard
           title="Pontuação Média de Foco"
+          titleShort="Foco"
           value={`${avgFocus}%`}
           subtitle="Últimos 14 dias"
           icon={Brain}
           trend={{ value: 0, isPositive: false }}
           color="purple"
+          variant="mobile"
         />
         <StatsCard
           title="Produtividade Média"
+          titleShort="Prod."
           value={`${avgProductivity}%`}
           subtitle="Últimos 14 dias"
           icon={TrendingUp}
           trend={{ value: 0, isPositive: false }}
           color="cyan"
+          variant="mobile"
         />
         <StatsCard
           title="Sessões Concluídas"
+          titleShort="Sessões"
           value={sessionsCompleted}
           subtitle="Últimos 14 dias"
           icon={Target}
           color="orange"
+          variant="mobile"
         />
       </motion.div>
 

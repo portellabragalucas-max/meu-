@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * ActivityHeatmap Component
@@ -21,32 +21,25 @@ interface ActivityHeatmapProps {
 }
 
 const levelColors = [
-  'bg-card-bg',           // 0 - sem atividade
-  'bg-neon-blue/20',      // 1 - atividade leve
-  'bg-neon-blue/40',      // 2 - atividade moderada
-  'bg-neon-blue/60',      // 3 - boa atividade
-  'bg-neon-blue',         // 4 - alta atividade
+  'bg-card-bg',
+  'bg-neon-blue/20',
+  'bg-neon-blue/40',
+  'bg-neon-blue/60',
+  'bg-neon-blue',
 ];
 
 const dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-export default function ActivityHeatmap({
-  data,
-  weeks = 12,
-}: ActivityHeatmapProps) {
-  // Gerar dados da grade para as semanas especificadas
+export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapProps) {
   const today = new Date();
   const startDate = new Date(today);
-  startDate.setDate(startDate.getDate() - (weeks * 7) + 1);
+  startDate.setDate(startDate.getDate() - weeks * 7 + 1);
 
-  // Criar um mapa para busca rápida
   const dataMap = new Map(data.map((d) => [d.date, d]));
 
-  // Gerar semanas
   const weeksData: HeatmapData[][] = [];
   let currentDate = new Date(startDate);
 
-  // Ajustar para começar do domingo
   const dayOfWeek = currentDate.getDay();
   currentDate.setDate(currentDate.getDate() - dayOfWeek);
 
@@ -67,18 +60,17 @@ export default function ActivityHeatmap({
     weeksData.push(weekData);
   }
 
-  // Calcular totais
   const totalHours = data.reduce((sum, d) => sum + d.hours, 0);
   const activeDays = data.filter((d) => d.hours > 0).length;
 
   return (
     <Card className="h-full">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h2 className="text-xl font-heading font-bold text-white">
+          <h2 className="text-xl max-[480px]:text-lg font-heading font-bold text-white">
             Mapa de Atividades
           </h2>
-          <p className="text-sm text-text-secondary mt-1">
+          <p className="text-sm max-[480px]:text-xs text-text-secondary mt-1">
             Sua consistência de estudos nas últimas {weeks} semanas
           </p>
         </div>
@@ -94,10 +86,8 @@ export default function ActivityHeatmap({
         </div>
       </div>
 
-      {/* Grade do Mapa de Calor */}
       <div className="overflow-x-auto">
         <div className="min-w-max">
-          {/* Rótulos dos dias */}
           <div className="flex mb-2 ml-8">
             {dayLabels.map((day, i) => (
               <div
@@ -114,9 +104,7 @@ export default function ActivityHeatmap({
             ))}
           </div>
 
-          {/* Grade */}
           <div className="flex gap-1">
-            {/* Rótulos dos meses iriam aqui */}
             <div className="w-6" />
 
             {weeksData.map((week, weekIndex) => (
@@ -137,7 +125,6 @@ export default function ActivityHeatmap({
                       )}
                     />
 
-                    {/* Tooltip */}
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
                       <div className="glass-card px-2 py-1 text-xs whitespace-nowrap">
                         <div className="font-medium text-white">
@@ -148,9 +135,7 @@ export default function ActivityHeatmap({
                           })}
                         </div>
                         <div className="text-text-secondary">
-                          {day.hours > 0
-                            ? `${day.hours.toFixed(1)} horas`
-                            : 'Sem atividade'}
+                          {day.hours > 0 ? `${day.hours.toFixed(1)} horas` : 'Sem atividade'}
                         </div>
                       </div>
                     </div>
@@ -162,7 +147,6 @@ export default function ActivityHeatmap({
         </div>
       </div>
 
-      {/* Legenda */}
       <div className="flex items-center justify-end gap-2 mt-4">
         <span className="text-xs text-text-muted">Menos</span>
         {levelColors.map((color, i) => (
