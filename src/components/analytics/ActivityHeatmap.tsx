@@ -86,8 +86,8 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="min-w-max">
+      <div className="overflow-x-auto max-w-full">
+        <div className="min-w-max w-max">
           <div className="flex mb-2 ml-8">
             {dayLabels.map((day, i) => (
               <div

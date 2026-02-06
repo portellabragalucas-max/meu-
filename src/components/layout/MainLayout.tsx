@@ -71,7 +71,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         />
 
         {/* Conteúdo da Página */}
-        <main className="flex-1 px-4 md:px-6 pb-24 md:pb-6 pt-4 md:pt-6 overflow-x-hidden overflow-y-auto">
+        <main className="flex-1 px-4 md:px-6 pb-24 md:pb-6 pt-4 md:pt-6 overflow-y-auto mobile-container min-w-0">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

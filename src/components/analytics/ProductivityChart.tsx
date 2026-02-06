@@ -45,7 +45,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function ProductivityChart({ data }: ProductivityChartProps) {
   return (
-    <Card className="h-full">
+    <Card className="h-full min-w-0">
       <h2 className="text-xl max-[480px]:text-lg font-heading font-bold text-white mb-2">
         Tendências de Produtividade
       </h2>
@@ -53,8 +53,8 @@ export default function ProductivityChart({ data }: ProductivityChartProps) {
         Acompanhe seu foco e produtividade ao longo do tempo
       </p>
 
-      <div className="h-72 max-[480px]:h-56 max-[480px]:overflow-x-auto">
-        <div className="h-full max-[480px]:min-w-[520px]">
+      <div className="h-72 max-[480px]:h-56">
+        <div className="h-full w-full min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
               <CartesianGrid
