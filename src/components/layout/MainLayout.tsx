@@ -56,7 +56,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         initial={false}
         animate={{ marginLeft: contentOffset }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="min-h-screen flex flex-col relative z-0"
+        className="min-h-screen flex flex-col relative z-0 w-full max-w-full overflow-x-clip"
       >
         {/* Barra Superior */}
         <TopBar
@@ -71,7 +71,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         />
 
         {/* Conteúdo da Página */}
-        <main className="flex-1 px-4 md:px-6 pb-24 md:pb-6 pt-4 md:pt-6 overflow-y-auto mobile-container min-w-0">
+        <main className="flex-1 px-4 md:px-6 pb-24 md:pb-6 pt-4 md:pt-6 overflow-y-auto mobile-container min-w-0 w-full max-w-full">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

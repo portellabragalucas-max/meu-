@@ -444,7 +444,7 @@ export default function SettingsPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="max-w-4xl mx-auto space-y-6"
+      className="max-w-4xl mx-auto space-y-6 w-full min-w-0"
     >
       {/* Cabeçalho */}
       <div className="flex items-center justify-between">
