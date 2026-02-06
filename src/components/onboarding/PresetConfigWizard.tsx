@@ -30,10 +30,10 @@ interface PresetConfigWizardProps {
 
 const stepTitles = [
   'Disponibilidade',
-  'Horarios',
+  'Horários',
   'Foco & pausas',
   'Rotina & descanso',
-  'Confirmacao',
+  'Confirmação',
 ];
 
 const dayOptions: { label: string; value: number; key: WeekdayKey }[] = [
