@@ -94,6 +94,7 @@ export default function SettingsPage() {
   const [hasRemotePrefs, setHasRemotePrefs] = useState(false);
   const [hasLocalPrefs, setHasLocalPrefs] = useState(false);
   const hasAttemptedRemotePrefs = useRef(false);
+  const [profileName, setProfileName] = useState('');
   const [pendingAlarmSound, setPendingAlarmSound] = useState<UserSettings['alarmSound']>(
     settings.alarmSound || 'pulse'
   );
@@ -176,6 +177,10 @@ export default function SettingsPage() {
       avatar: prev.avatar || session.user?.image || undefined,
     }));
   }, [session?.user, setSettings]);
+
+  useEffect(() => {
+    setProfileName(settings.name ?? '');
+  }, [settings.name]);
 
   useEffect(() => {
     if (hasRemotePrefs) return;
@@ -503,8 +508,17 @@ export default function SettingsPage() {
             </label>
             <input
               type="text"
-              value={settings.name ?? ''}
-              onChange={(e) => updateSetting('name', e.target.value)}
+              value={profileName}
+              onChange={(e) => {
+                setProfileName(e.target.value);
+                setHasChanges(true);
+              }}
+              onBlur={() => updateSetting('name', profileName)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.currentTarget.blur();
+                }
+              }}
               className="input-field"
             />
           </div>
