@@ -24,8 +24,9 @@ import { TodayPlan, WeeklyChart, LevelProgress } from '@/components/dashboard';
 import { WelcomeModal, EmptyDashboard, TutorialTooltip, dashboardTutorialSteps } from '@/components/onboarding';
 import { useOnboarding, useLocalStorage } from '@/hooks';
 import { isSameDay, formatDate, getWeekStart, getWeekDates } from '@/lib/utils';
-import type { StudyBlock, Subject, AnalyticsStore, StudyPreferences } from '@/types';
+import type { StudyBlock, Subject, AnalyticsStore, StudyPreferences, UserSettings } from '@/types';
 import { StudyBlockSessionModal } from '@/components/session';
+import { defaultSettings } from '@/lib/defaultSettings';
 
 const emptyAnalytics: AnalyticsStore = { daily: {} };
 const defaultStudyPrefs: StudyPreferences = {
@@ -66,6 +67,7 @@ export default function DashboardPage() {
   const [subjects, setSubjects] = useLocalStorage<Subject[]>('nexora_subjects', []);
   const [analytics, setAnalytics] = useLocalStorage<AnalyticsStore>('nexora_analytics', emptyAnalytics);
   const [studyPrefs] = useLocalStorage<StudyPreferences>('nexora_study_prefs', defaultStudyPrefs);
+  const [userSettings] = useLocalStorage<UserSettings>('nexora_user_settings', defaultSettings);
   const [sessionBlock, setSessionBlock] = useState<StudyBlock | null>(null);
   const [isSessionOpen, setIsSessionOpen] = useState(false);
 
@@ -340,7 +342,7 @@ export default function DashboardPage() {
       <WelcomeModal
         isOpen={shouldShowWelcome}
         onComplete={completeWelcome}
-        userName="Estudante"
+        userName={userSettings.name || 'Estudante'}
       />
 
       {/* Tutorial passo a passo */}
@@ -361,7 +363,7 @@ export default function DashboardPage() {
         <motion.div variants={itemVariants} className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-heading font-bold text-white">
-              Olá, Estudante! 👋
+              Olá, {userSettings.name || 'Estudante'}! 👋
             </h1>
             <p className="text-text-secondary mt-1">
               {isEmptyState
