@@ -339,7 +339,7 @@ export default function PresetConfigWizard({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 backdrop-blur-sm px-2 py-4 sm:px-4 md:items-center"
+        className="fixed inset-0 z-[10000] flex items-start justify-center overflow-y-auto bg-black/70 backdrop-blur-sm px-2 py-4 sm:px-4 md:items-center"
         variants={overlayVariants}
         initial="hidden"
         animate="visible"
