@@ -503,7 +503,7 @@ export default function SettingsPage() {
             </label>
             <input
               type="text"
-              value={settings.name}
+              value={settings.name ?? ''}
               onChange={(e) => updateSetting('name', e.target.value)}
               className="input-field"
             />
