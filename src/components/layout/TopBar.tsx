@@ -86,7 +86,7 @@ export default function TopBar({ user }: TopBarProps) {
     <>
       <header className="h-16 flex items-center justify-between px-4 md:px-6 border-b border-card-border bg-background-light/50 backdrop-blur-glass safe-area-top">
         {/* SeÃ§Ã£o Esquerda - Busca */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <div className="relative hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
             <input
@@ -163,13 +163,13 @@ export default function TopBar({ user }: TopBarProps) {
         </div>
 
         {/* SeÃ§Ã£o Direita - AÃ§Ãµes e Perfil */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           {/* BotÃ£o de AÃ§Ã£o RÃ¡pida */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowQuickSession(true)}
-            className="btn-primary py-2 px-3 md:px-4 flex items-center gap-2 text-sm"
+            className="btn-primary py-2 px-3 md:px-4 flex items-center gap-2 text-sm min-h-[44px]"
           >
             <Plus className="w-4 h-4" />
             <span className="hidden md:inline">SessÃ£o RÃ¡pida</span>
@@ -182,7 +182,7 @@ export default function TopBar({ user }: TopBarProps) {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setShowNotifications((prev) => !prev)}
-              className="relative p-2 rounded-xl hover:bg-card-bg transition-colors"
+              className="relative w-11 h-11 flex items-center justify-center rounded-xl hover:bg-card-bg transition-colors"
             >
               <Bell className="w-5 h-5 text-text-secondary" />
               {unreadCount > 0 && (
@@ -227,7 +227,7 @@ export default function TopBar({ user }: TopBarProps) {
           {/* Perfil do UsuÃ¡rio */}
           <motion.div
             whileHover={{ scale: 1.05 }}
-            className="flex items-center gap-3 cursor-pointer p-2 rounded-xl hover:bg-card-bg transition-colors"
+            className="flex items-center gap-3 cursor-pointer p-2 rounded-xl hover:bg-card-bg transition-colors min-h-[44px]"
             onClick={() => signOut({ callbackUrl: '/login' })}
           >
             {user.avatar ? (
