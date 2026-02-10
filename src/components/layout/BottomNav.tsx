@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import type { PointerEvent as ReactPointerEvent } from 'react';
+import type {
+  PointerEvent as ReactPointerEvent,
+  MouseEvent as ReactMouseEvent,
+} from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { navItems } from './navItems';
@@ -12,27 +15,36 @@ export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const handlePointerDown = (
-    event: ReactPointerEvent<HTMLAnchorElement>,
+  const handleNavigate = (
+    event: ReactPointerEvent<HTMLAnchorElement> | ReactMouseEvent<HTMLAnchorElement>,
     href: string
   ) => {
     const activeElement = document.activeElement as HTMLElement | null;
-    if (!activeElement) return;
+    if (
+      'button' in event &&
+      event.button !== 0
+    ) {
+      return;
+    }
+    if (
+      'metaKey' in event &&
+      (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+    ) {
+      return;
+    }
 
-    const isFormControl = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName);
-    if (!isFormControl) return;
-
-    activeElement.blur();
-    // Em iOS/Android com campo focado, o primeiro tap pode so fechar foco.
-    // Forcamos a navegacao SPA no mesmo gesto.
     event.preventDefault();
+    if (activeElement && activeElement !== document.body) {
+      activeElement.blur();
+    }
+    if (pathname === href || pathname.startsWith(`${href}/`)) return;
     router.push(href);
   };
 
   return (
     <nav
       className={cn(
-        'fixed inset-x-0 bottom-0 z-40 lg:hidden pointer-events-auto isolate',
+        'fixed inset-x-0 bottom-0 z-[80] lg:hidden pointer-events-auto isolate',
         'border-t border-card-border bg-background-light/92 backdrop-blur-glass'
       )}
       aria-label="Navegacao principal"
@@ -48,7 +60,8 @@ export default function BottomNav() {
                 <Link
                   key={item.id}
                   href={item.href}
-                  onPointerDown={(event) => handlePointerDown(event, item.href)}
+                  onPointerDown={(event) => handleNavigate(event, item.href)}
+                  onClick={(event) => handleNavigate(event, item.href)}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
                     'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2',
