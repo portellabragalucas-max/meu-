@@ -6,7 +6,7 @@
  */
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   ChevronLeft,
   ChevronRight,
@@ -23,7 +23,18 @@ interface SidebarProps {
 
 export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const isActiveRoute = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const navigateTo = (href: string) => {
+    if (isActiveRoute(href)) return;
+    const currentPath = window.location.pathname;
+    router.push(href);
+    window.setTimeout(() => {
+      if (window.location.pathname === currentPath) {
+        window.location.assign(href);
+      }
+    }, 500);
+  };
 
   return (
     <aside
@@ -37,7 +48,23 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       data-tutorial="sidebar"
     >
       <div className="flex items-center justify-between p-4 h-16 border-b border-card-border">
-        <Link href="/dashboard" className="flex items-center gap-3">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-3"
+          onClick={(event) => {
+            if (
+              event.metaKey ||
+              event.ctrlKey ||
+              event.shiftKey ||
+              event.altKey ||
+              event.button !== 0
+            ) {
+              return;
+            }
+            event.preventDefault();
+            navigateTo('/dashboard');
+          }}
+        >
           <div className="relative">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
@@ -63,6 +90,19 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               key={item.id}
               href={item.href}
               aria-current={isActive ? 'page' : undefined}
+              onClick={(event) => {
+                if (
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey ||
+                  event.button !== 0
+                ) {
+                  return;
+                }
+                event.preventDefault();
+                navigateTo(item.href);
+              }}
               className={cn(
                 'nav-item group relative overflow-hidden transition-transform duration-200',
                 'hover:translate-x-1',
