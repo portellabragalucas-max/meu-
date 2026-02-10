@@ -25,13 +25,6 @@ interface SidebarProps {
 export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
 
-  const handleLinkClick = () => {
-    const activeElement = document.activeElement as HTMLElement | null;
-    if (activeElement && activeElement !== document.body) {
-      activeElement.blur();
-    }
-  };
-
   return (
     <motion.aside
       initial={false}
@@ -46,7 +39,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       data-tutorial="sidebar"
     >
       <div className="flex items-center justify-between p-4 h-16 border-b border-card-border">
-        <Link href="/dashboard" className="flex items-center gap-3" onClick={handleLinkClick}>
+        <Link href="/dashboard" className="flex items-center gap-3">
           <div className="relative">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
@@ -79,7 +72,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             <Link
               key={item.id}
               href={item.href}
-              onClick={handleLinkClick}
+              aria-current={isActive ? 'page' : undefined}
               className={cn(
                 'nav-item group relative overflow-hidden transition-transform duration-200',
                 'hover:translate-x-1',

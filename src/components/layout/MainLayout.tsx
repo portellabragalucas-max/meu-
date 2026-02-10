@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
@@ -24,6 +25,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const { data: session } = useSession();
+  const pathname = usePathname();
   const [userSettings] = useLocalStorage<UserSettings>('nexora_user_settings', defaultSettings);
   const displayName = userSettings.name || session?.user?.name || 'Estudante';
 
@@ -78,6 +80,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <main className="app-main-content flex-1 min-w-0 w-full max-w-full overflow-y-visible overflow-x-hidden lg:overflow-y-auto">
           <AppContainer>
             <motion.div
+              key={pathname}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: 'easeOut' }}

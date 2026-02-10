@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { navItems } from './navItems';
@@ -10,18 +11,11 @@ import AppContainer from './AppContainer';
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  useEffect(() => {
-    navItems.forEach((item) => {
-      router.prefetch(item.href);
-    });
-  }, [router]);
 
   const activeHref = useMemo(() => {
     const matched = navItems.find(
@@ -29,15 +23,6 @@ export default function BottomNav() {
     );
     return matched?.href ?? '';
   }, [pathname]);
-
-  const handleNavigate = (href: string) => {
-    const activeElement = document.activeElement as HTMLElement | null;
-    if (activeElement && activeElement !== document.body) {
-      activeElement.blur();
-    }
-    if (activeHref === href) return;
-    router.push(href);
-  };
 
   if (!mounted) return null;
 
@@ -57,10 +42,9 @@ export default function BottomNav() {
               const Icon = item.icon;
 
               return (
-                <button
+                <Link
                   key={item.id}
-                  type="button"
-                  onClick={() => handleNavigate(item.href)}
+                  href={item.href}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
                     'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2',
@@ -76,7 +60,7 @@ export default function BottomNav() {
                   )}
                   <Icon className="relative z-10 h-5 w-5" />
                   <span className="relative z-10 max-w-full truncate">{item.label}</span>
-                </button>
+                </Link>
               );
             })}
           </div>

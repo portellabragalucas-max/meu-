@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import {
@@ -80,6 +81,7 @@ const buildDailyHoursByWeekday = (dailyGoalHours: number, excludeDays: number[])
 
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { resetOnboarding } = useOnboarding();
   const { data: session } = useSession();
   const [settings, setSettings] = useLocalStorage<UserSettings>('nexora_user_settings', initialSettings);
@@ -478,7 +480,7 @@ export default function SettingsPage() {
                 Escolha um modelo na página de disciplinas para aplicar um plano automático.
               </p>
             </div>
-            <Button variant="secondary" onClick={() => (window.location.href = '/subjects')} className="w-full sm:w-auto">
+            <Button variant="secondary" onClick={() => router.push('/subjects')} className="w-full sm:w-auto">
               Configurar agora
             </Button>
           </div>

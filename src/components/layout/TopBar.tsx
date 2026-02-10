@@ -319,14 +319,14 @@ export default function TopBar({ user }: TopBarProps) {
       </header>
 
       {showNotifications && (
-        <div className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+var(--topbar-height-mobile)+8px)] z-50 lg:top-[calc(env(safe-area-inset-top)+var(--topbar-height-desktop)+12px)]">
+        <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+var(--topbar-height-mobile)+8px)] z-50 lg:top-[calc(env(safe-area-inset-top)+var(--topbar-height-desktop)+12px)]">
           <AppContainer className="flex justify-end">
             <motion.div
               ref={panelRef}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8 }}
-              className="w-full rounded-2xl border border-card-border bg-slate-900/95 p-4 shadow-2xl backdrop-blur-lg max-h-[70dvh] overflow-y-auto lg:w-[22rem] lg:max-h-[24rem]"
+              className="pointer-events-auto w-full rounded-2xl border border-card-border bg-slate-900/95 p-4 shadow-2xl backdrop-blur-lg max-h-[70dvh] overflow-y-auto lg:w-[22rem] lg:max-h-[24rem]"
             >
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-sm font-semibold text-white">Notificacoes</p>
