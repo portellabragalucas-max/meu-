@@ -1,11 +1,12 @@
-'use client';
+﻿'use client';
 
 /**
  * Sidebar Component
- * Barra lateral retratil com logo e navegacao
+ * Barra lateral retrÃ¡til com logo e navegaÃ§Ã£o
  */
 
-import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft,
@@ -16,6 +17,8 @@ import {
 import { cn } from '@/lib/utils';
 import { navItems } from './navItems';
 
+
+
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
@@ -23,16 +26,6 @@ interface SidebarProps {
 
 export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-
-  const navigateTo = (href: string) => {
-    const activeElement = document.activeElement as HTMLElement | null;
-    if (activeElement && activeElement !== document.body) {
-      activeElement.blur();
-    }
-    if (pathname === href || pathname.startsWith(`${href}/`)) return;
-    router.push(href);
-  };
 
   return (
     <motion.aside
@@ -47,20 +40,19 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       )}
       data-tutorial="sidebar"
     >
-      <div className="flex h-16 items-center justify-between border-b border-card-border p-4">
-        <button
-          type="button"
-          onClick={() => navigateTo('/dashboard')}
-          className="flex items-center gap-3"
-          aria-label="Ir para painel"
-        >
+      {/* SeÃ§Ã£o do Logo */}
+      <div className="flex items-center justify-between p-4 h-16 border-b border-card-border">
+        <Link href="/dashboard" className="flex items-center gap-3">
+          {/* Ãcone do Logo */}
           <div className="relative">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple">
-              <Sparkles className="h-5 w-5 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <div className="absolute inset-0 h-10 w-10 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple opacity-50 blur-lg" />
+            {/* Efeito de brilho */}
+            <div className="absolute inset-0 w-10 h-10 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple blur-lg opacity-50" />
           </div>
-
+          
+          {/* Texto do Logo */}
           <AnimatePresence>
             {!isCollapsed && (
               <motion.span
@@ -74,73 +66,81 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               </motion.span>
             )}
           </AnimatePresence>
-        </button>
+        </Link>
       </div>
 
-      <nav className="flex-1 space-y-2 p-4">
+      {/* NavegaÃ§Ã£o */}
+      <nav className="flex-1 p-4 space-y-2">
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
 
           return (
-            <motion.button
-              key={item.id}
-              type="button"
-              onClick={() => navigateTo(item.href)}
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.98 }}
-              className={cn('nav-item relative w-full overflow-hidden text-left', isActive && 'active')}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="activeNav"
-                  className="absolute inset-0 rounded-xl bg-neon-blue/10"
-                  transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                />
-              )}
-
-              <Icon
+            <Link key={item.id} href={item.href}>
+              <motion.div
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
                 className={cn(
-                  'relative z-10 h-5 w-5 flex-shrink-0',
-                  isActive ? 'text-neon-blue' : 'text-text-secondary'
+                  'nav-item relative overflow-hidden',
+                  isActive && 'active'
                 )}
-              />
+              >
+                {/* Fundo de destaque ativo */}
+                {isActive && (
+                  <motion.div
+                    layoutId="activeNav"
+                    className="absolute inset-0 bg-neon-blue/10 rounded-xl"
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
 
-              <AnimatePresence>
-                {!isCollapsed && (
-                  <motion.span
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className={cn(
-                      'relative z-10 font-medium',
-                      isActive ? 'text-white' : 'text-text-secondary'
-                    )}
+                {/* Ãcone */}
+                <Icon
+                  className={cn(
+                    'w-5 h-5 relative z-10 flex-shrink-0',
+                    isActive ? 'text-neon-blue' : 'text-text-secondary'
+                  )}
+                />
+
+                {/* RÃ³tulo */}
+                <AnimatePresence>
+                  {!isCollapsed && (
+                    <motion.span
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className={cn(
+                        'relative z-10 font-medium',
+                        isActive ? 'text-white' : 'text-text-secondary'
+                      )}
+                    >
+                      {item.label}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+
+                {/* Indicador de IA para Agenda Inteligente */}
+                {item.id === 'planner' && !isCollapsed && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="ml-auto"
                   >
-                    {item.label}
-                  </motion.span>
+                    <span className="badge flex items-center gap-1">
+                      <Zap className="w-3 h-3" />
+                      IA
+                    </span>
+                  </motion.div>
                 )}
-              </AnimatePresence>
-
-              {item.id === 'planner' && !isCollapsed && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="ml-auto"
-                >
-                  <span className="badge flex items-center gap-1">
-                    <Zap className="h-3 w-3" />
-                    IA
-                  </span>
-                </motion.div>
-              )}
-            </motion.button>
+              </motion.div>
+            </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-card-border p-4">
+      {/* BotÃ£o de Recolher */}
+      <div className="p-4 border-t border-card-border">
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -154,10 +154,10 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           )}
         >
           {isCollapsed ? (
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="w-5 h-5" />
           ) : (
             <>
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="w-5 h-5" />
               <span className="text-sm">Recolher</span>
             </>
           )}
@@ -166,3 +166,4 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     </motion.aside>
   );
 }
+
