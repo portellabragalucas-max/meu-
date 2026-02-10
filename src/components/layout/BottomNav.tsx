@@ -1,25 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { navItems } from './navItems';
 import AppContainer from './AppContainer';
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
   const isActiveRoute = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-  const navigateTo = (href: string) => {
-    if (isActiveRoute(href)) return;
-    const currentPath = window.location.pathname;
-    router.push(href);
-    window.setTimeout(() => {
-      if (window.location.pathname === currentPath) {
-        window.location.assign(href);
-      }
-    }, 500);
-  };
 
   return (
     <nav
@@ -40,20 +29,8 @@ export default function BottomNav() {
                 <li key={item.id} className="flex min-w-0 flex-1">
                   <Link
                     href={item.href}
+                    data-tutorial={`nav-${item.id}`}
                     aria-current={isActive ? 'page' : undefined}
-                    onClick={(event) => {
-                      if (
-                        event.metaKey ||
-                        event.ctrlKey ||
-                        event.shiftKey ||
-                        event.altKey ||
-                        event.button !== 0
-                      ) {
-                        return;
-                      }
-                      event.preventDefault();
-                      navigateTo(item.href);
-                    }}
                     className={cn(
                       'relative flex w-full min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2',
                       'min-h-[50px] touch-manipulation text-[10px] sm:text-[11px] transition-colors',

@@ -16,8 +16,10 @@ interface EmptyStateProps {
   description: string;
   actionLabel?: string;
   onAction?: () => void;
+  actionDataTutorial?: string;
   secondaryLabel?: string;
   onSecondary?: () => void;
+  secondaryDataTutorial?: string;
   variant?: 'default' | 'card' | 'inline';
   motivationalMessage?: string;
   className?: string;
@@ -29,8 +31,10 @@ export default function EmptyState({
   description,
   actionLabel,
   onAction,
+  actionDataTutorial,
   secondaryLabel,
   onSecondary,
+  secondaryDataTutorial,
   variant = 'default',
   motivationalMessage,
   className,
@@ -106,6 +110,7 @@ export default function EmptyState({
             variant="primary"
             onClick={onAction}
             leftIcon={<Plus className="w-4 h-4" />}
+            data-tutorial={actionDataTutorial}
           >
             {actionLabel}
           </Button>
@@ -115,6 +120,7 @@ export default function EmptyState({
             variant="secondary"
             onClick={onSecondary}
             rightIcon={<ArrowRight className="w-4 h-4" />}
+            data-tutorial={secondaryDataTutorial}
           >
             {secondaryLabel}
           </Button>
@@ -143,6 +149,7 @@ export function EmptyDashboard({
       description="Adicione suas primeiras disciplinas para que a IA possa criar um cronograma de estudos personalizado para você."
       actionLabel="Adicionar Disciplina"
       onAction={onAddSubject}
+      actionDataTutorial="empty-add-subject"
       motivationalMessage="Cada grande conquista começa com um pequeno passo. Vamos começar! 💪"
     />
   );

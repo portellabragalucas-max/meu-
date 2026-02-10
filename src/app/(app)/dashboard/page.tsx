@@ -21,7 +21,13 @@ import {
 } from 'lucide-react';
 import { StatsCard, Card, ProgressBar, SkeletonCard, SkeletonChart, SkeletonPlan } from '@/components/ui';
 import { TodayPlan, WeeklyChart, LevelProgress } from '@/components/dashboard';
-import { WelcomeModal, EmptyDashboard, TutorialTooltip, dashboardTutorialSteps } from '@/components/onboarding';
+import {
+  WelcomeModal,
+  EmptyDashboard,
+  TutorialTooltip,
+  dashboardTutorialSteps,
+  dashboardEmptyTutorialSteps,
+} from '@/components/onboarding';
 import { useOnboarding, useLocalStorage } from '@/hooks';
 import { isSameDay, formatDate, getWeekStart, getWeekDates } from '@/lib/utils';
 import type { StudyBlock, Subject, AnalyticsStore, StudyPreferences, UserSettings } from '@/types';
@@ -289,6 +295,7 @@ export default function DashboardPage() {
 
   // Estado de primeiro uso (sem disciplinas)
   const isEmptyState = subjects.length === 0;
+  const tutorialSteps = isEmptyState ? dashboardEmptyTutorialSteps : dashboardTutorialSteps;
 
   // Loading state
   if (onboardingLoading) {
@@ -347,7 +354,7 @@ export default function DashboardPage() {
 
       {/* Tutorial passo a passo */}
       <TutorialTooltip
-        steps={dashboardTutorialSteps}
+        steps={tutorialSteps}
         isActive={shouldShowTutorial}
         onComplete={completeTutorial}
         onSkip={skipTutorial}
@@ -360,7 +367,11 @@ export default function DashboardPage() {
         className="app-page"
       >
         {/* Cabeçalho da página */}
-        <motion.div variants={itemVariants} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <motion.div
+          variants={itemVariants}
+          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          data-tutorial="dashboard-header"
+        >
           <div>
             <h1 className="text-2xl sm:text-3xl font-heading font-bold text-white leading-tight">
               Olá, {userSettings.name || 'Estudante'}! 👋
