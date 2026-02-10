@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { navItems } from './navItems';
@@ -9,6 +10,24 @@ import AppContainer from './AppContainer';
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handlePointerDown = (
+    event: ReactPointerEvent<HTMLAnchorElement>,
+    href: string
+  ) => {
+    const activeElement = document.activeElement as HTMLElement | null;
+    if (!activeElement) return;
+
+    const isFormControl = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName);
+    if (!isFormControl) return;
+
+    activeElement.blur();
+    // Em iOS/Android com campo focado, o primeiro tap pode so fechar foco.
+    // Forcamos a navegacao SPA no mesmo gesto.
+    event.preventDefault();
+    router.push(href);
+  };
 
   return (
     <nav
@@ -29,6 +48,7 @@ export default function BottomNav() {
                 <Link
                   key={item.id}
                   href={item.href}
+                  onPointerDown={(event) => handlePointerDown(event, item.href)}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
                     'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2',
