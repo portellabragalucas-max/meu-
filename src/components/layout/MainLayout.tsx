@@ -2,7 +2,7 @@
 
 /**
  * MainLayout Component
- * Envolve as páginas com sidebar, topbar e responsividade
+ * Envolve as paginas com sidebar, topbar e responsividade
  */
 
 import { useState, useEffect } from 'react';
@@ -11,10 +11,10 @@ import { motion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import BottomNav from './BottomNav';
+import AppContainer from './AppContainer';
 import { useLocalStorage } from '@/hooks';
 import { defaultSettings } from '@/lib/defaultSettings';
 import type { UserSettings } from '@/types';
-
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -30,7 +30,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   // Gerenciar sidebar responsiva
   useEffect(() => {
     const handleResize = () => {
-      const mobile = window.innerWidth < 768;
+      const mobile = window.innerWidth < 1024;
       setIsMobile(mobile);
       if (mobile) {
         setSidebarCollapsed(true);
@@ -46,7 +46,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const contentOffset = isMobile ? 0 : sidebarWidth;
 
   return (
-    <div className="min-h-screen bg-background w-full max-w-full overflow-x-clip">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       {/* Sidebar */}
       {!isMobile && (
         <Sidebar
@@ -55,14 +55,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
         />
       )}
 
-      {/* Área de Conteúdo Principal */}
+      {/* Area de conteudo principal */}
       <motion.div
         initial={false}
         animate={{ marginLeft: contentOffset }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="min-h-screen flex flex-col relative w-full max-w-full overflow-x-clip"
+        className="relative flex min-h-screen w-full max-w-full min-w-0 flex-col overflow-x-hidden"
       >
-        {/* Barra Superior */}
+        {/* Barra superior */}
         <TopBar
           user={{
             name: displayName,
@@ -74,32 +74,22 @@ export default function MainLayout({ children }: MainLayoutProps) {
           }}
         />
 
-        {/* Conteúdo da Página */}
-        <main className="flex-1 overflow-y-auto mobile-container min-w-0 w-full max-w-full">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
-            className="w-full min-w-0 max-w-full sm:max-w-[680px] sm:mx-auto lg:max-w-none"
-          >
-            {children}
-          </motion.div>
+        {/* Conteudo da pagina */}
+        <main className="app-main-content flex-1 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden">
+          <AppContainer>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+              className="w-full min-w-0 max-w-full"
+            >
+              {children}
+            </motion.div>
+          </AppContainer>
         </main>
       </motion.div>
 
-      {/* Overlay mobile quando sidebar está aberta */}
-      {isMobile && !sidebarCollapsed && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={() => setSidebarCollapsed(true)}
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-        />
-      )}
-
       <BottomNav />
-
     </div>
   );
 }

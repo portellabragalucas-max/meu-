@@ -14,7 +14,7 @@
   --background-light: #0A1020;
   --card-bg: rgba(15, 25, 45, 0.6);
   --card-border: rgba(0, 180, 255, 0.15);
-  --app-max-width: 680px;
+  --app-content-max-width: 1280px;
   --app-gutter-mobile: 16px;
   --app-gutter-desktop: 24px;
   --topbar-height-mobile: 56px;
@@ -69,6 +69,11 @@ body {
   background-position: -1px -1px;
 }
 
+body > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
 img,
 svg,
 video,
@@ -89,37 +94,44 @@ canvas {
   padding-top: env(safe-area-inset-top);
 }
 
+.app-main-content,
 .mobile-container {
   width: 100%;
+  min-width: 0;
   max-width: 100%;
   margin-inline: auto;
   overflow-x: clip;
-  padding-left: calc(var(--app-gutter-mobile) + env(safe-area-inset-left));
-  padding-right: calc(var(--app-gutter-mobile) + env(safe-area-inset-right));
+  overflow-y: visible;
   padding-top: 14px;
   padding-bottom: calc(var(--bottom-nav-height) + 16px + env(safe-area-inset-bottom));
 }
 
+.app-container,
 .app-container-x {
+  width: 100%;
+  min-width: 0;
+  max-width: min(var(--app-content-max-width), 100%);
+  margin-inline: auto;
   padding-left: calc(var(--app-gutter-mobile) + env(safe-area-inset-left));
   padding-right: calc(var(--app-gutter-mobile) + env(safe-area-inset-right));
 }
 
 @media (min-width: 640px) {
+  .app-main-content,
   .mobile-container {
-    padding-left: var(--app-gutter-desktop);
-    padding-right: var(--app-gutter-desktop);
     padding-top: 20px;
     padding-bottom: calc(var(--bottom-nav-height) + 20px + env(safe-area-inset-bottom));
   }
 
+  .app-container,
   .app-container-x {
     padding-left: var(--app-gutter-desktop);
     padding-right: var(--app-gutter-desktop);
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
+  .app-main-content,
   .mobile-container {
     padding-bottom: 28px;
   }
@@ -165,6 +177,7 @@ h1, h2, h3, h4, h5, h6 {
     width: 100%;
     min-width: 0;
     max-width: 100%;
+    overflow-x: clip;
   }
 
   .app-page > * + * {
