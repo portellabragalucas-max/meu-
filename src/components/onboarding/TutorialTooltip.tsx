@@ -22,6 +22,8 @@ const DESKTOP_TOOLTIP_HEIGHT = 232;
 const DESKTOP_TOOLTIP_WIDTH = 360;
 const MOBILE_TOOLTIP_HEIGHT = 260;
 const TARGET_GAP = 12;
+const MOBILE_NAV_FALLBACK_HEIGHT = 88;
+const MOBILE_NAV_GAP = 12;
 
 export interface TutorialStep {
   id: string;
@@ -53,6 +55,14 @@ const normalizeTarget = (target?: TutorialTarget): string[] => {
 };
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+const getMobileBottomClearance = () => {
+  const nav = document.querySelector('nav[aria-label="Navegacao principal"]');
+  if (nav instanceof HTMLElement) {
+    return Math.max(MOBILE_NAV_FALLBACK_HEIGHT, nav.getBoundingClientRect().height + MOBILE_NAV_GAP);
+  }
+  return MOBILE_NAV_FALLBACK_HEIGHT;
+};
 
 const isVisibleElement = (element: Element): element is HTMLElement => {
   if (!(element instanceof HTMLElement)) return false;
@@ -194,10 +204,11 @@ export default function TutorialTooltip({
 
       if (mobile) {
         const tooltipWidth = viewportWidth - VIEWPORT_PADDING * 2;
+        const bottomClearance = getMobileBottomClearance();
         const top = clamp(
-          viewportHeight - MOBILE_TOOLTIP_HEIGHT,
+          viewportHeight - MOBILE_TOOLTIP_HEIGHT - bottomClearance,
           VIEWPORT_PADDING,
-          viewportHeight - 140
+          viewportHeight - MOBILE_TOOLTIP_HEIGHT - VIEWPORT_PADDING
         );
         setLayout({
           top,
