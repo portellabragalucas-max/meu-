@@ -1,11 +1,8 @@
 'use client';
 
-import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { usePathname, useRouter } from 'next/navigation';
-import type {
-  PointerEvent as ReactPointerEvent,
-  MouseEvent as ReactMouseEvent,
-} from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { navItems } from './navItems';
@@ -14,37 +11,40 @@ import AppContainer from './AppContainer';
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
 
-  const handleNavigate = (
-    event: ReactPointerEvent<HTMLAnchorElement> | ReactMouseEvent<HTMLAnchorElement>,
-    href: string
-  ) => {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    navItems.forEach((item) => {
+      router.prefetch(item.href);
+    });
+  }, [router]);
+
+  const activeHref = useMemo(() => {
+    const matched = navItems.find(
+      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
+    );
+    return matched?.href ?? '';
+  }, [pathname]);
+
+  const handleNavigate = (href: string) => {
     const activeElement = document.activeElement as HTMLElement | null;
-    if (
-      'button' in event &&
-      event.button !== 0
-    ) {
-      return;
-    }
-    if (
-      'metaKey' in event &&
-      (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
-    ) {
-      return;
-    }
-
-    event.preventDefault();
     if (activeElement && activeElement !== document.body) {
       activeElement.blur();
     }
-    if (pathname === href || pathname.startsWith(`${href}/`)) return;
+    if (activeHref === href) return;
     router.push(href);
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <nav
       className={cn(
-        'fixed inset-x-0 bottom-0 z-[80] lg:hidden pointer-events-auto isolate',
+        'fixed inset-x-0 bottom-0 z-[2147483647] lg:hidden pointer-events-auto',
         'border-t border-card-border bg-background-light/92 backdrop-blur-glass'
       )}
       aria-label="Navegacao principal"
@@ -53,15 +53,14 @@ export default function BottomNav() {
         <AppContainer>
           <div className="flex items-center justify-between gap-1 py-1.5">
             {navItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const isActive = activeHref === item.href;
               const Icon = item.icon;
 
               return (
-                <Link
+                <button
                   key={item.id}
-                  href={item.href}
-                  onPointerDown={(event) => handleNavigate(event, item.href)}
-                  onClick={(event) => handleNavigate(event, item.href)}
+                  type="button"
+                  onClick={() => handleNavigate(item.href)}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
                     'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2',
@@ -77,12 +76,13 @@ export default function BottomNav() {
                   )}
                   <Icon className="relative z-10 h-5 w-5" />
                   <span className="relative z-10 max-w-full truncate">{item.label}</span>
-                </Link>
+                </button>
               );
             })}
           </div>
         </AppContainer>
       </div>
-    </nav>
+    </nav>,
+    document.body
   );
 }
