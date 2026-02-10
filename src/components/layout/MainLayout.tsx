@@ -8,7 +8,6 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
-import { motion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import BottomNav from './BottomNav';
@@ -58,11 +57,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
       )}
 
       {/* Area de conteudo principal */}
-      <motion.div
-        initial={false}
-        animate={{ marginLeft: contentOffset }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="relative flex min-h-screen w-full max-w-full min-w-0 flex-col overflow-x-hidden"
+      <div
+        style={{ marginLeft: contentOffset }}
+        className="relative flex min-h-screen w-full max-w-full min-w-0 flex-col overflow-x-hidden transition-[margin-left] duration-300 ease-in-out"
       >
         {/* Barra superior */}
         <TopBar
@@ -79,18 +76,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {/* Conteudo da pagina */}
         <main className="app-main-content flex-1 min-w-0 w-full max-w-full overflow-y-visible overflow-x-hidden lg:overflow-y-auto">
           <AppContainer>
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
-              className="w-full min-w-0 max-w-full"
-            >
+            <div key={pathname} className="w-full min-w-0 max-w-full">
               {children}
-            </motion.div>
+            </div>
           </AppContainer>
         </main>
-      </motion.div>
+      </div>
 
       <BottomNav />
     </div>

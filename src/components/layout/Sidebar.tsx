@@ -7,7 +7,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft,
   ChevronRight,
@@ -24,17 +23,16 @@ interface SidebarProps {
 
 export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
+  const isActiveRoute = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <motion.aside
-      initial={false}
-      animate={{ width: isCollapsed ? 80 : 260 }}
-      transition={{ duration: 0.3, ease: 'easeInOut' }}
+    <aside
       className={cn(
-        'fixed left-0 top-0 h-screen z-50',
+        'fixed left-0 top-0 z-50 h-screen',
+        isCollapsed ? 'w-20' : 'w-[260px]',
         'flex flex-col',
         'bg-background-light/80 backdrop-blur-glass',
-        'border-r border-card-border'
+        'border-r border-card-border transition-[width] duration-300 ease-in-out'
       )}
       data-tutorial="sidebar"
     >
@@ -47,25 +45,17 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             <div className="absolute inset-0 w-10 h-10 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple blur-lg opacity-50" />
           </div>
 
-          <AnimatePresence>
-            {!isCollapsed && (
-              <motion.span
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.2 }}
-                className="text-xl font-heading font-bold gradient-text"
-              >
-                Nexora
-              </motion.span>
-            )}
-          </AnimatePresence>
+          {!isCollapsed && (
+            <span className="text-xl font-heading font-bold gradient-text">
+              Nexora
+            </span>
+          )}
         </Link>
       </div>
 
       <nav className="flex-1 p-4 space-y-2">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isActive = isActiveRoute(item.href);
           const Icon = item.icon;
 
           return (
@@ -90,34 +80,24 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                 )}
               />
 
-              <AnimatePresence>
-                {!isCollapsed && (
-                  <motion.span
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className={cn(
-                      'relative z-10 font-medium',
-                      isActive ? 'text-white' : 'text-text-secondary'
-                    )}
-                  >
-                    {item.label}
-                  </motion.span>
-                )}
-              </AnimatePresence>
+              {!isCollapsed && (
+                <span
+                  className={cn(
+                    'relative z-10 font-medium',
+                    isActive ? 'text-white' : 'text-text-secondary'
+                  )}
+                >
+                  {item.label}
+                </span>
+              )}
 
               {item.id === 'planner' && !isCollapsed && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="ml-auto"
-                >
+                <div className="ml-auto">
                   <span className="badge flex items-center gap-1">
                     <Zap className="w-3 h-3" />
                     IA
                   </span>
-                </motion.div>
+                </div>
               )}
             </Link>
           );
@@ -125,9 +105,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       </nav>
 
       <div className="p-4 border-t border-card-border">
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+        <button
           onClick={onToggle}
           className={cn(
             'w-full flex items-center justify-center gap-2',
@@ -145,8 +123,8 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               <span className="text-sm">Recolher</span>
             </>
           )}
-        </motion.button>
+        </button>
       </div>
-    </motion.aside>
+    </aside>
   );
 }
