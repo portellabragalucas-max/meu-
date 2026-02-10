@@ -132,7 +132,7 @@ export default function BlockFormModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        className="app-modal-overlay"
         onClick={onClose}
       >
         <motion.div
@@ -140,9 +140,9 @@ export default function BlockFormModal({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-md"
+          className="app-modal-panel max-w-md"
         >
-          <Card className="relative" padding="lg">
+          <Card className="relative" padding="md">
             <button
               onClick={onClose}
               className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/5 text-text-muted hover:text-white transition-colors"
@@ -241,7 +241,7 @@ export default function BlockFormModal({
                 <p className="text-sm text-red-400">{error}</p>
               )}
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
                   Cancelar
                 </Button>

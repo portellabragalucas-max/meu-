@@ -310,7 +310,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Charts skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2">
             <SkeletonChart />
           </div>
@@ -318,7 +318,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Plan skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2">
             <SkeletonPlan />
           </div>
@@ -357,12 +357,12 @@ export default function DashboardPage() {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="space-y-6"
+        className="app-page"
       >
         {/* Cabeçalho da página */}
-        <motion.div variants={itemVariants} className="flex items-center justify-between">
+        <motion.div variants={itemVariants} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-heading font-bold text-white">
+            <h1 className="text-2xl sm:text-3xl font-heading font-bold text-white leading-tight">
               Olá, {userSettings.name || 'Estudante'}! 👋
             </h1>
             <p className="text-text-secondary mt-1">
@@ -390,11 +390,11 @@ export default function DashboardPage() {
             </Card>
 
             {/* Cards de prévia */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mt-6 sm:mt-8">
               <motion.div
                 variants={itemVariants}
                 whileHover={{ y: -4 }}
-                className="glass-card p-6 text-center"
+                className="glass-card p-4 sm:p-6 text-center"
               >
                 <div className="w-16 h-16 rounded-2xl bg-neon-blue/20 flex items-center justify-center mx-auto mb-4">
                   <BookOpen className="w-8 h-8 text-neon-blue" />
@@ -410,7 +410,7 @@ export default function DashboardPage() {
               <motion.div
                 variants={itemVariants}
                 whileHover={{ y: -4 }}
-                className="glass-card p-6 text-center"
+                className="glass-card p-4 sm:p-6 text-center"
               >
                 <div className="w-16 h-16 rounded-2xl bg-neon-purple/20 flex items-center justify-center mx-auto mb-4">
                   <Calendar className="w-8 h-8 text-neon-purple" />
@@ -426,7 +426,7 @@ export default function DashboardPage() {
               <motion.div
                 variants={itemVariants}
                 whileHover={{ y: -4 }}
-                className="glass-card p-6 text-center"
+                className="glass-card p-4 sm:p-6 text-center"
               >
                 <div className="w-16 h-16 rounded-2xl bg-neon-cyan/20 flex items-center justify-center mx-auto mb-4">
                   <TrendingUp className="w-8 h-8 text-neon-cyan" />
@@ -490,7 +490,7 @@ export default function DashboardPage() {
             </motion.div>
 
             {/* Grid de conteúdo principal */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* Gráfico semanal - 2 colunas */}
               <motion.div
                 variants={itemVariants}
@@ -513,7 +513,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Seção inferior */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* Plano do dia - 2 colunas */}
               <motion.div
                 variants={itemVariants}
@@ -599,6 +599,8 @@ export default function DashboardPage() {
     </>
   );
 }
+
+
 
 
 

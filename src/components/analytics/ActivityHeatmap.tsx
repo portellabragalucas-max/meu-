@@ -74,7 +74,7 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
             Sua consistência de estudos nas últimas {weeks} semanas
           </p>
         </div>
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm">
           <div>
             <span className="text-text-secondary">Total: </span>
             <span className="font-bold text-white">{totalHours.toFixed(1)}h</span>

@@ -201,7 +201,7 @@ export default function StudyBlockSessionModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4"
+        className="app-modal-overlay"
         onClick={onClose}
       >
         <motion.div
@@ -209,9 +209,9 @@ export default function StudyBlockSessionModal({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-md"
+          className="app-modal-panel max-w-md"
         >
-          <Card className="relative overflow-hidden" padding="lg">
+          <Card className="relative overflow-hidden" padding="md">
             <button
               onClick={onClose}
               className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/5 text-text-muted hover:text-white transition-colors"
@@ -242,7 +242,7 @@ export default function StudyBlockSessionModal({
               </div>
 
               {sessionState === 'ready' && (
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Button variant="secondary" className="flex-1" onClick={onClose}>
                     Fechar
                   </Button>
@@ -260,7 +260,7 @@ export default function StudyBlockSessionModal({
               )}
 
               {(sessionState === 'running' || sessionState === 'paused') && (
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Button
                     variant="secondary"
                     className="flex-1"

@@ -99,15 +99,15 @@ export default function WelcomeModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          className="app-modal-overlay"
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="w-full max-w-lg"
+            className="app-modal-panel max-w-lg"
           >
-            <div className="glass-card p-8 relative overflow-hidden">
+            <div className="glass-card p-4 sm:p-8 relative overflow-hidden">
               {/* Background decoration */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-neon-blue/20 to-neon-purple/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
@@ -192,16 +192,17 @@ export default function WelcomeModal({
               </AnimatePresence>
 
               {/* Actions */}
-              <div className="flex items-center justify-between relative z-10">
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 relative z-10">
                 {currentStep > 0 ? (
                   <Button
                     variant="ghost"
                     onClick={() => setCurrentStep(currentStep - 1)}
+                    className="w-full sm:w-auto"
                   >
                     Voltar
                   </Button>
                 ) : (
-                  <Button variant="ghost" onClick={handleSkip}>
+                  <Button variant="ghost" onClick={handleSkip} className="w-full sm:w-auto">
                     Pular tour
                   </Button>
                 )}
@@ -209,6 +210,7 @@ export default function WelcomeModal({
                 <Button
                   variant="primary"
                   onClick={handleNext}
+                  className="w-full sm:w-auto"
                   rightIcon={
                     isLastStep ? (
                       <Rocket className="w-4 h-4" />

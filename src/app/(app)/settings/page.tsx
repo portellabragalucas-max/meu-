@@ -215,7 +215,7 @@ export default function SettingsPage() {
               })()
             : remote.dailyHoursByWeekday ?? null;
 
-        if (!isMounted) return;
+        if (!isMounted || hasChanges) return;
         setSettings((prev) => ({
           ...prev,
           dailyGoalHours: remote.dailyGoalHours ?? prev.dailyGoalHours,
@@ -444,10 +444,10 @@ export default function SettingsPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="max-w-4xl mx-auto space-y-6 w-full min-w-0"
+      className="max-w-4xl mx-auto app-page w-full min-w-0"
     >
       {/* Cabeçalho */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-heading font-bold text-white">Configurações</h1>
           <p className="text-sm text-text-secondary mt-1">
@@ -456,12 +456,12 @@ export default function SettingsPage() {
         </div>
         
         {hasChanges && (
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" onClick={handleReset}>
+          <div className="flex w-full sm:w-auto flex-col sm:flex-row gap-2 sm:gap-3">
+            <Button variant="ghost" onClick={handleReset} className="w-full sm:w-auto">
               <RefreshCw className="w-4 h-4 mr-2" />
               Resetar
             </Button>
-            <Button variant="primary" onClick={handleSave} loading={saving}>
+            <Button variant="primary" onClick={handleSave} loading={saving} className="w-full sm:w-auto">
               <Save className="w-4 h-4 mr-2" />
               Salvar Alterações
             </Button>
@@ -471,14 +471,14 @@ export default function SettingsPage() {
 
       {!hasRemotePrefs && !hasLocalPrefs && (
         <Card className="border-neon-cyan/40 bg-neon-cyan/5">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <p className="text-sm text-white font-medium">Ainda não configurado</p>
               <p className="text-xs text-text-secondary">
                 Escolha um modelo na página de disciplinas para aplicar um plano automático.
               </p>
             </div>
-            <Button variant="secondary" onClick={() => (window.location.href = '/subjects')}>
+            <Button variant="secondary" onClick={() => (window.location.href = '/subjects')} className="w-full sm:w-auto">
               Configurar agora
             </Button>
           </div>
@@ -595,7 +595,7 @@ export default function SettingsPage() {
                     >
                       {label}
                     </button>
-                    <div className="flex flex-1 items-center gap-3">
+                    <div className="flex flex-1 flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3">
                       <input
                         type="range"
                         min={0}
@@ -615,9 +615,9 @@ export default function SettingsPage() {
                         step={0.5}
                         value={hours}
                         onChange={(e) => updateDayHours(index, Number(e.target.value))}
-                        className="input-field w-24"
+                        className="input-field w-20 sm:w-24"
                       />
-                      <span className="text-xs text-text-muted min-w-[52px]">{formatHours(hours)}</span>
+                      <span className="text-xs text-text-muted whitespace-nowrap">{formatHours(hours)}</span>
                     </div>
                   </div>
                 );
@@ -635,7 +635,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Janela de Tempo */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-2">
                 Horário de Início Preferido
@@ -661,7 +661,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Duração dos Blocos */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-2">
                 Duração Máxima do Bloco (min)
@@ -697,13 +697,13 @@ export default function SettingsPage() {
             <label className="block text-sm font-medium text-text-secondary mb-3">
               Dias de Descanso (sem agendamento automático)
             </label>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
               {weekDays.map((day, index) => (
                 <button
                   key={day}
                   onClick={() => toggleExcludeDay(index)}
                   className={cn(
-                    'w-12 h-12 rounded-xl font-medium text-sm transition-all',
+                    'w-full h-11 rounded-xl font-medium text-sm transition-all',
                     settings.excludeDays.includes(index)
                       ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/50'
                       : 'bg-card-bg text-text-secondary border border-card-border hover:border-neon-purple/30'
@@ -739,7 +739,7 @@ export default function SettingsPage() {
             <label className="block text-sm font-medium text-text-secondary mb-3">
               Modo de Dificuldade da IA
             </label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               {aiDifficultyOptions.map((option) => (
                 <button
                   key={option.value}
@@ -779,7 +779,7 @@ export default function SettingsPage() {
             ].map((item) => (
               <div
                 key={item.key}
-                className="flex items-center justify-between p-4 rounded-xl bg-card-bg border border-card-border"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-card-bg border border-card-border"
               >
                 <div>
                   <div className="font-medium text-white">{item.label}</div>
@@ -851,7 +851,7 @@ export default function SettingsPage() {
           ].map((item) => (
             <div
               key={item.key}
-              className="flex items-center justify-between p-4 rounded-xl bg-card-bg border border-card-border"
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-card-bg border border-card-border"
             >
               <div>
                 <div className="font-medium text-white">{item.label}</div>
@@ -955,7 +955,7 @@ export default function SettingsPage() {
         <div className="flex flex-col sm:flex-row gap-4">
           <Button 
             variant="secondary" 
-            className="border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+            className="w-full sm:w-auto border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
             onClick={handleResetOnboarding}
             leftIcon={<RotateCcw className="w-4 h-4" />}
           >
@@ -963,12 +963,12 @@ export default function SettingsPage() {
           </Button>
           <Button
             variant="secondary"
-            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+            className="w-full sm:w-auto border-red-500/30 text-red-400 hover:bg-red-500/10"
             onClick={handleResetProgress}
           >
             Resetar Todo o Progresso
           </Button>
-          <Button variant="secondary" className="border-red-500/30 text-red-400 hover:bg-red-500/10">
+          <Button variant="secondary" className="w-full sm:w-auto border-red-500/30 text-red-400 hover:bg-red-500/10">
             Excluir Conta
           </Button>
         </div>

@@ -681,9 +681,9 @@ export default function WeeklyPlanner({
   const isViewingToday = isMobile && mobileDay ? isSameDay(mobileDay, new Date()) : false;
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col min-w-0">
       {/* Cabeçalho */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-5 sm:mb-6">
         <div>
           <h1 className="text-2xl font-heading font-bold text-white">
             Agenda Inteligente
@@ -804,7 +804,7 @@ export default function WeeklyPlanner({
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex flex-col md:flex-row gap-4 min-h-[500px] pb-4">
+          <div className="flex flex-col md:flex-row gap-3 sm:gap-4 min-h-[500px] pb-4">
             {visibleDates.map((date) => {
               const dateKey = date.toISOString().split('T')[0];
       const dayBlocks = blocksByDay.get(dateKey) || [];
@@ -858,8 +858,8 @@ export default function WeeklyPlanner({
       />
 
       {isScheduleModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md">
+        <div className="app-modal-overlay">
+          <div className="app-modal-panel">
             <Card className="relative" padding="lg">
               <h2 className="text-xl font-heading font-bold text-white mb-2">
                 Definir período do cronograma
@@ -931,8 +931,8 @@ export default function WeeklyPlanner({
       )}
 
       {isRescheduleModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md">
+        <div className="app-modal-overlay">
+          <div className="app-modal-panel">
             <Card className="relative" padding="lg">
               <h2 className="text-xl font-heading font-bold text-white mb-2">
                 Reagendar pendências

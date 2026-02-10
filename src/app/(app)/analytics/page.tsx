@@ -141,7 +141,7 @@ export default function AnalyticsPage() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="space-y-6"
+      className="app-page"
     >
       {/* Cabeçalho */}
       <motion.div variants={itemVariants}>
@@ -198,7 +198,7 @@ export default function AnalyticsPage() {
       </motion.div>
 
       {/* Linha de Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <motion.div variants={itemVariants}>
           <ProductivityChart data={productivityData} />
         </motion.div>
@@ -218,7 +218,7 @@ export default function AnalyticsPage() {
           <h2 className="text-xl font-heading font-bold text-white mb-4">
             Insights da IA
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
             {/* Horário de Pico de Performance */}
             <div className="p-4 rounded-xl bg-neon-blue/10 border border-neon-blue/20">
               <div className="flex items-center gap-2 mb-2">

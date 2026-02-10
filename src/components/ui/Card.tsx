@@ -25,9 +25,9 @@ const glowStyles = {
 
 const paddingStyles = {
   none: 'p-0',
-  sm: 'p-4',
-  md: 'p-6',
-  lg: 'p-8',
+  sm: 'p-3 sm:p-4',
+  md: 'p-4 sm:p-6',
+  lg: 'p-5 sm:p-8',
 };
 
 export default function Card({
@@ -43,7 +43,7 @@ export default function Card({
       whileHover={hover ? { y: -2 } : undefined}
       transition={{ duration: 0.2 }}
       className={cn(
-        'glass-card',
+        'glass-card w-full min-w-0',
         paddingStyles[padding],
         hover && glowStyles[glow],
         className

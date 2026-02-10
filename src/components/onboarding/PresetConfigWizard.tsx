@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * PresetConfigWizard
@@ -6,6 +6,7 @@
  */
 
 import { useMemo, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Calendar, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 import { Button, Card, ProgressBar } from '@/components/ui';
@@ -31,10 +32,11 @@ interface PresetConfigWizardProps {
 const stepTitles = [
   'Disponibilidade',
   'Horários',
-  'Foco & pausas',
-  'Rotina & descanso',
+  'Foco e pausas',
+  'Rotina e descanso',
   'Confirmação',
 ];
+const stepTitlesShort = ['Disp.', 'Hor.', 'Foco', 'Rotina', 'Conf.'];
 
 const dayOptions: { label: string; value: number; key: WeekdayKey }[] = [
   { label: 'Dom', value: 0, key: 'dom' },
@@ -49,7 +51,7 @@ const dayOptions: { label: string; value: number; key: WeekdayKey }[] = [
 const quickHourOptions = [2, 3, 4, 5, 6];
 
 const timeOptions = [
-  { label: 'Manha', value: 'manha' },
+  { label: 'Manhã', value: 'manha' },
   { label: 'Tarde', value: 'tarde' },
   { label: 'Noite', value: 'noite' },
   { label: 'Misto', value: 'misto' },
@@ -150,6 +152,7 @@ export default function PresetConfigWizard({
   onClose,
   onApply,
 }: PresetConfigWizardProps) {
+  const [isMounted, setIsMounted] = useState(false);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<PresetWizardAnswers>(() =>
     defaultAnswers(presetId, presetName)
@@ -159,6 +162,25 @@ export default function PresetConfigWizard({
   const [massDays, setMassDays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [showCustomDays, setShowCustomDays] = useState(false);
   const [hasCustomDays, setHasCustomDays] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevBodyTouch = document.body.style.touchAction;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.body.style.touchAction = prevBodyTouch;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -334,9 +356,9 @@ export default function PresetConfigWizard({
     handleClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !isMounted) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-[10000] flex items-start justify-center overflow-y-auto bg-black/70 backdrop-blur-sm px-2 py-4 sm:px-4 md:items-center"
@@ -367,13 +389,17 @@ export default function PresetConfigWizard({
 
             <div className="mt-4">
               <ProgressBar value={progress} label={`${progress}%`} />
-              <div className="flex justify-between text-xs text-text-muted mt-2">
+              <div className="mt-2 grid grid-cols-5 gap-2 text-[11px] text-text-muted text-center leading-tight">
                 {stepTitles.map((title, index) => (
                   <span
                     key={title}
-                    className={cn(index === step ? 'text-white' : 'text-text-muted')}
+                    className={cn(
+                      'min-w-0 break-words',
+                      index === step ? 'text-white' : 'text-text-muted'
+                    )}
                   >
-                    {title}
+                    <span className="inline sm:hidden">{stepTitlesShort[index]}</span>
+                    <span className="hidden sm:inline">{title}</span>
                   </span>
                 ))}
               </div>
@@ -509,7 +535,7 @@ export default function PresetConfigWizard({
                                   {isActive ? 'Ativo' : 'Descanso'}
                                 </span>
                               </div>
-                              <div className="flex flex-1 items-center gap-3">
+                              <div className="flex flex-1 flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3">
                                 <input
                                   type="range"
                                   min={0}
@@ -535,9 +561,9 @@ export default function PresetConfigWizard({
                                   onChange={(e) =>
                                     updateDayHours(day.value, Number(e.target.value))
                                   }
-                                  className="input-field w-24"
+                                  className="input-field w-20 sm:w-24"
                                 />
-                                <span className="text-xs text-text-muted min-w-[52px]">
+                                <span className="text-xs text-text-muted whitespace-nowrap">
                                   {formatHours(hours)}
                                 </span>
                               </div>
@@ -632,13 +658,13 @@ export default function PresetConfigWizard({
                   {answers.availableStart && (
                     <p className="text-xs text-text-muted">
                       {answers.bestTime === 'manha' && timeToMinutes(answers.availableStart) > 12 * 60
-                        ? 'Dica: para manha, tente comecar mais cedo.'
+                        ? 'Dica: para manhã, tente começar mais cedo.'
                         : answers.bestTime === 'noite' &&
                           timeToMinutes(answers.availableStart) < 15 * 60
-                        ? 'Dica: para noite, um inicio apos 18:00 costuma funcionar melhor.'
+                        ? 'Dica: para noite, um início após 18:00 costuma funcionar melhor.'
                         : answers.bestTime === 'tarde' &&
                           timeToMinutes(answers.availableStart) < 11 * 60
-                        ? 'Dica: para tarde, um inicio apos 13:00 costuma render mais.'
+                        ? 'Dica: para tarde, um início após 13:00 costuma render mais.'
                         : ''}
                     </p>
                   )}
@@ -848,7 +874,7 @@ export default function PresetConfigWizard({
               </div>
             )}
 
-            <div className="mt-6 flex items-center justify-between sticky bottom-0 bg-gradient-to-b from-transparent via-slate-950/70 to-slate-950/90 pt-3 pb-6 md:pb-3">
+            <div className="mt-6 flex items-center justify-between sticky bottom-0 bg-gradient-to-b from-transparent via-slate-950/70 to-slate-950/90 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:pb-3">
               <div className="text-xs text-text-muted flex items-center gap-2">
                 <Clock className="w-4 h-4" />
                 Etapa {step + 1} de {stepTitles.length}
@@ -876,5 +902,8 @@ export default function PresetConfigWizard({
         </motion.div>
       </motion.div>
     </AnimatePresence>
+    ,
+    document.body
   );
 }
+

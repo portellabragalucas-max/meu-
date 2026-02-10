@@ -11,7 +11,9 @@ import { motion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import BottomNav from './BottomNav';
-import { cn } from '@/lib/utils';
+import { useLocalStorage } from '@/hooks';
+import { defaultSettings } from '@/lib/defaultSettings';
+import type { UserSettings } from '@/types';
 
 
 interface MainLayoutProps {
@@ -22,6 +24,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const { data: session } = useSession();
+  const [userSettings] = useLocalStorage<UserSettings>('nexora_user_settings', defaultSettings);
+  const displayName = userSettings.name || session?.user?.name || 'Estudante';
 
   // Gerenciar sidebar responsiva
   useEffect(() => {
@@ -42,7 +46,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const contentOffset = isMobile ? 0 : sidebarWidth;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full max-w-full overflow-x-clip">
       {/* Sidebar */}
       {!isMobile && (
         <Sidebar
@@ -56,13 +60,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
         initial={false}
         animate={{ marginLeft: contentOffset }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="min-h-screen flex flex-col relative z-0 w-full max-w-full overflow-x-clip"
+        className="min-h-screen flex flex-col relative w-full max-w-full overflow-x-clip"
       >
         {/* Barra Superior */}
         <TopBar
           user={{
-            name: session?.user?.name || 'Estudante',
-            avatar: session?.user?.image ?? undefined,
+            name: displayName,
+            avatar: userSettings.avatar ?? session?.user?.image ?? undefined,
             level: 0,
             xp: 0,
             xpToNextLevel: 0,
@@ -71,12 +75,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
         />
 
         {/* Conteúdo da Página */}
-        <main className="flex-1 px-4 md:px-6 pb-24 md:pb-6 pt-4 md:pt-6 overflow-y-auto mobile-container min-w-0 w-full max-w-full">
+        <main className="flex-1 overflow-y-auto mobile-container min-w-0 w-full max-w-full">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
-            className="w-full max-w-full sm:max-w-[640px] sm:mx-auto lg:max-w-none"
+            className="w-full min-w-0 max-w-full sm:max-w-[680px] sm:mx-auto lg:max-w-none"
           >
             {children}
           </motion.div>

@@ -45,7 +45,7 @@ export default function SubjectForm({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="app-modal-overlay"
       onClick={onCancel}
     >
       <motion.div
@@ -53,9 +53,9 @@ export default function SubjectForm({
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md"
+        className="app-modal-panel max-w-md"
       >
-        <Card className="relative" padding="lg">
+        <Card className="relative" padding="md">
           {/* Botão fechar */}
           <button
             onClick={onCancel}

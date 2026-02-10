@@ -65,7 +65,7 @@ export default function TimeBlock({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
-        'group relative p-4 rounded-xl border bg-card-bg',
+        'group relative p-3 sm:p-4 rounded-xl border bg-card-bg',
         'transition-all duration-200',
         statusColors[block.status],
         isDragging && 'shadow-lg shadow-neon-blue/20 z-50'
@@ -79,7 +79,7 @@ export default function TimeBlock({
         />
       )}
 
-      <div className="flex items-center gap-3 ml-2">
+      <div className="flex items-center gap-2 sm:gap-3 ml-1.5 sm:ml-2">
         {/* Alça de Arrastar */}
         <button
           {...attributes}
@@ -130,7 +130,7 @@ export default function TimeBlock({
         </div>
 
         {/* Ações */}
-        <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           {onStart && (
             <button
               onClick={() => onStart(block)}

@@ -304,10 +304,10 @@ export default function SubjectsPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-6"
+      className="app-page"
     >
       {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-heading font-bold text-white">
             Disciplinas
@@ -317,13 +317,14 @@ export default function SubjectsPage() {
           </p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex w-full sm:w-auto flex-col sm:flex-row gap-2 sm:gap-3">
           {!showPresetSelector && (
             <Button
               variant="secondary"
               onClick={() => {
                 setShowPresetSelector(true);
               }}
+              className="w-full sm:w-auto"
              
             >
               {subjects.length === 0 ? 'Usar Predefinição' : 'Importar Predefinição'}
@@ -334,6 +335,7 @@ export default function SubjectsPage() {
               variant="primary"
               onClick={handleAddSubject}
               leftIcon={<Plus className="w-4 h-4" />}
+              className="w-full sm:w-auto"
              
             >
               Adicionar Disciplina
@@ -345,21 +347,21 @@ export default function SubjectsPage() {
       {/* Barra de Estatísticas */}
       {subjects.length > 0 && (
         <Card padding="sm">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             {/* Busca */}
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
               <input
                 type="text"
                 placeholder="Buscar disciplinas..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-field pl-10 w-64 py-2 text-sm"
+                className="input-field pl-10 w-full sm:w-64 py-2 text-sm"
               />
             </div>
 
             {/* Resumo das Estatísticas */}
-            <div className="flex items-center gap-6 text-sm">
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm">
               <div>
                 <span className="text-text-secondary">Total: </span>
                 <span className="font-bold text-white">{subjects.length}</span>
@@ -382,7 +384,7 @@ export default function SubjectsPage() {
       {/* Preset Selector */}
       {showPresetSelector ? (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 className="text-xl font-heading font-bold text-white">
               Selecionar Predefinição
             </h2>
@@ -422,7 +424,7 @@ export default function SubjectsPage() {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
         >
           {sortedSubjects.map((subject) => (
             <motion.div key={subject.id} variants={itemVariants}>

@@ -11,14 +11,14 @@ export default function BottomNav() {
   return (
     <nav
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-[9999] md:hidden pointer-events-auto isolate',
-        'bg-background-light/90 backdrop-blur-glass',
+        'fixed bottom-0 left-0 right-0 z-40 md:hidden pointer-events-auto isolate',
+        'bg-background-light/92 backdrop-blur-glass',
         'border-t border-card-border'
       )}
       aria-label="Navegacao principal"
     >
-      <div className="mx-auto w-full max-w-[640px] px-4">
-        <div className="flex items-center justify-between py-2">
+      <div className="mx-auto w-full max-w-[680px] app-container-x">
+        <div className="flex items-center justify-between gap-1 py-1.5">
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
@@ -29,8 +29,8 @@ export default function BottomNav() {
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'relative flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-xl',
-                  'min-w-[56px] min-h-[52px] text-[11px]',
+                  'relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 px-1.5 py-2 rounded-xl',
+                  'min-h-[50px] text-[10px] sm:text-[11px]',
                   'touch-manipulation',
                   isActive ? 'text-neon-blue' : 'text-text-secondary'
                 )}
@@ -42,12 +42,12 @@ export default function BottomNav() {
                   />
                 )}
                 <Icon className="w-5 h-5 relative z-10" />
-                <span className="relative z-10">{item.label}</span>
+                <span className="relative z-10 max-w-full truncate">{item.label}</span>
               </a>
             );
           })}
         </div>
-        <div className="safe-area-bottom h-2" />
+        <div className="safe-area-bottom h-1.5" />
       </div>
     </nav>
   );

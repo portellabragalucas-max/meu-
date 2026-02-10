@@ -67,7 +67,7 @@ export default function DayColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex flex-col w-full md:min-w-[280px] h-full',
+        'flex flex-col w-full min-w-0 md:min-w-[280px] h-full',
         'rounded-xl border bg-card-bg/50',
         isToday ? 'border-neon-blue/50' : 'border-card-border',
         isOver && 'ring-2 ring-neon-blue/30 bg-neon-blue/5'
@@ -76,7 +76,7 @@ export default function DayColumn({
       {/* Cabeçalho do Dia */}
       <div
         className={cn(
-          'p-4 border-b border-card-border',
+          'p-3 sm:p-4 border-b border-card-border',
           isToday && 'bg-neon-blue/10'
         )}
       >
@@ -106,18 +106,18 @@ export default function DayColumn({
         </div>
 
         {/* Estatísticas do Dia */}
-        <div className="mt-3 flex items-center justify-between text-sm">
+        <div className="mt-3 flex items-center justify-between gap-2 text-xs sm:text-sm">
           <span className="text-text-secondary">
             {blocks.filter((b) => !b.isBreak).length} blocos
           </span>
           <span className="text-white font-medium">{totalHours}h planejadas</span>
         </div>
-        <div className="mt-2 flex items-center justify-between text-xs text-text-secondary">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-text-secondary">
           <span>
             Capacidade: {limitHours ? `${limitHours}h` : 'livre'}
           </span>
           {onAdjustDailyLimit && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => onAdjustDailyLimit(date, -30)}

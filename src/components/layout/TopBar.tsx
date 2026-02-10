@@ -11,8 +11,6 @@ import { motion } from 'framer-motion';
 import { signOut } from 'next-auth/react';
 import {
   Flame,
-  Zap,
-  Trophy,
   Bell,
   Search,
   Plus,
@@ -84,10 +82,14 @@ export default function TopBar({ user }: TopBarProps) {
 
   return (
     <>
-      <header className="h-16 border-b border-card-border bg-background-light/50 backdrop-blur-glass safe-area-top">
-        <div className="mx-auto w-full max-w-[640px] lg:max-w-none px-4 md:px-6 h-full flex items-center justify-between">
+      <header className="sticky top-0 z-30 border-b border-card-border bg-background-light/85 backdrop-blur-glass">
+        <div className="safe-area-top">
+          <div className="mx-auto w-full max-w-[680px] lg:max-w-none app-container-x h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-3">
           {/* SeÃ§Ã£o Esquerda - Busca */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <span className="text-sm font-heading font-semibold text-white md:hidden">
+              Nexora
+            </span>
             <div className="relative hidden md:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
               <input
@@ -164,16 +166,16 @@ export default function TopBar({ user }: TopBarProps) {
           </div>
 
           {/* SeÃ§Ã£o Direita - AÃ§Ãµes e Perfil */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center justify-end gap-1.5 sm:gap-3 min-w-0">
             {/* BotÃ£o de AÃ§Ã£o RÃ¡pida */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowQuickSession(true)}
-              className="btn-primary py-2 px-3 md:px-4 flex items-center gap-2 text-sm min-h-[44px]"
+              className="btn-primary py-2 px-3 sm:px-4 flex items-center gap-2 text-sm min-h-[42px] max-[639px]:min-w-[44px]"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden md:inline">SessÃ£o RÃ¡pida</span>
+              <span className="hidden sm:inline">SessÃ£o RÃ¡pida</span>
             </motion.button>
 
             {/* Notificacoes */}
@@ -183,7 +185,7 @@ export default function TopBar({ user }: TopBarProps) {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setShowNotifications((prev) => !prev)}
-                className="relative w-11 h-11 flex items-center justify-center rounded-xl hover:bg-card-bg transition-colors"
+                className="relative w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl hover:bg-card-bg transition-colors"
               >
                 <Bell className="w-5 h-5 text-text-secondary" />
                 {unreadCount > 0 && (
@@ -196,7 +198,7 @@ export default function TopBar({ user }: TopBarProps) {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 8 }}
-                  className="absolute mt-3 w-[min(92vw,20rem)] rounded-2xl border border-card-border bg-slate-900/95 shadow-2xl backdrop-blur-lg p-4 z-50 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-0"
+                  className="absolute mt-3 rounded-2xl border border-card-border bg-slate-900/95 shadow-2xl backdrop-blur-lg p-4 z-50 w-[min(92vw,22rem)] left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-0 max-md:fixed max-md:top-[calc(env(safe-area-inset-top)+64px)] max-md:left-[calc(12px+env(safe-area-inset-left))] max-md:right-[calc(12px+env(safe-area-inset-right))] max-md:w-auto max-md:max-h-[70dvh]"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-semibold text-white">Notificacoes</p>
@@ -228,7 +230,7 @@ export default function TopBar({ user }: TopBarProps) {
             {/* Perfil do UsuÃ¡rio */}
             <motion.div
               whileHover={{ scale: 1.05 }}
-              className="flex items-center gap-3 cursor-pointer p-2 rounded-xl hover:bg-card-bg transition-colors min-h-[44px]"
+              className="flex items-center gap-2 sm:gap-3 cursor-pointer p-2 rounded-xl hover:bg-card-bg transition-colors min-h-[42px] max-w-full"
               onClick={() => signOut({ callbackUrl: '/login' })}
             >
               {user.avatar ? (
@@ -250,6 +252,7 @@ export default function TopBar({ user }: TopBarProps) {
               <LogOut className="w-4 h-4 text-text-muted hidden lg:block" />
             </motion.div>
           </div>
+        </div>
         </div>
       </header>
 

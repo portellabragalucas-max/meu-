@@ -51,7 +51,7 @@ export default function TodayPlan({
 
   return (
     <Card className="h-full" padding="none">
-      <div className="p-6 border-b border-card-border">
+      <div className="p-4 sm:p-6 border-b border-card-border">
         <h2 className="text-xl font-heading font-bold text-white">{title}</h2>
         <p className="text-sm text-text-secondary mt-1">
           {subtitle ??
@@ -59,7 +59,7 @@ export default function TodayPlan({
         </p>
       </div>
 
-      <div className="p-4 space-y-3 max-h-[500px] overflow-y-auto">
+      <div className="p-3 sm:p-4 space-y-3 max-h-[420px] sm:max-h-[500px] overflow-y-auto">
         {blocks.length === 0 ? (
           <div className="text-center py-8">
             <Coffee className="w-12 h-12 text-text-muted mx-auto mb-4" />
@@ -112,7 +112,7 @@ export default function TodayPlan({
                           style={{ backgroundColor: block.subject?.color || '#00B4FF' }}
                         />
                       )}
-                      <h4 className="font-medium text-white">
+                      <h4 className="font-medium text-white break-words">
                         {block.isBreak ? 'Intervalo' : block.subject?.name || 'Bloco de Estudo'}
                       </h4>
                     </div>

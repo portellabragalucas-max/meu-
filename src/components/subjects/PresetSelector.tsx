@@ -397,23 +397,24 @@ export default function PresetSelector({
       </Card>
 
       {/* Actions */}
-      <div className="flex items-center justify-between gap-4">
-        <Button variant="secondary" onClick={handleSkip}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <Button variant="secondary" onClick={handleSkip} className="w-full sm:w-auto">
           Pular esta etapa
         </Button>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           {selectedPreset && selectedPreset !== 'custom' && (
             <Button
               variant="primary"
               onClick={() => setShowWizard(true)}
               disabled={isImporting}
+              className="w-full sm:w-auto"
               leftIcon={<Check className="w-4 h-4" />}
             >
               Configurar modelo
             </Button>
           )}
           {selectedPreset === 'custom' && (
-            <Button variant="primary" onClick={handleSkip}>
+            <Button variant="primary" onClick={handleSkip} className="w-full sm:w-auto">
               Criar disciplinas manualmente
             </Button>
           )}

@@ -132,7 +132,7 @@ export default function QuickSessionModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          className="app-modal-overlay"
           onClick={handleClose}
         >
           <motion.div
@@ -140,7 +140,7 @@ export default function QuickSessionModal({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg"
+            className="app-modal-panel max-w-lg"
           >
             <Card className="relative overflow-hidden" padding="none">
               {/* Header gradient */}
@@ -161,7 +161,7 @@ export default function QuickSessionModal({
                 <X className="w-5 h-5" />
               </button>
 
-              <div className="p-8">
+              <div className="p-4 sm:p-8">
                 {/* Setup State */}
                 {sessionState === 'setup' && (
                   <motion.div
@@ -268,7 +268,7 @@ export default function QuickSessionModal({
                     {/* Timer */}
                     <div className="relative mb-8">
                       {/* Circle progress */}
-                      <svg className="w-48 h-48 mx-auto" viewBox="0 0 200 200">
+                      <svg className="w-40 h-40 sm:w-48 sm:h-48 mx-auto" viewBox="0 0 200 200">
                         {/* Background circle */}
                         <circle
                           cx="100"
@@ -300,7 +300,7 @@ export default function QuickSessionModal({
 
                       {/* Time display */}
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-5xl font-heading font-bold text-white">
+                        <span className="text-4xl sm:text-5xl font-heading font-bold text-white">
                           {formatTime(timeRemaining)}
                         </span>
                         <span className="text-sm text-text-secondary mt-2">
@@ -319,7 +319,7 @@ export default function QuickSessionModal({
                     )}
 
                     {/* Controls */}
-                    <div className="flex items-center justify-center gap-4">
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                       <Button
                         variant="secondary"
                         onClick={stopSession}
@@ -363,7 +363,7 @@ export default function QuickSessionModal({
                     </p>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-3 gap-4 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
                       <div className="p-4 rounded-xl bg-card-bg border border-card-border">
                         <Clock className="w-5 h-5 text-neon-blue mx-auto mb-2" />
                         <p className="text-xl font-bold text-white">
@@ -388,7 +388,7 @@ export default function QuickSessionModal({
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-4">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                       <Button
                         variant="secondary"
                         className="flex-1"

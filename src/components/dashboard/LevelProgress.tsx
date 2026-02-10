@@ -34,30 +34,30 @@ export default function LevelProgress({
 
   return (
     <Card className={cn('h-full', className)} glow="purple">
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex items-start justify-between mb-5 sm:mb-6">
         <div>
           <h2 className="text-xl font-heading font-bold text-white">Seu Progresso</h2>
           <p className="text-sm text-text-secondary mt-1">Continue evoluindo!</p>
         </div>
         <motion.div
           whileHover={{ rotate: 10, scale: 1.1 }}
-          className="w-12 h-12 rounded-xl bg-neon-purple/20 flex items-center justify-center"
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-neon-purple/20 flex items-center justify-center"
         >
-          <Trophy className="w-6 h-6 text-neon-purple" />
+          <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-neon-purple" />
         </motion.div>
       </div>
 
       {/* Emblema de Nível */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-3 sm:gap-4 mb-5 sm:mb-6">
         <motion.div
           whileHover={{ scale: 1.05 }}
           className="relative"
         >
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center">
-            <span className="text-3xl font-heading font-bold text-white">{level}</span>
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center">
+            <span className="text-2xl sm:text-3xl font-heading font-bold text-white">{level}</span>
           </div>
           {/* Efeito de brilho */}
-          <div className="absolute inset-0 w-20 h-20 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-blue blur-xl opacity-40" />
+          <div className="absolute inset-0 w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-blue blur-xl opacity-40" />
           
           {/* Decoração de estrela */}
           <motion.div
@@ -65,7 +65,7 @@ export default function LevelProgress({
             transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
             className="absolute -top-2 -right-2"
           >
-            <Star className="w-6 h-6 text-yellow-400 fill-yellow-400" />
+            <Star className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400 fill-yellow-400" />
           </motion.div>
         </motion.div>
 
@@ -91,10 +91,10 @@ export default function LevelProgress({
       </div>
 
       {/* Grid de Estatísticas */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="p-4 rounded-xl bg-card-bg border border-card-border"
+          className="p-3 sm:p-4 rounded-xl bg-card-bg border border-card-border"
         >
           <div className="flex items-center gap-2 mb-2">
             <Zap className="w-4 h-4 text-neon-cyan" />
@@ -107,7 +107,7 @@ export default function LevelProgress({
 
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="p-4 rounded-xl bg-card-bg border border-card-border"
+          className="p-3 sm:p-4 rounded-xl bg-card-bg border border-card-border"
         >
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-4 h-4 text-orange-400" />
@@ -124,7 +124,7 @@ export default function LevelProgress({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="mt-6 p-4 rounded-xl bg-gradient-to-r from-neon-purple/10 to-neon-blue/10 border border-neon-purple/20"
+        className="mt-5 sm:mt-6 p-3 sm:p-4 rounded-xl bg-gradient-to-r from-neon-purple/10 to-neon-blue/10 border border-neon-purple/20"
       >
         <p className="text-sm text-text-secondary">
           {progress >= 80

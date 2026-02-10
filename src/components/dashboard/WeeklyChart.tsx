@@ -54,14 +54,14 @@ export default function WeeklyChart({ data, className }: WeeklyChartProps) {
 
   return (
     <Card className={cn('h-full', className)}>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6">
         <div>
           <h2 className="text-xl font-heading font-bold text-white">Progresso Semanal</h2>
           <p className="text-sm text-text-secondary mt-1">
             Horas de estudo esta semana
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-gradient-to-r from-neon-blue to-neon-purple" />
             <span className="text-xs text-text-secondary">Realizado</span>
@@ -73,7 +73,7 @@ export default function WeeklyChart({ data, className }: WeeklyChartProps) {
         </div>
       </div>
 
-      <div className="h-64">
+      <div className="h-56 sm:h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={processedData} barGap={8}>
             <XAxis

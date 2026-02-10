@@ -571,7 +571,7 @@ export default function PlannerPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-[calc(100vh-120px)] space-y-4 pb-4"
+      className="app-page min-h-0 pb-2 sm:pb-4"
     >
       {isMobile && !showRoadmap && (
         <button
@@ -590,10 +590,10 @@ export default function PlannerPage() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-neon-cyan/20 bg-slate-900/60 p-4 shadow-lg"
+          className="rounded-2xl border border-neon-cyan/20 bg-slate-900/60 p-3 sm:p-4 shadow-lg"
         >
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
               <div>
                 <p className="text-xs text-text-secondary">Trilha de Aprovacao</p>
                 <h3 className="text-lg font-semibold text-white">{phaseInfo.label}</h3>
@@ -620,7 +620,7 @@ export default function PlannerPage() {
               </div>
             </div>
 
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-white/5 bg-white/5 p-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-white/5 bg-white/5 p-3">
             <div>
               <p className="text-xs text-text-secondary">Primeiro ciclo completo</p>
               <p className="text-sm text-text-muted">

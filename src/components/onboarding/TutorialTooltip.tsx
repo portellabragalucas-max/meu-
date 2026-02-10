@@ -45,9 +45,9 @@ export default function TutorialTooltip({
     const targetElement = document.querySelector(step.target);
     if (targetElement) {
       const rect = targetElement.getBoundingClientRect();
-      const tooltipWidth = 320;
-      const tooltipHeight = 180;
-      const padding = 16;
+      const padding = 12;
+      const tooltipWidth = Math.min(320, window.innerWidth - padding * 2);
+      const tooltipHeight = window.innerWidth < 640 ? 210 : 180;
 
       let top = 0;
       let left = 0;
@@ -124,7 +124,7 @@ export default function TutorialTooltip({
             left: position.left,
             zIndex: 50,
           }}
-          className="w-80"
+          className="w-[min(calc(100vw-1.5rem),20rem)]"
         >
           <div className="glass-card p-5 shadow-lg shadow-neon-blue/20">
             {/* Close button */}

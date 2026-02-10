@@ -14,6 +14,12 @@
   --background-light: #0A1020;
   --card-bg: rgba(15, 25, 45, 0.6);
   --card-border: rgba(0, 180, 255, 0.15);
+  --app-max-width: 680px;
+  --app-gutter-mobile: 16px;
+  --app-gutter-desktop: 24px;
+  --topbar-height-mobile: 56px;
+  --topbar-height-desktop: 64px;
+  --bottom-nav-height: 72px;
   
   /* Neon accents */
   --neon-blue: #00B4FF;
@@ -43,6 +49,7 @@ html {
   font-family: 'Inter', sans-serif;
   scroll-behavior: smooth;
   height: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -51,6 +58,8 @@ body {
   min-height: 100vh;
   overscroll-behavior-y: contain;
   width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   
   /* Subtle grid pattern background */
   background-image: 
@@ -58,6 +67,13 @@ body {
     linear-gradient(90deg, rgba(0, 180, 255, 0.02) 1px, transparent 1px);
   background-size: 50px 50px;
   background-position: -1px -1px;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
 }
 
 .scroll-touch {
@@ -76,9 +92,37 @@ body {
 .mobile-container {
   width: 100%;
   max-width: 100%;
+  margin-inline: auto;
   overflow-x: clip;
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+  padding-left: calc(var(--app-gutter-mobile) + env(safe-area-inset-left));
+  padding-right: calc(var(--app-gutter-mobile) + env(safe-area-inset-right));
+  padding-top: 14px;
+  padding-bottom: calc(var(--bottom-nav-height) + 16px + env(safe-area-inset-bottom));
+}
+
+.app-container-x {
+  padding-left: calc(var(--app-gutter-mobile) + env(safe-area-inset-left));
+  padding-right: calc(var(--app-gutter-mobile) + env(safe-area-inset-right));
+}
+
+@media (min-width: 640px) {
+  .mobile-container {
+    padding-left: var(--app-gutter-desktop);
+    padding-right: var(--app-gutter-desktop);
+    padding-top: 20px;
+    padding-bottom: calc(var(--bottom-nav-height) + 20px + env(safe-area-inset-bottom));
+  }
+
+  .app-container-x {
+    padding-left: var(--app-gutter-desktop);
+    padding-right: var(--app-gutter-desktop);
+  }
+}
+
+@media (min-width: 768px) {
+  .mobile-container {
+    padding-bottom: 28px;
+  }
 }
 
 /* Custom scrollbar */
@@ -117,6 +161,59 @@ h1, h2, h3, h4, h5, h6 {
    ============================================ */
 
 @layer components {
+  .app-page {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .app-page > * + * {
+    margin-top: 1.25rem;
+  }
+
+  .app-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding-left: calc(12px + env(safe-area-inset-left));
+    padding-right: calc(12px + env(safe-area-inset-right));
+    padding-top: calc(12px + env(safe-area-inset-top));
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .app-modal-panel {
+    width: min(100%, 36rem);
+    max-height: calc(100dvh - 1.5rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 18px;
+  }
+
+  @media (min-width: 640px) {
+    .app-page > * + * {
+      margin-top: 1.5rem;
+    }
+
+    .app-modal-overlay {
+      align-items: center;
+      padding-left: 16px;
+      padding-right: 16px;
+      padding-top: 16px;
+      padding-bottom: 16px;
+    }
+
+    .app-modal-panel {
+      max-height: calc(100dvh - 2rem);
+      border-radius: 22px;
+    }
+  }
+
   /* Glass card base */
   .glass-card {
     @apply relative overflow-hidden;
