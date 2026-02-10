@@ -75,7 +75,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         />
 
         {/* Conteudo da pagina */}
-        <main className="app-main-content flex-1 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden">
+        <main className="app-main-content flex-1 min-w-0 w-full max-w-full overflow-y-visible overflow-x-hidden lg:overflow-y-auto">
           <AppContainer>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
