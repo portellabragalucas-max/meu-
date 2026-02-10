@@ -291,6 +291,23 @@ export default function TopBar({ user }: TopBarProps) {
     };
   }, [showNotifications]);
 
+  useEffect(() => {
+    const closeTransientUi = () => {
+      setShowNotifications(false);
+      setShowQuickSession(false);
+    };
+
+    window.addEventListener('nexora:mobile-nav', closeTransientUi as EventListener);
+    return () => {
+      window.removeEventListener('nexora:mobile-nav', closeTransientUi as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    setShowNotifications(false);
+    setShowQuickSession(false);
+  }, [pathname]);
+
   return (
     <>
       <header className="sticky top-0 z-30 border-b border-card-border bg-background-light/85 backdrop-blur-glass">
