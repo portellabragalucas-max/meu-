@@ -1,8 +1,8 @@
-﻿'use client';
+'use client';
 
 /**
  * Sidebar Component
- * Barra lateral retrÃ¡til com logo e navegaÃ§Ã£o
+ * Barra lateral retratil com logo e navegacao
  */
 
 import Link from 'next/link';
@@ -17,8 +17,6 @@ import {
 import { cn } from '@/lib/utils';
 import { navItems } from './navItems';
 
-
-
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
@@ -26,6 +24,13 @@ interface SidebarProps {
 
 export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
+
+  const handleLinkClick = () => {
+    const activeElement = document.activeElement as HTMLElement | null;
+    if (activeElement && activeElement !== document.body) {
+      activeElement.blur();
+    }
+  };
 
   return (
     <motion.aside
@@ -40,19 +45,15 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       )}
       data-tutorial="sidebar"
     >
-      {/* SeÃ§Ã£o do Logo */}
       <div className="flex items-center justify-between p-4 h-16 border-b border-card-border">
-        <Link href="/dashboard" className="flex items-center gap-3">
-          {/* Ãcone do Logo */}
+        <Link href="/dashboard" className="flex items-center gap-3" onClick={handleLinkClick}>
           <div className="relative">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            {/* Efeito de brilho */}
             <div className="absolute inset-0 w-10 h-10 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple blur-lg opacity-50" />
           </div>
-          
-          {/* Texto do Logo */}
+
           <AnimatePresence>
             {!isCollapsed && (
               <motion.span
@@ -69,77 +70,67 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         </Link>
       </div>
 
-      {/* NavegaÃ§Ã£o */}
       <nav className="flex-1 p-4 space-y-2">
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
 
           return (
-            <Link key={item.id} href={item.href}>
-              <motion.div
-                whileHover={{ x: 4 }}
-                whileTap={{ scale: 0.98 }}
+            <Link
+              key={item.id}
+              href={item.href}
+              onClick={handleLinkClick}
+              className={cn(
+                'nav-item group relative overflow-hidden transition-transform duration-200',
+                'hover:translate-x-1',
+                isActive && 'active'
+              )}
+            >
+              {isActive && (
+                <span className="pointer-events-none absolute inset-0 bg-neon-blue/10 rounded-xl" />
+              )}
+
+              <Icon
                 className={cn(
-                  'nav-item relative overflow-hidden',
-                  isActive && 'active'
+                  'w-5 h-5 relative z-10 flex-shrink-0',
+                  isActive ? 'text-neon-blue' : 'text-text-secondary'
                 )}
-              >
-                {/* Fundo de destaque ativo */}
-                {isActive && (
-                  <motion.div
-                    layoutId="activeNav"
-                    className="absolute inset-0 bg-neon-blue/10 rounded-xl"
-                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
+              />
 
-                {/* Ãcone */}
-                <Icon
-                  className={cn(
-                    'w-5 h-5 relative z-10 flex-shrink-0',
-                    isActive ? 'text-neon-blue' : 'text-text-secondary'
-                  )}
-                />
-
-                {/* RÃ³tulo */}
-                <AnimatePresence>
-                  {!isCollapsed && (
-                    <motion.span
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      transition={{ duration: 0.2 }}
-                      className={cn(
-                        'relative z-10 font-medium',
-                        isActive ? 'text-white' : 'text-text-secondary'
-                      )}
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-
-                {/* Indicador de IA para Agenda Inteligente */}
-                {item.id === 'planner' && !isCollapsed && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="ml-auto"
+              <AnimatePresence>
+                {!isCollapsed && (
+                  <motion.span
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className={cn(
+                      'relative z-10 font-medium',
+                      isActive ? 'text-white' : 'text-text-secondary'
+                    )}
                   >
-                    <span className="badge flex items-center gap-1">
-                      <Zap className="w-3 h-3" />
-                      IA
-                    </span>
-                  </motion.div>
+                    {item.label}
+                  </motion.span>
                 )}
-              </motion.div>
+              </AnimatePresence>
+
+              {item.id === 'planner' && !isCollapsed && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="ml-auto"
+                >
+                  <span className="badge flex items-center gap-1">
+                    <Zap className="w-3 h-3" />
+                    IA
+                  </span>
+                </motion.div>
+              )}
             </Link>
           );
         })}
       </nav>
 
-      {/* BotÃ£o de Recolher */}
       <div className="p-4 border-t border-card-border">
         <motion.button
           whileHover={{ scale: 1.05 }}
@@ -166,4 +157,3 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     </motion.aside>
   );
 }
-
