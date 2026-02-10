@@ -292,18 +292,6 @@ export default function TopBar({ user }: TopBarProps) {
   }, [showNotifications]);
 
   useEffect(() => {
-    const closeTransientUi = () => {
-      setShowNotifications(false);
-      setShowQuickSession(false);
-    };
-
-    window.addEventListener('nexora:mobile-nav', closeTransientUi as EventListener);
-    return () => {
-      window.removeEventListener('nexora:mobile-nav', closeTransientUi as EventListener);
-    };
-  }, []);
-
-  useEffect(() => {
     setShowNotifications(false);
     setShowQuickSession(false);
   }, [pathname]);

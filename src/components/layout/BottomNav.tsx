@@ -9,9 +9,6 @@ import AppContainer from './AppContainer';
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const handleNavTap = () => {
-    window.dispatchEvent(new Event('nexora:mobile-nav'));
-  };
 
   return (
     <nav
@@ -32,7 +29,6 @@ export default function BottomNav() {
                 <Link
                   key={item.id}
                   href={item.href}
-                  onClick={handleNavTap}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
                     'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2',
