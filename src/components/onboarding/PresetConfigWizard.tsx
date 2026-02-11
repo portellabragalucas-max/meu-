@@ -5,7 +5,7 @@
  * Wizard/modal para configurar preferencias ao escolher um modelo de estudo.
  */
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, UIEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Calendar, CheckCircle2, Clock, Sparkles } from 'lucide-react';
@@ -400,6 +400,13 @@ export default function PresetConfigWizard({
     handleClose();
   };
 
+  const handleWizardScroll = (event: UIEvent<HTMLDivElement>) => {
+    const element = event.currentTarget;
+    if (element.scrollLeft !== 0) {
+      element.scrollLeft = 0;
+    }
+  };
+
   if (!isOpen || !isMounted) return null;
 
   return createPortal(
@@ -451,10 +458,11 @@ export default function PresetConfigWizard({
 
             <div
               ref={scrollContentRef}
-              className="mt-6 flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-1 sm:px-2 pb-24 md:pb-6 scroll-touch [touch-action:pan-y]"
+              onScroll={handleWizardScroll}
+              className="mt-6 flex-1 min-h-0 w-full min-w-0 overflow-y-auto overflow-x-hidden px-1 sm:px-2 pb-24 md:pb-6 scroll-touch [touch-action:pan-y] [overscroll-behavior-x:none]"
             >
               {step === 0 && (
-                <div className="space-y-6">
+                <div className="w-full min-w-0 space-y-6">
                   <Card className="p-4 bg-slate-900/50 border-slate-800">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                       <div>
@@ -656,7 +664,7 @@ export default function PresetConfigWizard({
               )}
 
               {step === 1 && (
-                <div className="space-y-6">
+                <div className="w-full min-w-0 space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold text-white mb-2">
                       Em que periodo voce rende mais
@@ -727,7 +735,7 @@ export default function PresetConfigWizard({
               )}
 
               {step === 2 && (
-                <div className="space-y-6">
+                <div className="w-full min-w-0 space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold text-white mb-2">
                       Seu foco aguenta quanto tempo antes de cair
@@ -779,7 +787,7 @@ export default function PresetConfigWizard({
               )}
 
               {step === 3 && (
-                <div className="space-y-6">
+                <div className="w-full min-w-0 space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold text-white mb-2">
                       Principal objetivo
@@ -953,7 +961,7 @@ export default function PresetConfigWizard({
               )}
 
               {step === 4 && (
-                <div className="space-y-4">
+                <div className="w-full min-w-0 space-y-4">
                   <div className="flex items-center gap-2 text-neon-cyan">
                     <CheckCircle2 className="w-5 h-5" />
                     <h3 className="text-lg font-semibold text-white">Resumo gerado</h3>
