@@ -13,7 +13,7 @@ export default function BottomNav() {
   return (
     <nav
       className={cn(
-        'fixed inset-x-0 bottom-0 z-[2147483647] lg:hidden',
+        'fixed inset-x-0 bottom-0 z-40 lg:hidden',
         'border-t border-card-border bg-background-light/92 backdrop-blur-glass'
       )}
       aria-label="Navegacao principal"
