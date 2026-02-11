@@ -5,8 +5,8 @@
  * Perfil do usuário, preferências de estudo e parâmetros da IA
  */
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import { signOut } from 'next-auth/react';
@@ -23,6 +23,8 @@ import {
   Trash2,
   RotateCcw,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
 import { useOnboarding, useLocalStorage } from '@/hooks';
@@ -82,9 +84,52 @@ const buildDailyHoursByWeekday = (dailyGoalHours: number, excludeDays: number[])
   }, {} as DailyHoursByWeekday);
 };
 
+type SettingsSection = 'profile' | 'study' | 'ai' | 'notifications' | 'danger';
+
+const sectionMeta: Record<SettingsSection, { title: string; description: string }> = {
+  profile: {
+    title: 'Perfil',
+    description: 'Nome e informacoes da conta',
+  },
+  study: {
+    title: 'Preferencias de estudo',
+    description: 'Meta, horarios e rotina semanal',
+  },
+  ai: {
+    title: 'Configuracoes da IA',
+    description: 'Dificuldade e automacoes',
+  },
+  notifications: {
+    title: 'Notificacoes',
+    description: 'Lembretes e alertas',
+  },
+  danger: {
+    title: 'Zona de perigo',
+    description: 'Acoes irreversiveis da conta',
+  },
+};
+
+const sectionGroups: Array<{ title: string; sections: SettingsSection[] }> = [
+  { title: 'Conta', sections: ['profile', 'notifications'] },
+  { title: 'Estudo', sections: ['study', 'ai'] },
+  { title: 'Seguranca', sections: ['danger'] },
+];
+
+const isSettingsSection = (value: string | null): value is SettingsSection => {
+  return (
+    value === 'profile' ||
+    value === 'study' ||
+    value === 'ai' ||
+    value === 'notifications' ||
+    value === 'danger'
+  );
+};
+
 
 export default function SettingsPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { resetOnboarding } = useOnboarding();
   const { data: session } = useSession();
   const [settings, setSettings] = useLocalStorage<UserSettings>('nexora_user_settings', initialSettings);
@@ -96,6 +141,7 @@ export default function SettingsPage() {
   });
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [hasRemotePrefs, setHasRemotePrefs] = useState(false);
   const [hasLocalPrefs, setHasLocalPrefs] = useState(false);
   const hasAttemptedRemotePrefs = useRef(false);
@@ -105,12 +151,56 @@ export default function SettingsPage() {
   const [alarmApplied, setAlarmApplied] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteStep, setDeleteStep] = useState<'idle' | 'confirm'>('idle');
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [navDirection, setNavDirection] = useState(1);
   const [dangerFeedback, setDangerFeedback] = useState<{
     type: 'success' | 'error';
     message: string;
   } | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
+  const latestSettingsRef = useRef(settings);
+  const saveInFlightRef = useRef(false);
+  const saveQueuedRef = useRef(false);
+  const previousSectionRef = useRef<SettingsSection | null>(null);
+
+  const sectionParam = searchParams.get('section');
+  const activeSection = isSettingsSection(sectionParam) ? sectionParam : null;
+
+  const setSectionQuery = useCallback(
+    (section: SettingsSection | null, mode: 'push' | 'replace' = 'push') => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (section) {
+        params.set('section', section);
+      } else {
+        params.delete('section');
+      }
+
+      const query = params.toString();
+      const nextUrl = query ? `${pathname}?${query}` : pathname;
+      if (mode === 'replace') {
+        router.replace(nextUrl, { scroll: false });
+        return;
+      }
+      router.push(nextUrl, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
+
+  const openSection = useCallback(
+    (section: SettingsSection) => {
+      if (activeSection === section) return;
+      setNavDirection(1);
+      setSectionQuery(section, 'push');
+    },
+    [activeSection, setSectionQuery]
+  );
+
+  const closeSection = useCallback(() => {
+    if (!activeSection) return;
+    setNavDirection(-1);
+    setSectionQuery(null, 'push');
+  }, [activeSection, setSectionQuery]);
 
   const dailyHoursByWeekday =
     settings.dailyHoursByWeekday ??
@@ -128,6 +218,7 @@ export default function SettingsPage() {
   const updateSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
     setHasChanges(true);
+    setSaveState((prev) => (prev === 'error' ? 'idle' : prev));
   };
 
   const updateDailyHours = (nextHours: DailyHoursByWeekday) => {
@@ -149,6 +240,7 @@ export default function SettingsPage() {
       dailyGoalHours: Number(nextAverage.toFixed(1)),
     }));
     setHasChanges(true);
+    setSaveState((prev) => (prev === 'error' ? 'idle' : prev));
   };
 
   const updateDayHours = (dayIndex: number, hours: number) => {
@@ -164,6 +256,25 @@ export default function SettingsPage() {
     });
     updateDailyHours(next);
   };
+
+  useEffect(() => {
+    latestSettingsRef.current = settings;
+  }, [settings]);
+
+  useEffect(() => {
+    const previousSection = previousSectionRef.current;
+    if (previousSection && !activeSection) {
+      setNavDirection(-1);
+    } else if (!previousSection && activeSection) {
+      setNavDirection(1);
+    }
+    previousSectionRef.current = activeSection;
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (!sectionParam || activeSection) return;
+    setSectionQuery(null, 'replace');
+  }, [activeSection, sectionParam, setSectionQuery]);
 
   useEffect(() => {
     if (settings.dailyHoursByWeekday) return;
@@ -381,32 +492,80 @@ export default function SettingsPage() {
     updateDailyHours(next);
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await fetch('/api/preferences', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings }),
-      });
-      setHasRemotePrefs(true);
-      setHasLocalPrefs(true);
-    } catch (error) {
-      console.warn('Falha ao salvar preferências no servidor:', error);
+  const handleSave = useCallback(async () => {
+    if (saveInFlightRef.current) {
+      saveQueuedRef.current = true;
+      return;
     }
-    const activeDays = weekDayKeys
-      .map((key, index) => ({ key, index }))
-      .filter((entry) => dailyHoursByWeekday[entry.key] > 0)
-      .map((entry) => entry.index);
-    setStudyPrefs({
-      hoursPerDay: averageDailyHours || settings.dailyGoalHours,
-      daysOfWeek: activeDays,
-      mode: settings.examDate ? 'exam' : 'random',
-      examDate: settings.examDate || '',
-    });
-    setSaving(false);
-    setHasChanges(false);
-  };
+
+    saveInFlightRef.current = true;
+    setSaving(true);
+
+    try {
+      do {
+        saveQueuedRef.current = false;
+
+        const snapshot = latestSettingsRef.current;
+        const resolvedDaily =
+          snapshot.dailyHoursByWeekday ??
+          buildDailyHoursByWeekday(snapshot.dailyGoalHours, snapshot.excludeDays ?? []);
+        const activeDays = weekDayKeys
+          .map((key, index) => ({ key, index }))
+          .filter((entry) => (resolvedDaily[entry.key] ?? 0) > 0)
+          .map((entry) => entry.index);
+        const activeHours = Object.values(resolvedDaily).filter((value) => value > 0);
+        const averageHours =
+          activeHours.length > 0
+            ? activeHours.reduce((sum, value) => sum + value, 0) / activeHours.length
+            : snapshot.dailyGoalHours;
+
+        setSaveState('saving');
+
+        try {
+          const response = await fetch('/api/preferences', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ settings: snapshot }),
+          });
+          const payload = await response.json().catch(() => null);
+          if (!response.ok || payload?.success === false) {
+            throw new Error(payload?.error || 'Falha ao salvar preferencias.');
+          }
+
+          setHasRemotePrefs(true);
+          setHasLocalPrefs(true);
+          setStudyPrefs({
+            hoursPerDay: Number(averageHours.toFixed(1)),
+            daysOfWeek: activeDays,
+            mode: snapshot.examDate ? 'exam' : 'random',
+            examDate: snapshot.examDate || '',
+          });
+          setHasChanges(false);
+          setSaveState('saved');
+        } catch (error) {
+          console.warn('Falha ao salvar preferencias no servidor:', error);
+          setSaveState('error');
+        }
+      } while (saveQueuedRef.current);
+    } finally {
+      saveInFlightRef.current = false;
+      setSaving(false);
+    }
+  }, [setStudyPrefs]);
+
+  useEffect(() => {
+    if (!hasChanges) return;
+    const timeout = setTimeout(() => {
+      void handleSave();
+    }, 700);
+    return () => clearTimeout(timeout);
+  }, [hasChanges, handleSave, settings]);
+
+  useEffect(() => {
+    if (saveState !== 'saved') return;
+    const timeout = setTimeout(() => setSaveState('idle'), 1800);
+    return () => clearTimeout(timeout);
+  }, [saveState]);
 
   const clearLocalStudyData = () => {
     try {
@@ -439,7 +598,8 @@ export default function SettingsPage() {
       mode: 'random',
       examDate: '',
     });
-    setHasChanges(false);
+    setHasChanges(true);
+    setSaveState('idle');
   };
 
   const handleResetOnboarding = () => {
@@ -473,6 +633,18 @@ export default function SettingsPage() {
     }
   };
 
+  const startDeleteFlow = () => {
+    setDeleteStep('confirm');
+    setDeleteConfirmText('');
+    setDangerFeedback(null);
+  };
+
+  const cancelDeleteFlow = () => {
+    setDeleteStep('idle');
+    setDeleteConfirmText('');
+    setDangerFeedback(null);
+  };
+
   const handleDeleteAccount = async () => {
     const confirmationKeyword = 'EXCLUIR';
 
@@ -483,11 +655,6 @@ export default function SettingsPage() {
       });
       return;
     }
-
-    const confirmed = window.confirm(
-      'Esta acao e permanente e vai remover sua conta e todos os dados salvos. Deseja continuar?'
-    );
-    if (!confirmed) return;
 
     setIsDeletingAccount(true);
     setDangerFeedback(null);
@@ -502,6 +669,11 @@ export default function SettingsPage() {
 
       clearLocalStudyData();
       setDeleteConfirmText('');
+      setDeleteStep('idle');
+      setDangerFeedback({
+        type: 'success',
+        message: 'Conta excluida. Redirecionando...',
+      });
       await signOut({ callbackUrl: '/login' });
     } catch (error) {
       setDangerFeedback({
@@ -513,22 +685,88 @@ export default function SettingsPage() {
     }
   };
 
+  const saveFeedback = useMemo(() => {
+    if (saveState === 'saving') {
+      return {
+        text: 'Salvando alteracoes...',
+        className: 'text-text-muted',
+      };
+    }
+    if (saveState === 'saved') {
+      return {
+        text: 'Alteracoes salvas',
+        className: 'text-neon-cyan',
+      };
+    }
+    if (saveState === 'error') {
+      return {
+        text: 'Falha ao salvar. Tente novamente.',
+        className: 'text-red-300',
+      };
+    }
+    if (hasChanges) {
+      return {
+        text: 'Alteracoes pendentes',
+        className: 'text-text-muted',
+      };
+    }
+    return null;
+  }, [hasChanges, saveState]);
+
+  const showActionButtons = hasChanges || saveState === 'error';
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="app-page w-full min-w-0 max-w-[980px] mx-auto"
+      className="app-page w-full min-w-0 max-w-[980px] mx-auto overflow-x-hidden pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
     >
       {/* Cabeçalho */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="md:hidden space-y-3">
+        {!activeSection ? (
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-heading font-bold text-white">Configuracoes</h1>
+              <p className="text-sm text-text-secondary mt-1">Personalize sua experiencia de estudos</p>
+            </div>
+            {showActionButtons && (
+              <Button variant="primary" size="sm" onClick={handleSave} loading={saving} className="shrink-0">
+                Salvar
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={closeSection}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-neon-blue hover:bg-card-bg"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Voltar
+            </button>
+            <p className="text-sm font-semibold text-white text-center">{sectionMeta[activeSection].title}</p>
+            {showActionButtons ? (
+              <Button variant="primary" size="sm" onClick={handleSave} loading={saving} className="shrink-0">
+                Salvar
+              </Button>
+            ) : (
+              <span className="w-[68px]" aria-hidden />
+            )}
+          </div>
+        )}
+        {saveFeedback && <p className={cn('text-xs', saveFeedback.className)}>{saveFeedback.text}</p>}
+      </div>
+
+      <div className="hidden md:flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-heading font-bold text-white">Configurações</h1>
           <p className="text-sm text-text-secondary mt-1">
             Personalize sua experiência de estudos
           </p>
+          {saveFeedback && <p className={cn('mt-2 text-xs', saveFeedback.className)}>{saveFeedback.text}</p>}
         </div>
-        
-        {hasChanges && (
+        {showActionButtons && (
           <div className="flex w-full sm:w-auto flex-col sm:flex-row gap-2 sm:gap-3">
             <Button variant="ghost" onClick={handleReset} className="w-full sm:w-auto">
               <RefreshCw className="w-4 h-4 mr-2" />
@@ -543,12 +781,12 @@ export default function SettingsPage() {
       </div>
 
       {!hasRemotePrefs && !hasLocalPrefs && (
-        <Card className="border-neon-cyan/40 bg-neon-cyan/5">
+        <Card className={cn('border-neon-cyan/40 bg-neon-cyan/5', activeSection && 'hidden md:block')}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className="text-sm text-white font-medium">Ainda não configurado</p>
+              <p className="text-sm text-white font-medium">Ainda nao configurado</p>
               <p className="text-xs text-text-secondary">
-                Escolha um modelo na página de disciplinas para aplicar um plano automático.
+                Escolha um modelo na pagina de disciplinas para aplicar um plano automatico.
               </p>
             </div>
             <Button variant="secondary" onClick={() => router.push('/subjects')} className="w-full sm:w-auto">
@@ -558,8 +796,56 @@ export default function SettingsPage() {
         </Card>
       )}
 
+      <AnimatePresence initial={false} custom={navDirection} mode="wait">
+        {!activeSection && (
+          <motion.div
+            key="settings-sections-list"
+            custom={navDirection}
+            initial={{ x: -36, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 36, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="md:hidden space-y-3"
+          >
+            {sectionGroups.map((group) => (
+              <Card key={group.title} padding="none" className="overflow-hidden">
+                <div className="border-b border-card-border/70 px-4 py-2.5">
+                  <p className="text-[11px] uppercase tracking-wide text-text-muted">{group.title}</p>
+                </div>
+                {group.sections.map((section, index) => (
+                  <button
+                    key={section}
+                    type="button"
+                    onClick={() => openSection(section)}
+                    className={cn(
+                      'flex w-full min-h-[56px] items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/5',
+                      index !== group.sections.length - 1 && 'border-b border-card-border/70'
+                    )}
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-white">{sectionMeta[section].title}</p>
+                      <p className="text-xs text-text-secondary">{sectionMeta[section].description}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-text-muted shrink-0" />
+                  </button>
+                ))}
+              </Card>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Seção de Perfil */}
-      <Card>
+      <AnimatePresence initial={false} custom={navDirection} mode="wait">
+        <motion.div
+          key={activeSection ?? 'all-sections'}
+          custom={navDirection}
+          initial={{ x: activeSection ? 42 : 0, opacity: activeSection ? 0 : 1 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: activeSection ? -42 : 0, opacity: activeSection ? 0 : 1 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+        >
+      <Card className={cn(activeSection === 'profile' ? 'block' : 'hidden', 'md:block')}>
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-neon-blue/20 flex items-center justify-center">
             <User className="w-5 h-5 text-neon-blue" />
@@ -597,7 +883,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Preferências de Estudo */}
-      <Card>
+      <Card className={cn(activeSection === 'study' ? 'block' : 'hidden', 'md:block')}>
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-neon-purple/20 flex items-center justify-center">
             <Clock className="w-5 h-5 text-neon-purple" />
@@ -677,7 +963,7 @@ export default function SettingsPage() {
                         value={hours}
                         onChange={(e) => updateDayHours(index, Number(e.target.value))}
                         className={cn(
-                          'min-w-[220px] flex-1 accent-neon-purple',
+                          'min-w-0 flex-1 accent-neon-purple',
                           !isActive && 'opacity-40'
                         )}
                       />
@@ -791,7 +1077,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Configurações da IA */}
-      <Card>
+      <Card className={cn(activeSection === 'ai' ? 'block' : 'hidden', 'md:block')}>
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-neon-cyan/20 flex items-center justify-center">
             <Brain className="w-5 h-5 text-neon-cyan" />
@@ -850,9 +1136,11 @@ export default function SettingsPage() {
                 description: 'A IA sugere pausas com base nos níveis de foco',
               },
             ].map((item) => (
-              <div
+              <button
                 key={item.key}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-card-bg border border-card-border"
+                type="button"
+                onClick={() => updateSetting(item.key, !settings[item.key])}
+                className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-card-bg border border-card-border text-left"
               >
                 <div>
                   <div className="font-medium text-white">{item.label}</div>
@@ -860,13 +1148,10 @@ export default function SettingsPage() {
                     {item.description}
                   </div>
                 </div>
-                <button
-                  onClick={() => updateSetting(item.key, !settings[item.key])}
+                <span
                   className={cn(
-                    'w-14 h-8 md:w-12 md:h-6 rounded-full transition-all relative',
-                    settings[item.key]
-                      ? 'bg-neon-cyan'
-                      : 'bg-card-border'
+                    'w-14 h-8 md:w-12 md:h-6 rounded-full transition-all relative shrink-0',
+                    settings[item.key] ? 'bg-neon-cyan' : 'bg-card-border'
                   )}
                 >
                   <motion.div
@@ -876,15 +1161,15 @@ export default function SettingsPage() {
                       settings[item.key] ? 'right-1.5 md:right-1' : 'left-1.5 md:left-1'
                     )}
                   />
-                </button>
-              </div>
+                </span>
+              </button>
             ))}
           </div>
         </div>
       </Card>
 
       {/* Notificações */}
-      <Card>
+      <Card className={cn(activeSection === 'notifications' ? 'block' : 'hidden', 'md:block')}>
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
             <Bell className="w-5 h-5 text-orange-500" />
@@ -922,9 +1207,11 @@ export default function SettingsPage() {
               description: 'Receber resumo semanal de desempenho',
             },
           ].map((item) => (
-            <div
+            <button
               key={item.key}
-              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-card-bg border border-card-border"
+              type="button"
+              onClick={() => updateSetting(item.key, !settings[item.key])}
+              className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-card-bg border border-card-border text-left"
             >
               <div>
                 <div className="font-medium text-white">{item.label}</div>
@@ -932,13 +1219,10 @@ export default function SettingsPage() {
                   {item.description}
                 </div>
               </div>
-              <button
-                onClick={() => updateSetting(item.key, !settings[item.key])}
+              <span
                 className={cn(
-                  'w-14 h-8 md:w-12 md:h-6 rounded-full transition-all relative',
-                  settings[item.key]
-                    ? 'bg-orange-500'
-                    : 'bg-card-border'
+                  'w-14 h-8 md:w-12 md:h-6 rounded-full transition-all relative shrink-0',
+                  settings[item.key] ? 'bg-orange-500' : 'bg-card-border'
                 )}
               >
                 <motion.div
@@ -948,8 +1232,8 @@ export default function SettingsPage() {
                     settings[item.key] ? 'right-1.5 md:right-1' : 'left-1.5 md:left-1'
                   )}
                 />
-              </button>
-            </div>
+              </span>
+            </button>
           ))}
           <div className="p-4 rounded-xl bg-card-bg border border-card-border space-y-4">
             <div>
@@ -1010,7 +1294,13 @@ export default function SettingsPage() {
       </Card>
 
       {/* Zona de Perigo */}
-      <Card className="border-red-500/35 bg-gradient-to-br from-red-950/20 via-background-light to-background-light">
+      <Card
+        className={cn(
+          'border-red-500/35 bg-gradient-to-br from-red-950/20 via-background-light to-background-light',
+          activeSection === 'danger' ? 'block' : 'hidden',
+          'md:block'
+        )}
+      >
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/25 flex items-center justify-center">
             <Shield className="w-5 h-5 text-red-400" />
@@ -1066,28 +1356,54 @@ export default function SettingsPage() {
             <Trash2 className="w-4 h-4" />
             <p className="text-sm font-semibold">Excluir conta permanentemente</p>
           </div>
-          <p className="text-xs text-red-200/80">
-            Digite <span className="font-semibold text-red-100">EXCLUIR</span> para confirmar.
-          </p>
-          <input
-            type="text"
-            value={deleteConfirmText}
-            onChange={(e) => {
-              setDeleteConfirmText(e.target.value);
-              if (dangerFeedback) setDangerFeedback(null);
-            }}
-            placeholder="Digite EXCLUIR"
-            className="input-field border-red-500/30 focus:border-red-400 focus:shadow-none"
-          />
-          <Button
-            variant="danger"
-            className="w-full"
-            onClick={handleDeleteAccount}
-            loading={isDeletingAccount}
-            leftIcon={<Trash2 className="w-4 h-4" />}
-          >
-            Excluir Conta
-          </Button>
+
+          {deleteStep === 'idle' ? (
+            <>
+              <p className="text-xs text-red-200/80">Etapa 1 de 2: iniciar exclusao da conta.</p>
+              <Button
+                variant="danger"
+                className="w-full"
+                onClick={startDeleteFlow}
+                leftIcon={<Trash2 className="w-4 h-4" />}
+              >
+                Iniciar exclusao
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-red-200/80">
+                Etapa 2 de 2: digite <span className="font-semibold text-red-100">EXCLUIR</span> para confirmar.
+              </p>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => {
+                  setDeleteConfirmText(e.target.value);
+                  if (dangerFeedback) setDangerFeedback(null);
+                }}
+                placeholder="Digite EXCLUIR"
+                className="input-field border-red-500/30 focus:border-red-400 focus:shadow-none"
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button
+                  variant="ghost"
+                  className="w-full border border-slate-700 text-slate-200"
+                  onClick={cancelDeleteFlow}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="danger"
+                  className="w-full"
+                  onClick={handleDeleteAccount}
+                  loading={isDeletingAccount}
+                  leftIcon={<Trash2 className="w-4 h-4" />}
+                >
+                  Confirmar exclusao
+                </Button>
+              </div>
+            </>
+          )}
           {dangerFeedback && (
             <p
               className={cn(
@@ -1100,11 +1416,9 @@ export default function SettingsPage() {
           )}
         </div>
       </Card>
+        </motion.div>
+      </AnimatePresence>
     </motion.div>
   );
 }
-
-
-
-
 
