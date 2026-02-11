@@ -45,6 +45,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   const sidebarWidth = sidebarCollapsed ? 80 : 260;
   const contentOffset = isMobile ? 0 : sidebarWidth;
+  const contentStyle = isMobile
+    ? undefined
+    : {
+        marginLeft: contentOffset,
+        width: `calc(100% - ${contentOffset}px)`,
+      };
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-background">
@@ -58,7 +64,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       {/* Area de conteudo principal */}
       <div
-        style={{ marginLeft: contentOffset }}
+        style={contentStyle}
         className="relative flex min-h-screen w-full max-w-full min-w-0 flex-col overflow-x-hidden transition-[margin-left] duration-300 ease-in-out"
       >
         {/* Barra superior */}
