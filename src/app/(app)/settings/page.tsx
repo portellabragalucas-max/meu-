@@ -171,13 +171,23 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!session?.user) return;
-    setSettings((prev) => ({
-      ...prev,
-      // only fill from session when name was never set
-      name: prev.name == null ? session.user?.name || 'Estudante' : prev.name,
-      email: prev.email && prev.email.trim().length > 0 ? prev.email : session.user?.email || '',
-      avatar: prev.avatar || session.user?.image || undefined,
-    }));
+    setSettings((prev) => {
+      const nextName = prev.name == null ? session.user?.name || 'Estudante' : prev.name;
+      const nextEmail =
+        prev.email && prev.email.trim().length > 0 ? prev.email : session.user?.email || '';
+      const nextAvatar = prev.avatar || session.user?.image || undefined;
+
+      if (prev.name === nextName && prev.email === nextEmail && prev.avatar === nextAvatar) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        name: nextName,
+        email: nextEmail,
+        avatar: nextAvatar,
+      };
+    });
   }, [session?.user, setSettings]);
 
   useEffect(() => {
