@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Sparkles, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { getProviders, signIn } from 'next-auth/react';
@@ -11,10 +11,12 @@ import { cn } from '@/lib/utils';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const [availableProviders, setAvailableProviders] = useState<Record<string, any> | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({ email: '', password: '' });
 
   const hasGoogle = Boolean(availableProviders?.google);
@@ -23,6 +25,12 @@ export default function LoginPage() {
   useEffect(() => {
     getProviders().then((providers) => setAvailableProviders(providers));
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get('reset') === 'success') {
+      setInfoMessage('Senha redefinida com sucesso. Faca login.');
+    }
+  }, [searchParams]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -188,6 +196,11 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {infoMessage && (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+                  {infoMessage}
+                </div>
+              )}
               {errorMessage && (
                 <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
                   {errorMessage}
@@ -225,6 +238,11 @@ export default function LoginPage() {
                     required
                     disabled={!hasCredentials}
                   />
+                </div>
+                <div className="mt-2 text-right">
+                  <Link href="/forgot-password" className="text-xs text-neon-blue hover:underline">
+                    Esqueci minha senha
+                  </Link>
                 </div>
               </div>
 
