@@ -5,7 +5,7 @@
  * Wizard/modal para configurar preferencias ao escolher um modelo de estudo.
  */
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Calendar, CheckCircle2, Clock, Sparkles } from 'lucide-react';
@@ -181,6 +181,7 @@ export default function PresetConfigWizard({
   const [showCustomDays, setShowCustomDays] = useState(false);
   const [hasCustomDays, setHasCustomDays] = useState(false);
   const [startMode, setStartMode] = useState<'today' | 'tomorrow' | 'custom'>('today');
+  const scrollContentRef = useRef<HTMLDivElement | null>(null);
   const todayKey = useMemo(() => toLocalDateKey(new Date()), []);
   const tomorrowKey = useMemo(() => {
     const next = new Date();
@@ -233,6 +234,12 @@ export default function PresetConfigWizard({
       return { ...prev, dailyHoursByWeekday: updated };
     });
   }, [massHours, massDays, hasCustomDays, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!scrollContentRef.current) return;
+    scrollContentRef.current.scrollLeft = 0;
+  }, [isOpen, step]);
 
   const progress = Math.round(((step + 1) / stepTitles.length) * 100);
 
@@ -442,7 +449,10 @@ export default function PresetConfigWizard({
               </div>
             </div>
 
-            <div className="mt-6 flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2 pb-24 md:pb-6 scroll-touch">
+            <div
+              ref={scrollContentRef}
+              className="mt-6 flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-1 sm:px-2 pb-24 md:pb-6 scroll-touch [touch-action:pan-y]"
+            >
               {step === 0 && (
                 <div className="space-y-6">
                   <Card className="p-4 bg-slate-900/50 border-slate-800">
