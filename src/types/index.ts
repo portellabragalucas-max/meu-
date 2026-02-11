@@ -75,6 +75,7 @@ export interface StudyPreferences {
   daysOfWeek: number[];
   mode: 'random' | 'exam';
   examDate?: string;
+  startDate?: string;
   goal?: 'enem' | 'medicina' | 'concurso' | 'outros';
 }
 
@@ -319,6 +320,7 @@ export interface PresetWizardAnswers {
   targetDailyHours: number;
   goal: 'enem' | 'medicina' | 'concurso' | 'outros';
   examDate?: string;
+  startDate?: string;
 }
 
 export interface UserSettings {

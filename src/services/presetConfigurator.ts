@@ -116,6 +116,7 @@ export function computeStudyPreferences(
     daysOfWeek: activeDays,
     mode: answers.examDate ? 'exam' : 'random',
     examDate: answers.examDate || '',
+    startDate: answers.startDate || undefined,
     goal: answers.goal,
   };
 

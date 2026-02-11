@@ -33,6 +33,11 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
+const toLocalDateKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate()
+  ).padStart(2, '0')}`;
+
 export default function SubjectsPage() {
   const { markFirstSubjectAdded, hasAddedFirstSubject } = useOnboarding();
   const [subjects, setSubjects] = useLocalStorage<Subject[]>('nexora_subjects', initialSubjects);
@@ -49,6 +54,10 @@ export default function SubjectsPage() {
     examDate: '',
   });
   const [userSettings, setUserSettings] = useLocalStorage<UserSettings>('nexora_user_settings', defaultSettings);
+  const [, setScheduleRange] = useLocalStorage<{ startDate: string; endDate: string } | null>(
+    'nexora_schedule_range',
+    null
+  );
 
   // Mostrar preset selector automaticamente quando não há disciplinas
   useEffect(() => {
@@ -204,10 +213,20 @@ export default function SubjectsPage() {
   const handleApplyPreferences = async (
     settings: UserSettings,
     prefs: StudyPreferences,
-    _answers: PresetWizardAnswers
+    answers: PresetWizardAnswers
   ) => {
     setUserSettings(settings);
     setStudyPrefs(prefs);
+    const startKey = answers.startDate || toLocalDateKey(new Date());
+    const startDate = new Date(`${startKey}T00:00:00`);
+    if (!Number.isNaN(startDate.getTime())) {
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 6);
+      setScheduleRange({
+        startDate: startKey,
+        endDate: toLocalDateKey(endDate),
+      });
+    }
     try {
       await fetch('/api/preferences', {
         method: 'POST',

@@ -95,6 +95,22 @@ const formatHours = (value: number, clampValue = true) => {
   return `${hours}h${String(minutes).padStart(2, '0')}`;
 };
 
+const toLocalDateKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate()
+  ).padStart(2, '0')}`;
+
+const formatDateLabel = (dateKey?: string) => {
+  if (!dateKey) return 'Nao definido';
+  const parsed = new Date(`${dateKey}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return dateKey;
+  return parsed.toLocaleDateString('pt-BR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+  });
+};
+
 const buildDefaultDailyHours = (goal: PresetWizardAnswers['goal']): DailyHoursByWeekday => {
   if (goal === 'medicina') {
     return { dom: 0, seg: 5, ter: 5, qua: 5, qui: 5, sex: 5, sab: 3 };
@@ -131,6 +147,7 @@ const getWeekdayAverageHours = (dailyHoursByWeekday: DailyHoursByWeekday) => {
 const defaultAnswers = (presetId: string, presetName: string): PresetWizardAnswers => {
   const goal = resolveGoal(presetId, presetName);
   const dailyHoursByWeekday = buildDefaultDailyHours(goal);
+  const todayKey = toLocalDateKey(new Date());
   return {
     dailyHoursByWeekday,
     bestTime: 'misto',
@@ -141,6 +158,7 @@ const defaultAnswers = (presetId: string, presetName: string): PresetWizardAnswe
     targetDailyHours: 0,
     goal,
     examDate: '',
+    startDate: todayKey,
   };
 };
 
@@ -162,6 +180,13 @@ export default function PresetConfigWizard({
   const [massDays, setMassDays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [showCustomDays, setShowCustomDays] = useState(false);
   const [hasCustomDays, setHasCustomDays] = useState(false);
+  const [startMode, setStartMode] = useState<'today' | 'tomorrow' | 'custom'>('today');
+  const todayKey = useMemo(() => toLocalDateKey(new Date()), []);
+  const tomorrowKey = useMemo(() => {
+    const next = new Date();
+    next.setDate(next.getDate() + 1);
+    return toLocalDateKey(next);
+  }, []);
 
   useEffect(() => {
     setIsMounted(true);
@@ -191,6 +216,7 @@ export default function PresetConfigWizard({
     setMassDays([1, 2, 3, 4, 5]);
     setShowCustomDays(false);
     setHasCustomDays(false);
+    setStartMode('today');
     setError(null);
   }, [presetId, presetName, isOpen]);
 
@@ -325,6 +351,7 @@ export default function PresetConfigWizard({
     setMassDays([1, 2, 3, 4, 5]);
     setShowCustomDays(false);
     setHasCustomDays(false);
+    setStartMode('today');
     setError(null);
     onClose();
   };
@@ -346,6 +373,16 @@ export default function PresetConfigWizard({
     if (step === 3 && activeDays.length === 0) {
       setError('Escolha pelo menos um dia disponivel para estudo.');
       return;
+    }
+    if (step === 3) {
+      if (!answers.startDate) {
+        setError('Escolha quando deseja comecar.');
+        return;
+      }
+      if (answers.startDate < todayKey) {
+        setError('A data de inicio precisa ser hoje ou futura.');
+        return;
+      }
     }
 
     setStep((prev) => Math.min(stepTitles.length - 1, prev + 1));
@@ -782,6 +819,76 @@ export default function PresetConfigWizard({
                   </div>
 
                   <div>
+                    <h3 className="text-lg font-semibold text-white mb-2">
+                      Quando deseja comecar
+                    </h3>
+                    <p className="text-sm text-text-secondary mb-3">
+                      Defina quando o cronograma inicial deve comecar.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStartMode('today');
+                          setAnswers((prev) => ({ ...prev, startDate: todayKey }));
+                        }}
+                        className={cn(
+                          'rounded-xl border px-3 py-3 text-left transition',
+                          startMode === 'today'
+                            ? 'border-neon-cyan bg-neon-cyan/10 text-white'
+                            : 'border-slate-800 text-text-secondary hover:border-neon-cyan/60'
+                        )}
+                      >
+                        <div className="text-sm font-medium">Hoje</div>
+                        <div className="text-xs opacity-80">{formatDateLabel(todayKey)}</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStartMode('tomorrow');
+                          setAnswers((prev) => ({ ...prev, startDate: tomorrowKey }));
+                        }}
+                        className={cn(
+                          'rounded-xl border px-3 py-3 text-left transition',
+                          startMode === 'tomorrow'
+                            ? 'border-neon-cyan bg-neon-cyan/10 text-white'
+                            : 'border-slate-800 text-text-secondary hover:border-neon-cyan/60'
+                        )}
+                      >
+                        <div className="text-sm font-medium">Amanha</div>
+                        <div className="text-xs opacity-80">{formatDateLabel(tomorrowKey)}</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStartMode('custom')}
+                        className={cn(
+                          'rounded-xl border px-3 py-3 text-left transition',
+                          startMode === 'custom'
+                            ? 'border-neon-cyan bg-neon-cyan/10 text-white'
+                            : 'border-slate-800 text-text-secondary hover:border-neon-cyan/60'
+                        )}
+                      >
+                        <div className="text-sm font-medium">Escolher data</div>
+                        <div className="text-xs opacity-80">{formatDateLabel(answers.startDate)}</div>
+                      </button>
+                    </div>
+                    {startMode === 'custom' && (
+                      <div className="mt-3">
+                        <label className="text-sm text-text-secondary">Data de inicio</label>
+                        <input
+                          type="date"
+                          min={todayKey}
+                          value={answers.startDate || ''}
+                          onChange={(e) =>
+                            setAnswers((prev) => ({ ...prev, startDate: e.target.value }))
+                          }
+                          className="input-field mt-2"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
                     <label className="text-sm text-text-secondary">
                       Meta diaria ideal (ajuste fino)
                     </label>
@@ -864,6 +971,7 @@ export default function PresetConfigWizard({
                               .filter(Boolean)
                               .join(', ')}
                       </p>
+                      <p>Inicio: {formatDateLabel(answers.startDate)}</p>
                       {answers.examDate ? <p>Prova: {answers.examDate}</p> : null}
                     </Card>
                   </div>
