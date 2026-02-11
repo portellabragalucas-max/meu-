@@ -517,56 +517,64 @@ export default function PresetConfigWizard({
                           return (
                             <div
                               key={day.value}
-                              className="flex flex-col md:flex-row md:items-center gap-3 justify-between rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-3"
+                              className="rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-3"
                             >
-                              <div className="flex items-center gap-3">
-                                <button
-                                  className={cn(
-                                    'w-12 h-10 rounded-lg border text-sm transition',
-                                    isActive
-                                      ? 'border-neon-cyan/60 text-white'
-                                      : 'border-slate-800 text-text-muted'
-                                  )}
-                                  onClick={() => toggleDayActive(day.value)}
-                                >
-                                  {day.label}
-                                </button>
-                                <span className="text-xs text-text-muted">
-                                  {isActive ? 'Ativo' : 'Descanso'}
-                                </span>
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    className={cn(
+                                      'h-10 min-w-[48px] rounded-lg border px-2 text-sm font-medium transition',
+                                      isActive
+                                        ? 'border-neon-cyan/60 text-white'
+                                        : 'border-slate-800 text-text-muted'
+                                    )}
+                                    onClick={() => toggleDayActive(day.value)}
+                                  >
+                                    {day.label}
+                                  </button>
+                                  <span className="text-xs text-text-muted">
+                                    {isActive ? 'Ativo' : 'Descanso'}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={12}
+                                    step={0.5}
+                                    value={hours}
+                                    disabled={!isActive}
+                                    onChange={(e) =>
+                                      updateDayHours(day.value, Number(e.target.value))
+                                    }
+                                    className={cn(
+                                      'input-field h-10 w-20 px-3 py-2 text-sm',
+                                      !isActive && 'opacity-70'
+                                    )}
+                                  />
+                                  <span className="min-w-[38px] text-right text-xs text-text-muted">
+                                    {formatHours(hours)}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex flex-1 flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3">
-                                <input
-                                  type="range"
-                                  min={0}
-                                  max={12}
-                                  step={0.5}
-                                  value={hours}
-                                  disabled={!isActive}
-                                  onChange={(e) =>
-                                    updateDayHours(day.value, Number(e.target.value))
-                                  }
-                                  className={cn(
-                                    'w-full accent-neon-blue',
-                                    !isActive && 'opacity-40'
-                                  )}
-                                />
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={12}
-                                  step={0.5}
-                                  value={hours}
-                                  disabled={!isActive}
-                                  onChange={(e) =>
-                                    updateDayHours(day.value, Number(e.target.value))
-                                  }
-                                  className="input-field w-20 sm:w-24"
-                                />
-                                <span className="text-xs text-text-muted whitespace-nowrap">
-                                  {formatHours(hours)}
-                                </span>
-                              </div>
+
+                              <input
+                                type="range"
+                                min={0}
+                                max={12}
+                                step={0.5}
+                                value={hours}
+                                disabled={!isActive}
+                                onChange={(e) =>
+                                  updateDayHours(day.value, Number(e.target.value))
+                                }
+                                className={cn(
+                                  'mt-3 w-full accent-neon-blue',
+                                  !isActive && 'opacity-40'
+                                )}
+                              />
                             </div>
                           );
                         })}
