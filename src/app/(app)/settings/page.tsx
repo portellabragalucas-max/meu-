@@ -719,7 +719,7 @@ export default function SettingsPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="app-page w-full min-w-0 max-w-[980px] mx-auto overflow-x-hidden pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+      className="app-page w-full min-w-0 max-w-[980px] mx-auto overflow-x-hidden pb-[calc(var(--bottom-nav-height)+0.75rem+env(safe-area-inset-bottom))] md:pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
     >
       {/* Cabeçalho */}
             <div className="md:hidden space-y-3">
@@ -1060,9 +1060,11 @@ export default function SettingsPage() {
               {weekDays.map((day, index) => (
                 <button
                   key={day}
+                  type="button"
                   onClick={() => toggleExcludeDay(index)}
+                  aria-pressed={settings.excludeDays.includes(index)}
                   className={cn(
-                    'w-full h-11 rounded-xl font-medium text-sm transition-all',
+                    'w-full h-11 rounded-xl font-medium text-sm transition-all touch-manipulation active:scale-[0.99]',
                     settings.excludeDays.includes(index)
                       ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/50'
                       : 'bg-card-bg text-text-secondary border border-card-border hover:border-neon-purple/30'
@@ -1102,9 +1104,11 @@ export default function SettingsPage() {
               {aiDifficultyOptions.map((option) => (
                 <button
                   key={option.value}
+                  type="button"
                   onClick={() => updateSetting('aiDifficulty', option.value)}
+                  aria-pressed={settings.aiDifficulty === option.value}
                   className={cn(
-                    'p-4 rounded-xl text-left transition-all',
+                    'min-h-[84px] p-4 rounded-xl text-left transition-all touch-manipulation active:scale-[0.99]',
                     settings.aiDifficulty === option.value
                       ? 'bg-neon-cyan/20 border-2 border-neon-cyan'
                       : 'bg-card-bg border border-card-border hover:border-neon-cyan/30'
@@ -1140,25 +1144,26 @@ export default function SettingsPage() {
                 key={item.key}
                 type="button"
                 onClick={() => updateSetting(item.key, !settings[item.key])}
-                className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-card-bg border border-card-border text-left"
+                aria-pressed={settings[item.key]}
+                className="w-full flex items-center justify-between gap-3 p-4 rounded-xl bg-card-bg border border-card-border text-left touch-manipulation active:scale-[0.995]"
               >
-                <div>
+                <div className="min-w-0 pr-2">
                   <div className="font-medium text-white">{item.label}</div>
                   <div className="text-sm text-text-secondary">
                     {item.description}
                   </div>
                 </div>
                 <span
+                  aria-hidden
                   className={cn(
-                    'w-14 h-8 md:w-12 md:h-6 rounded-full transition-all relative shrink-0',
+                    'relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors duration-200',
                     settings[item.key] ? 'bg-neon-cyan' : 'bg-card-border'
                   )}
                 >
-                  <motion.div
-                    layout
+                  <span
                     className={cn(
-                      'absolute top-1.5 md:top-1 w-5 h-5 md:w-4 md:h-4 rounded-full bg-white',
-                      settings[item.key] ? 'right-1.5 md:right-1' : 'left-1.5 md:left-1'
+                      'pointer-events-none inline-block h-5 w-5 rounded-full bg-white transition-transform duration-200',
+                      settings[item.key] ? 'translate-x-8' : 'translate-x-1'
                     )}
                   />
                 </span>
@@ -1206,35 +1211,36 @@ export default function SettingsPage() {
               label: 'Relatório Semanal',
               description: 'Receber resumo semanal de desempenho',
             },
-          ].map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => updateSetting(item.key, !settings[item.key])}
-              className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-card-bg border border-card-border text-left"
-            >
-              <div>
-                <div className="font-medium text-white">{item.label}</div>
-                <div className="text-sm text-text-secondary">
-                  {item.description}
-                </div>
-              </div>
-              <span
-                className={cn(
-                  'w-14 h-8 md:w-12 md:h-6 rounded-full transition-all relative shrink-0',
-                  settings[item.key] ? 'bg-orange-500' : 'bg-card-border'
-                )}
+            ].map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => updateSetting(item.key, !settings[item.key])}
+                aria-pressed={settings[item.key]}
+                className="w-full flex items-center justify-between gap-3 p-4 rounded-xl bg-card-bg border border-card-border text-left touch-manipulation active:scale-[0.995]"
               >
-                <motion.div
-                  layout
+                <div className="min-w-0 pr-2">
+                  <div className="font-medium text-white">{item.label}</div>
+                  <div className="text-sm text-text-secondary">
+                    {item.description}
+                  </div>
+                </div>
+                <span
+                  aria-hidden
                   className={cn(
-                    'absolute top-1.5 md:top-1 w-5 h-5 md:w-4 md:h-4 rounded-full bg-white',
-                    settings[item.key] ? 'right-1.5 md:right-1' : 'left-1.5 md:left-1'
+                    'relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors duration-200',
+                    settings[item.key] ? 'bg-orange-500' : 'bg-card-border'
                   )}
-                />
-              </span>
-            </button>
-          ))}
+                >
+                  <span
+                    className={cn(
+                      'pointer-events-none inline-block h-5 w-5 rounded-full bg-white transition-transform duration-200',
+                      settings[item.key] ? 'translate-x-8' : 'translate-x-1'
+                    )}
+                  />
+                </span>
+              </button>
+            ))}
           <div className="p-4 rounded-xl bg-card-bg border border-card-border space-y-4">
             <div>
               <div className="font-medium text-white">Som do alarme</div>
@@ -1246,9 +1252,11 @@ export default function SettingsPage() {
               {alarmSoundOptions.map((option) => (
                 <button
                   key={option.value}
+                  type="button"
                   onClick={() => setPendingAlarmSound(option.value)}
+                  aria-pressed={(pendingAlarmSound || 'pulse') === option.value}
                   className={cn(
-                    'rounded-xl border px-4 py-3 text-left transition',
+                    'rounded-xl border px-4 py-3 text-left transition touch-manipulation active:scale-[0.99]',
                     (pendingAlarmSound || 'pulse') === option.value
                       ? 'border-neon-cyan bg-neon-cyan/10 text-white'
                       : 'border-slate-800 text-text-secondary hover:border-neon-cyan/60'
