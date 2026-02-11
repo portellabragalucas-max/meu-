@@ -941,43 +941,43 @@ export default function SettingsPage() {
                 return (
                   <div
                     key={label}
-                    className="flex min-w-0 flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-3 md:flex-row md:items-center md:justify-between"
+                    className="rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-3"
                   >
-                    <button
-                      onClick={() => updateDayHours(index, isActive ? 0 : settings.dailyGoalHours)}
-                      className={cn(
-                        'w-12 h-10 rounded-lg border text-sm transition',
-                        isActive
-                          ? 'border-neon-purple/60 text-white'
-                          : 'border-slate-800 text-text-muted'
-                      )}
-                    >
-                      {label}
-                    </button>
-                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3 lg:flex-nowrap">
-                      <input
-                        type="range"
-                        min={0}
-                        max={12}
-                        step={0.5}
-                        value={hours}
-                        onChange={(e) => updateDayHours(index, Number(e.target.value))}
+                    <div className="flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => updateDayHours(index, isActive ? 0 : settings.dailyGoalHours)}
                         className={cn(
-                          'min-w-0 flex-1 accent-neon-purple',
-                          !isActive && 'opacity-40'
+                          'h-10 min-w-[48px] rounded-lg border px-2 text-sm font-medium transition',
+                          isActive
+                            ? 'border-neon-purple/60 text-white'
+                            : 'border-slate-800 text-text-muted'
                         )}
-                      />
-                      <input
-                        type="number"
-                        min={0}
-                        max={12}
-                        step={0.5}
-                        value={hours}
-                        onChange={(e) => updateDayHours(index, Number(e.target.value))}
-                        className="input-field w-20 shrink-0 sm:w-24"
-                      />
-                      <span className="text-xs text-text-muted whitespace-nowrap">{formatHours(hours)}</span>
+                      >
+                        {label}
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={12}
+                          step={0.5}
+                          value={hours}
+                          onChange={(e) => updateDayHours(index, Number(e.target.value))}
+                          className={cn('input-field h-10 w-20 px-3 py-2 text-sm', !isActive && 'opacity-70')}
+                        />
+                        <span className="min-w-[38px] text-right text-xs text-text-muted">{formatHours(hours)}</span>
+                      </div>
                     </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={12}
+                      step={0.5}
+                      value={hours}
+                      onChange={(e) => updateDayHours(index, Number(e.target.value))}
+                      className={cn('mt-3 w-full accent-neon-purple', !isActive && 'opacity-40')}
+                    />
                   </div>
                 );
               })}
