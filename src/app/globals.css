@@ -208,6 +208,27 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: 18px;
   }
 
+  .app-mobile-safe-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-bottom: calc(var(--bottom-nav-height) + 16px + env(safe-area-inset-bottom));
+    overflow-x: clip;
+    pointer-events: none;
+  }
+
+  .app-mobile-safe-surface {
+    width: min(360px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
+    margin-inline: 16px;
+    overflow-x: clip;
+  }
+
   @media (min-width: 640px) {
     .app-page > * + * {
       margin-top: 1.5rem;

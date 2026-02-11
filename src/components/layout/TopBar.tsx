@@ -253,7 +253,8 @@ export default function TopBar({ user }: TopBarProps) {
   const [notifications] = useLocalStorage<NotificationItem[]>('nexora_notifications', []);
   const [subjects] = useLocalStorage<Subject[]>('nexora_subjects', []);
 
-  const panelRef = useRef<HTMLDivElement | null>(null);
+  const desktopPanelRef = useRef<HTMLDivElement | null>(null);
+  const mobilePanelRef = useRef<HTMLDivElement | null>(null);
   const desktopButtonRef = useRef<HTMLButtonElement | null>(null);
   const mobileButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -264,6 +265,34 @@ export default function TopBar({ user }: TopBarProps) {
     [subjects]
   );
   const unreadCount = notifications.filter((item) => !item.read).length;
+  const notificationsPanelContent = (
+    <>
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm font-semibold text-white">Notificacoes</p>
+        <span className="text-xs text-text-muted">
+          {unreadCount > 0 ? `${unreadCount} novas` : 'Sem novas'}
+        </span>
+      </div>
+      {notifications.length === 0 ? (
+        <div className="text-sm text-text-muted">Nenhuma notificacao por enquanto.</div>
+      ) : (
+        <div className="space-y-3 pr-1">
+          {notifications.map((item) => (
+            <div
+              key={item.id}
+              className="rounded-xl border border-card-border bg-card-bg/60 p-3"
+            >
+              <p className="text-sm font-medium text-white">{item.title}</p>
+              {item.message ? (
+                <p className="mt-1 text-xs text-text-secondary">{item.message}</p>
+              ) : null}
+              <p className="mt-2 text-[11px] text-text-muted">{item.createdAt}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
 
   useEffect(() => {
     if (!showNotifications) return;
@@ -271,7 +300,8 @@ export default function TopBar({ user }: TopBarProps) {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node | null;
       if (!target) return;
-      if (panelRef.current?.contains(target)) return;
+      if (desktopPanelRef.current?.contains(target)) return;
+      if (mobilePanelRef.current?.contains(target)) return;
       if (desktopButtonRef.current?.contains(target)) return;
       if (mobileButtonRef.current?.contains(target)) return;
       setShowNotifications(false);
@@ -319,42 +349,40 @@ export default function TopBar({ user }: TopBarProps) {
       </header>
 
       {showNotifications && (
-        <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+var(--topbar-height-mobile)+8px)] z-50 lg:top-[calc(env(safe-area-inset-top)+var(--topbar-height-desktop)+12px)]">
-          <AppContainer className="flex justify-end">
+        <>
+          <button
+            type="button"
+            aria-label="Fechar notificacoes"
+            onClick={() => setShowNotifications(false)}
+            className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[1px] lg:hidden"
+          />
+
+          <div className="app-mobile-safe-overlay lg:hidden">
             <motion.div
-              ref={panelRef}
-              initial={{ opacity: 0, y: 8 }}
+              ref={mobilePanelRef}
+              initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
-              className="pointer-events-auto w-full rounded-2xl border border-card-border bg-slate-900/95 p-4 shadow-2xl backdrop-blur-lg max-h-[70dvh] overflow-y-auto lg:w-[22rem] lg:max-h-[24rem]"
+              exit={{ opacity: 0, y: 12 }}
+              className="app-mobile-safe-surface pointer-events-auto max-h-[min(70dvh,30rem)] overflow-y-auto rounded-2xl border border-card-border bg-slate-900/95 p-4 shadow-2xl backdrop-blur-lg"
             >
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-semibold text-white">Notificacoes</p>
-                <span className="text-xs text-text-muted">
-                  {unreadCount > 0 ? `${unreadCount} novas` : 'Sem novas'}
-                </span>
-              </div>
-              {notifications.length === 0 ? (
-                <div className="text-sm text-text-muted">Nenhuma notificacao por enquanto.</div>
-              ) : (
-                <div className="space-y-3 pr-1">
-                  {notifications.map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-xl border border-card-border bg-card-bg/60 p-3"
-                    >
-                      <p className="text-sm font-medium text-white">{item.title}</p>
-                      {item.message ? (
-                        <p className="mt-1 text-xs text-text-secondary">{item.message}</p>
-                      ) : null}
-                      <p className="mt-2 text-[11px] text-text-muted">{item.createdAt}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {notificationsPanelContent}
             </motion.div>
-          </AppContainer>
-        </div>
+          </div>
+
+          <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+var(--topbar-height-desktop)+12px)] z-50 hidden lg:block">
+            <AppContainer className="flex justify-end">
+              <motion.div
+                ref={desktopPanelRef}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                className="pointer-events-auto w-[22rem] max-h-[24rem] overflow-y-auto rounded-2xl border border-card-border bg-slate-900/95 p-4 shadow-2xl backdrop-blur-lg"
+              >
+                {notificationsPanelContent}
+              </motion.div>
+            </AppContainer>
+          </div>
+        </>
       )}
 
       <QuickSessionModal

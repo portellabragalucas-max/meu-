@@ -17,13 +17,10 @@ type TutorialPosition = TutorialPlacement | 'auto';
 type TutorialTarget = string | string[];
 
 const MOBILE_BREAKPOINT = 1024;
-const VIEWPORT_PADDING = 12;
+const DESKTOP_VIEWPORT_PADDING = 12;
 const DESKTOP_TOOLTIP_HEIGHT = 232;
 const DESKTOP_TOOLTIP_WIDTH = 360;
-const MOBILE_TOOLTIP_HEIGHT = 260;
 const TARGET_GAP = 12;
-const MOBILE_NAV_FALLBACK_HEIGHT = 88;
-const MOBILE_NAV_GAP = 12;
 
 export interface TutorialStep {
   id: string;
@@ -55,14 +52,6 @@ const normalizeTarget = (target?: TutorialTarget): string[] => {
 };
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-
-const getMobileBottomClearance = () => {
-  const nav = document.querySelector('nav[aria-label="Navegacao principal"]');
-  if (nav instanceof HTMLElement) {
-    return Math.max(MOBILE_NAV_FALLBACK_HEIGHT, nav.getBoundingClientRect().height + MOBILE_NAV_GAP);
-  }
-  return MOBILE_NAV_FALLBACK_HEIGHT;
-};
 
 const isVisibleElement = (element: Element): element is HTMLElement => {
   if (!(element instanceof HTMLElement)) return false;
@@ -120,16 +109,19 @@ const resolvePlacementOrder = (preferred?: TutorialPosition) => {
 };
 
 const getCenteredLayout = (viewportWidth: number, viewportHeight: number): TooltipLayout => {
-  const tooltipWidth = Math.min(DESKTOP_TOOLTIP_WIDTH, viewportWidth - VIEWPORT_PADDING * 2);
+  const tooltipWidth = Math.min(
+    DESKTOP_TOOLTIP_WIDTH,
+    viewportWidth - DESKTOP_VIEWPORT_PADDING * 2
+  );
   const left = clamp(
     (viewportWidth - tooltipWidth) / 2,
-    VIEWPORT_PADDING,
-    viewportWidth - tooltipWidth - VIEWPORT_PADDING
+    DESKTOP_VIEWPORT_PADDING,
+    viewportWidth - tooltipWidth - DESKTOP_VIEWPORT_PADDING
   );
   const top = clamp(
     viewportHeight * 0.18,
-    VIEWPORT_PADDING,
-    viewportHeight - DESKTOP_TOOLTIP_HEIGHT - VIEWPORT_PADDING
+    DESKTOP_VIEWPORT_PADDING,
+    viewportHeight - DESKTOP_TOOLTIP_HEIGHT - DESKTOP_VIEWPORT_PADDING
   );
 
   return { top, left, placement: 'bottom' };
@@ -141,7 +133,10 @@ const getDesktopLayout = (
   viewportHeight: number,
   preferred?: TutorialPosition
 ): TooltipLayout => {
-  const tooltipWidth = Math.min(DESKTOP_TOOLTIP_WIDTH, viewportWidth - VIEWPORT_PADDING * 2);
+  const tooltipWidth = Math.min(
+    DESKTOP_TOOLTIP_WIDTH,
+    viewportWidth - DESKTOP_VIEWPORT_PADDING * 2
+  );
   const tooltipHeight = DESKTOP_TOOLTIP_HEIGHT;
   const placements = resolvePlacementOrder(preferred);
 
@@ -152,13 +147,13 @@ const getDesktopLayout = (
     const raw = getCandidatePosition(placement, rect, tooltipWidth, tooltipHeight);
     const clampedLeft = clamp(
       raw.left,
-      VIEWPORT_PADDING,
-      viewportWidth - tooltipWidth - VIEWPORT_PADDING
+      DESKTOP_VIEWPORT_PADDING,
+      viewportWidth - tooltipWidth - DESKTOP_VIEWPORT_PADDING
     );
     const clampedTop = clamp(
       raw.top,
-      VIEWPORT_PADDING,
-      viewportHeight - tooltipHeight - VIEWPORT_PADDING
+      DESKTOP_VIEWPORT_PADDING,
+      viewportHeight - tooltipHeight - DESKTOP_VIEWPORT_PADDING
     );
 
     const overflowPenalty = Math.abs(raw.left - clampedLeft) + Math.abs(raw.top - clampedTop);
@@ -203,20 +198,9 @@ export default function TutorialTooltip({
       setIsMobile(mobile);
 
       if (mobile) {
-        const tooltipWidth = viewportWidth - VIEWPORT_PADDING * 2;
-        const bottomClearance = getMobileBottomClearance();
-        const top = clamp(
-          viewportHeight - MOBILE_TOOLTIP_HEIGHT - bottomClearance,
-          VIEWPORT_PADDING,
-          viewportHeight - MOBILE_TOOLTIP_HEIGHT - VIEWPORT_PADDING
-        );
         setLayout({
-          top,
-          left: clamp(
-            (viewportWidth - tooltipWidth) / 2,
-            VIEWPORT_PADDING,
-            viewportWidth - tooltipWidth - VIEWPORT_PADDING
-          ),
+          top: 16,
+          left: 16,
           placement: 'bottom',
         });
         return;
@@ -343,19 +327,28 @@ export default function TutorialTooltip({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 8 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          style={{
-            position: 'fixed',
-            top: layout.top,
-            left: layout.left,
-            zIndex: 50,
-          }}
+          style={
+            isMobile
+              ? { zIndex: 50 }
+              : {
+                  position: 'fixed',
+                  top: layout.top,
+                  left: layout.left,
+                  zIndex: 50,
+                }
+          }
           className={cn(
             isMobile
-              ? 'w-[calc(100vw-1.5rem)]'
+              ? 'app-mobile-safe-overlay'
               : 'w-[min(calc(100vw-1.5rem),22.5rem)]'
           )}
         >
-          <div className="relative glass-card p-4 sm:p-5 shadow-xl shadow-neon-blue/15 pointer-events-auto">
+          <div
+            className={cn(
+              'relative glass-card p-4 sm:p-5 shadow-xl shadow-neon-blue/15 pointer-events-auto',
+              isMobile && 'app-mobile-safe-surface'
+            )}
+          >
             <button
               onClick={onSkip}
               className="absolute right-3 top-3 rounded-lg p-1 text-text-muted transition-colors hover:bg-white/10 hover:text-white"
