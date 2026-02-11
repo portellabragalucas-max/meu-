@@ -1,9 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Sparkles, Mail, ArrowRight, Loader2 } from 'lucide-react';
+import { Sparkles, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { getProviders, signIn } from 'next-auth/react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -13,10 +14,11 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const [availableProviders, setAvailableProviders] = useState<Record<string, any> | null>(null);
-  const [formData, setFormData] = useState({ email: '' });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ email: '', password: '' });
 
   const hasGoogle = Boolean(availableProviders?.google);
-  const hasEmail = Boolean(availableProviders?.email);
+  const hasCredentials = Boolean(availableProviders?.credentials);
 
   useEffect(() => {
     getProviders().then((providers) => setAvailableProviders(providers));
@@ -28,8 +30,24 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setIsLoading(true);
-    await signIn('email', { email: formData.email, callbackUrl: '/dashboard' });
+
+    const result = await signIn('credentials', {
+      email: formData.email.trim().toLowerCase(),
+      password: formData.password,
+      callbackUrl: '/dashboard',
+      redirect: false,
+    });
+
+    if (result?.error) {
+      setErrorMessage('E-mail ou senha invalidos.');
+      setIsLoading(false);
+      return;
+    }
+
+    router.push(result?.url || '/dashboard');
+    router.refresh();
     setIsLoading(false);
   };
 
@@ -114,12 +132,12 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-3 mb-6">
-              {!hasGoogle && !hasEmail && (
+              {!hasGoogle && !hasCredentials && (
                 <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
-                  Nenhum provedor de login configurado. Ajuste as variaveis no .env.
+                  Nenhum provedor de login configurado.
                 </div>
               )}
-              {availableProviders?.google && (
+              {hasGoogle && (
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -170,11 +188,12 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {!hasEmail && (
-                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
-                  Login por email indisponivel. Configure EMAIL_SERVER e EMAIL_FROM no .env.
+              {errorMessage && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+                  {errorMessage}
                 </div>
               )}
+
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">E-mail</label>
                 <div className="relative">
@@ -187,7 +206,24 @@ export default function LoginPage() {
                     placeholder="seu@email.com"
                     className="input-field pl-12"
                     required
-                    disabled={!hasEmail}
+                    disabled={!hasCredentials}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Senha</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="Sua senha"
+                    className="input-field pl-12"
+                    required
+                    disabled={!hasCredentials}
                   />
                 </div>
               </div>
@@ -198,11 +234,18 @@ export default function LoginPage() {
                 className="w-full"
                 loading={isLoading}
                 rightIcon={!isLoading && <ArrowRight className="w-4 h-4" />}
-                disabled={!hasEmail}
+                disabled={!hasCredentials}
               >
-                Enviar link de acesso
+                Entrar
               </Button>
             </form>
+
+            <p className="mt-5 text-center text-sm text-text-secondary">
+              Nao tem conta?{' '}
+              <Link href="/register" className="text-neon-blue hover:underline">
+                Criar cadastro
+              </Link>
+            </p>
           </div>
 
           <p className="text-center text-text-muted text-xs mt-6">

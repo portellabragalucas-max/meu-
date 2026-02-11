@@ -16,7 +16,6 @@ export const missingAuthEnv = () => {
   if (!env.nextAuthUrl) missing.push('NEXTAUTH_URL');
   if (!env.nextAuthSecret) missing.push('NEXTAUTH_SECRET');
   if (!hasGoogleAuth) missing.push('GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET');
-  if (!hasEmailAuth) missing.push('EMAIL_SERVER/EMAIL_FROM');
   return missing;
 };
 

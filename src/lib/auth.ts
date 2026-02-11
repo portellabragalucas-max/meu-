@@ -1,26 +1,50 @@
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import type { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
-import EmailProvider from 'next-auth/providers/email';
+import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from '@/lib/prisma';
-import { env, hasGoogleAuth, hasEmailAuth } from '@/lib/env';
+import { verifyPassword } from '@/lib/password';
+import { env, hasGoogleAuth } from '@/lib/env';
 
 const providers = [] as NextAuthOptions['providers'];
+
+providers.push(
+  CredentialsProvider({
+    name: 'Email e senha',
+    credentials: {
+      email: { label: 'E-mail', type: 'email' },
+      password: { label: 'Senha', type: 'password' },
+    },
+    async authorize(credentials) {
+      const email = credentials?.email?.trim().toLowerCase();
+      const password = credentials?.password ?? '';
+
+      if (!email || !password) return null;
+
+      const user = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!user?.passwordHash) return null;
+
+      const isValidPassword = await verifyPassword(password, user.passwordHash);
+      if (!isValidPassword) return null;
+
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        image: user.image || user.avatar || null,
+      };
+    },
+  })
+);
 
 if (hasGoogleAuth) {
   providers.push(
     GoogleProvider({
       clientId: env.googleClientId,
       clientSecret: env.googleClientSecret,
-    })
-  );
-}
-
-if (hasEmailAuth) {
-  providers.push(
-    EmailProvider({
-      server: env.emailServer,
-      from: env.emailFrom,
     })
   );
 }

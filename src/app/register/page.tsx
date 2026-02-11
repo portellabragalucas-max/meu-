@@ -1,0 +1,199 @@
+'use client';
+
+import Link from 'next/link';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { Sparkles, User, Mail, Lock, ArrowRight } from 'lucide-react';
+import { signIn } from 'next-auth/react';
+import { Button } from '@/components/ui';
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+
+    if (formData.password !== formData.confirmPassword) {
+      setErrorMessage('As senhas nao conferem.');
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setErrorMessage('A senha deve ter no minimo 8 caracteres.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    const response = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      setErrorMessage(payload?.message || 'Nao foi possivel criar sua conta.');
+      setIsLoading(false);
+      return;
+    }
+
+    const loginResult = await signIn('credentials', {
+      email: formData.email.trim().toLowerCase(),
+      password: formData.password,
+      callbackUrl: '/dashboard',
+      redirect: false,
+    });
+
+    if (loginResult?.error) {
+      setErrorMessage('Conta criada, mas nao foi possivel entrar automaticamente.');
+      setIsLoading(false);
+      return;
+    }
+
+    router.push(loginResult?.url || '/dashboard');
+    router.refresh();
+    setIsLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-6 sm:p-8">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="w-full max-w-md"
+      >
+        <div className="mb-8 flex items-center justify-center gap-3">
+          <div className="relative">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple blur-lg opacity-40" />
+          </div>
+          <span className="text-2xl font-heading font-bold gradient-text">Nexora</span>
+        </div>
+
+        <div className="glass-card p-6 sm:p-8">
+          <div className="mb-7 text-center">
+            <h1 className="text-2xl font-heading font-bold text-white">Criar conta</h1>
+            <p className="mt-1 text-text-secondary">Nome, e-mail e senha para comecar</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {errorMessage && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+                {errorMessage}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Nome</label>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  placeholder="Seu nome"
+                  className="input-field pl-12"
+                  minLength={2}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">E-mail</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="seu@email.com"
+                  className="input-field pl-12"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Senha</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder="No minimo 8 caracteres"
+                  className="input-field pl-12"
+                  minLength={8}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">
+                Confirmar senha
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  placeholder="Repita sua senha"
+                  className="input-field pl-12"
+                  minLength={8}
+                  required
+                />
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full"
+              loading={isLoading}
+              rightIcon={!isLoading && <ArrowRight className="w-4 h-4" />}
+            >
+              Criar conta
+            </Button>
+          </form>
+
+          <p className="mt-5 text-center text-sm text-text-secondary">
+            Ja tem conta?{' '}
+            <Link href="/login" className="text-neon-blue hover:underline">
+              Fazer login
+            </Link>
+          </p>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
