@@ -364,7 +364,7 @@ export default function DashboardPage() {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="app-page"
+        className="app-page max-[479px]:[&>*+*]:mt-3"
       >
         {/* Cabeçalho da página */}
         <motion.div
@@ -373,10 +373,10 @@ export default function DashboardPage() {
           data-tutorial="dashboard-header"
         >
           <div>
-            <h1 className="text-2xl sm:text-3xl font-heading font-bold text-white leading-tight">
+            <h1 className="text-2xl max-[479px]:text-xl sm:text-3xl font-heading font-bold text-white leading-tight">
               Olá, {userSettings.name || 'Estudante'}! 👋
             </h1>
-            <p className="text-text-secondary mt-1">
+            <p className="text-text-secondary mt-1 max-[479px]:text-sm">
               {isEmptyState
                 ? 'Vamos configurar seu ambiente de estudos'
                 : 'Aqui está seu resumo de estudos para hoje'}
@@ -401,14 +401,14 @@ export default function DashboardPage() {
             </Card>
 
             {/* Cards de prévia */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mt-6 sm:mt-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-[479px]:gap-3 sm:gap-6 mt-6 max-[479px]:mt-4 sm:mt-8">
               <motion.div
                 variants={itemVariants}
                 whileHover={{ y: -4 }}
-                className="glass-card p-4 sm:p-6 text-center"
+                className="glass-card p-4 max-[479px]:p-3 sm:p-6 text-center"
               >
-                <div className="w-16 h-16 rounded-2xl bg-neon-blue/20 flex items-center justify-center mx-auto mb-4">
-                  <BookOpen className="w-8 h-8 text-neon-blue" />
+                <div className="w-16 h-16 max-[479px]:w-12 max-[479px]:h-12 rounded-2xl bg-neon-blue/20 flex items-center justify-center mx-auto mb-4 max-[479px]:mb-3">
+                  <BookOpen className="w-8 h-8 max-[479px]:w-6 max-[479px]:h-6 text-neon-blue" />
                 </div>
                 <h3 className="font-heading font-bold text-white mb-2">
                   Organize suas Disciplinas
@@ -421,10 +421,10 @@ export default function DashboardPage() {
               <motion.div
                 variants={itemVariants}
                 whileHover={{ y: -4 }}
-                className="glass-card p-4 sm:p-6 text-center"
+                className="glass-card p-4 max-[479px]:p-3 sm:p-6 text-center"
               >
-                <div className="w-16 h-16 rounded-2xl bg-neon-purple/20 flex items-center justify-center mx-auto mb-4">
-                  <Calendar className="w-8 h-8 text-neon-purple" />
+                <div className="w-16 h-16 max-[479px]:w-12 max-[479px]:h-12 rounded-2xl bg-neon-purple/20 flex items-center justify-center mx-auto mb-4 max-[479px]:mb-3">
+                  <Calendar className="w-8 h-8 max-[479px]:w-6 max-[479px]:h-6 text-neon-purple" />
                 </div>
                 <h3 className="font-heading font-bold text-white mb-2">
                   Agenda Inteligente
@@ -437,10 +437,10 @@ export default function DashboardPage() {
               <motion.div
                 variants={itemVariants}
                 whileHover={{ y: -4 }}
-                className="glass-card p-4 sm:p-6 text-center"
+                className="glass-card p-4 max-[479px]:p-3 sm:p-6 text-center"
               >
-                <div className="w-16 h-16 rounded-2xl bg-neon-cyan/20 flex items-center justify-center mx-auto mb-4">
-                  <TrendingUp className="w-8 h-8 text-neon-cyan" />
+                <div className="w-16 h-16 max-[479px]:w-12 max-[479px]:h-12 rounded-2xl bg-neon-cyan/20 flex items-center justify-center mx-auto mb-4 max-[479px]:mb-3">
+                  <TrendingUp className="w-8 h-8 max-[479px]:w-6 max-[479px]:h-6 text-neon-cyan" />
                 </div>
                 <h3 className="font-heading font-bold text-white mb-2">
                   Acompanhe o Progresso
@@ -456,7 +456,7 @@ export default function DashboardPage() {
             {/* Cards de estatísticas */}
             <motion.div
               variants={itemVariants}
-              className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
+              className="grid grid-cols-2 lg:grid-cols-4 gap-3 max-[479px]:gap-2"
               data-tutorial="stats"
             >
               <StatsCard
@@ -501,7 +501,7 @@ export default function DashboardPage() {
             </motion.div>
 
             {/* Grid de conteúdo principal */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-[479px]:gap-3 sm:gap-6">
               {/* Gráfico semanal - 2 colunas */}
               <motion.div
                 variants={itemVariants}
@@ -524,7 +524,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Seção inferior */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-[479px]:gap-3 sm:gap-6">
               {/* Plano do dia - 2 colunas */}
               <motion.div
                 variants={itemVariants}
@@ -545,14 +545,14 @@ export default function DashboardPage() {
               {/* Progresso das disciplinas */}
               <motion.div variants={itemVariants}>
                 <Card className="h-full">
-                  <h2 className="text-xl font-heading font-bold text-white mb-4">
+                  <h2 className="text-xl max-[479px]:text-lg font-heading font-bold text-white mb-4 max-[479px]:mb-2">
                     Progresso das Disciplinas
                   </h2>
-                  <p className="text-sm text-text-secondary mb-6">
+                  <p className="text-sm max-[479px]:text-xs text-text-secondary mb-6 max-[479px]:mb-4">
                     Metas semanais
                   </p>
 
-                  <div className="space-y-5">
+                  <div className="space-y-5 max-[479px]:space-y-3">
                     {subjects.map((subject, index) => (
                       <motion.div
                         key={subject.id}
@@ -591,7 +591,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Ações rápidas */}
-                  <div className="mt-6 pt-4 border-t border-card-border">
+                  <div className="mt-6 max-[479px]:mt-4 pt-4 max-[479px]:pt-3 border-t border-card-border">
                     <motion.a
                       href="/subjects"
                       whileHover={{ x: 4 }}

@@ -51,20 +51,20 @@ export default function TodayPlan({
 
   return (
     <Card className="h-full" padding="none">
-      <div className="p-4 sm:p-6 border-b border-card-border">
-        <h2 className="text-xl font-heading font-bold text-white">{title}</h2>
-        <p className="text-sm text-text-secondary mt-1">
+      <div className="p-4 max-[479px]:p-3 sm:p-6 border-b border-card-border">
+        <h2 className="text-xl max-[479px]:text-lg font-heading font-bold text-white">{title}</h2>
+        <p className="text-sm max-[479px]:text-xs text-text-secondary mt-1">
           {subtitle ??
             `${blocks.filter((b) => b.status === 'completed').length} de ${blocks.length} concluídos`}
         </p>
       </div>
 
-      <div className="p-3 sm:p-4 space-y-3 max-h-[420px] sm:max-h-[500px] overflow-y-auto">
+      <div className="p-3 max-[479px]:p-2.5 sm:p-4 space-y-3 max-[479px]:space-y-2 max-h-[420px] max-[479px]:max-h-[360px] sm:max-h-[500px] overflow-y-auto">
         {blocks.length === 0 ? (
-          <div className="text-center py-8">
-            <Coffee className="w-12 h-12 text-text-muted mx-auto mb-4" />
+          <div className="text-center py-8 max-[479px]:py-6">
+            <Coffee className="w-12 h-12 max-[479px]:w-10 max-[479px]:h-10 text-text-muted mx-auto mb-4 max-[479px]:mb-2" />
             <p className="text-text-secondary">Nenhum bloco agendado para hoje</p>
-            <p className="text-sm text-text-muted mt-1">
+            <p className="text-sm max-[479px]:text-xs text-text-muted mt-1">
               Vá para Agenda Inteligente para gerar um cronograma
             </p>
           </div>
@@ -82,7 +82,7 @@ export default function TodayPlan({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
                 className={cn(
-                  'relative p-4 rounded-xl border transition-all duration-200',
+                  'relative p-4 max-[479px]:p-3 rounded-xl border transition-all duration-200',
                   block.isBreak
                     ? 'bg-neon-cyan/5 border-neon-cyan/20'
                     : 'bg-card-bg border-card-border',
@@ -100,25 +100,25 @@ export default function TodayPlan({
                   />
                 )}
 
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between ml-2">
+                <div className="flex flex-col gap-3 max-[479px]:gap-2 md:flex-row md:items-start md:justify-between ml-2">
                   <div className="flex-1">
                     {/* Título do Bloco */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 max-[479px]:gap-1.5">
                       {block.isBreak ? (
-                        <Coffee className="w-4 h-4 text-neon-cyan" />
+                        <Coffee className="w-4 h-4 max-[479px]:w-3.5 max-[479px]:h-3.5 text-neon-cyan" />
                       ) : (
                         <div
-                          className="w-3 h-3 rounded-full"
+                          className="w-3 h-3 max-[479px]:w-2.5 max-[479px]:h-2.5 rounded-full"
                           style={{ backgroundColor: block.subject?.color || '#00B4FF' }}
                         />
                       )}
-                      <h4 className="font-medium text-white break-words">
+                      <h4 className="font-medium text-white break-words max-[479px]:text-sm">
                         {block.isBreak ? 'Intervalo' : block.subject?.name || 'Bloco de Estudo'}
                       </h4>
                     </div>
 
                     {/* Informações de Horário */}
-                    <div className="flex items-center gap-4 mt-2 text-sm text-text-secondary">
+                    <div className="flex items-center gap-4 mt-2 max-[479px]:mt-1.5 text-sm max-[479px]:text-xs text-text-secondary">
                       <span>{formatDuration(block.durationMinutes)}</span>
                     </div>
                   </div>
@@ -130,13 +130,13 @@ export default function TodayPlan({
                       {config.label}
                     </Badge>
 
-                    <div className="flex flex-wrap gap-2 w-full md:w-auto justify-start md:justify-end">
+                    <div className="flex flex-wrap gap-2 max-[479px]:gap-1.5 w-full md:w-auto justify-start md:justify-end">
                       {onStartBlock && (
                         <Button
                           variant={block.isBreak ? 'secondary' : 'primary'}
                           size="sm"
                           onClick={() => onStartBlock(block)}
-                          className="min-h-[40px]"
+                          className="min-h-[40px] max-[479px]:min-h-[34px]"
                         >
                           <Play className="w-3 h-3" />
                           Iniciar
@@ -147,7 +147,7 @@ export default function TodayPlan({
                           variant="ghost"
                           size="sm"
                           onClick={() => onSkipBlock(block.id)}
-                          className="min-h-[40px]"
+                          className="min-h-[40px] max-[479px]:min-h-[34px]"
                         >
                           Pular
                         </Button>
@@ -157,7 +157,7 @@ export default function TodayPlan({
                           variant="secondary"
                           size="sm"
                           onClick={() => onCompleteBlock(block.id)}
-                          className="min-h-[40px]"
+                          className="min-h-[40px] max-[479px]:min-h-[34px]"
                         >
                           Concluir
                         </Button>

@@ -127,8 +127,8 @@ export default function AnalyticsPage() {
 
   if (!mounted) {
     return (
-      <div className="space-y-6">
-        <div className="glass-card p-6 animate-pulse">
+      <div className="space-y-6 max-[479px]:space-y-4">
+        <div className="glass-card p-6 max-[479px]:p-4 animate-pulse">
           <h1 className="text-2xl font-heading font-bold text-white">Análises</h1>
           <p className="text-sm text-text-secondary mt-1">Carregando insights...</p>
         </div>
@@ -141,12 +141,12 @@ export default function AnalyticsPage() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="app-page"
+      className="app-page max-[479px]:[&>*+*]:mt-3"
     >
       {/* Cabeçalho */}
       <motion.div variants={itemVariants}>
-        <h1 className="text-2xl font-heading font-bold text-white">Análises</h1>
-        <p className="text-sm text-text-secondary mt-1">
+        <h1 className="text-2xl max-[479px]:text-xl font-heading font-bold text-white">Análises</h1>
+        <p className="text-sm max-[479px]:text-xs text-text-secondary mt-1">
           Acompanhe seu desempenho e progresso nos estudos
         </p>
       </motion.div>
@@ -154,7 +154,7 @@ export default function AnalyticsPage() {
       {/* Estatísticas de Resumo */}
       <motion.div
         variants={itemVariants}
-        className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
+        className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-[479px]:gap-2"
       >
         <StatsCard
           title="Tempo Total de Estudo"
@@ -198,7 +198,7 @@ export default function AnalyticsPage() {
       </motion.div>
 
       {/* Linha de Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-[479px]:gap-3 sm:gap-6">
         <motion.div variants={itemVariants}>
           <ProductivityChart data={productivityData} />
         </motion.div>
@@ -215,44 +215,44 @@ export default function AnalyticsPage() {
       {/* Seção de Insights */}
       <motion.div variants={itemVariants}>
         <Card>
-          <h2 className="text-xl font-heading font-bold text-white mb-4">
+          <h2 className="text-xl max-[479px]:text-lg font-heading font-bold text-white mb-4 max-[479px]:mb-3">
             Insights da IA
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-[479px]:gap-2 sm:gap-4">
             {/* Horário de Pico de Performance */}
-            <div className="p-4 rounded-xl bg-neon-blue/10 border border-neon-blue/20">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="w-5 h-5 text-neon-blue" />
+            <div className="p-4 max-[479px]:p-3 rounded-xl bg-neon-blue/10 border border-neon-blue/20">
+              <div className="flex items-center gap-2 mb-2 max-[479px]:mb-1">
+                <Clock className="w-5 h-5 max-[479px]:w-4 max-[479px]:h-4 text-neon-blue" />
                 <span className="font-medium text-white">Pico de Performance</span>
               </div>
-              <p className="text-2xl font-heading font-bold text-neon-blue">--</p>
-              <p className="text-sm text-text-secondary mt-1">Sem dados ainda</p>
+              <p className="text-2xl max-[479px]:text-[22px] font-heading font-bold text-neon-blue">--</p>
+              <p className="text-sm max-[479px]:text-xs text-text-secondary mt-1">Sem dados ainda</p>
             </div>
 
             {/* Melhor Disciplina */}
-            <div className="p-4 rounded-xl bg-neon-purple/10 border border-neon-purple/20">
-              <div className="flex items-center gap-2 mb-2">
-                <Award className="w-5 h-5 text-neon-purple" />
+            <div className="p-4 max-[479px]:p-3 rounded-xl bg-neon-purple/10 border border-neon-purple/20">
+              <div className="flex items-center gap-2 mb-2 max-[479px]:mb-1">
+                <Award className="w-5 h-5 max-[479px]:w-4 max-[479px]:h-4 text-neon-purple" />
                 <span className="font-medium text-white">Melhor Disciplina</span>
               </div>
-              <p className="text-2xl font-heading font-bold text-neon-purple">--</p>
-              <p className="text-sm text-text-secondary mt-1">Sem dados ainda</p>
+              <p className="text-2xl max-[479px]:text-[22px] font-heading font-bold text-neon-purple">--</p>
+              <p className="text-sm max-[479px]:text-xs text-text-secondary mt-1">Sem dados ainda</p>
             </div>
 
             {/* Consistência */}
-            <div className="p-4 rounded-xl bg-neon-cyan/10 border border-neon-cyan/20">
-              <div className="flex items-center gap-2 mb-2">
-                <Calendar className="w-5 h-5 text-neon-cyan" />
+            <div className="p-4 max-[479px]:p-3 rounded-xl bg-neon-cyan/10 border border-neon-cyan/20">
+              <div className="flex items-center gap-2 mb-2 max-[479px]:mb-1">
+                <Calendar className="w-5 h-5 max-[479px]:w-4 max-[479px]:h-4 text-neon-cyan" />
                 <span className="font-medium text-white">Consistência</span>
               </div>
-              <p className="text-2xl font-heading font-bold text-neon-cyan">0%</p>
-              <p className="text-sm text-text-secondary mt-1">Sem dados ainda</p>
+              <p className="text-2xl max-[479px]:text-[22px] font-heading font-bold text-neon-cyan">0%</p>
+              <p className="text-sm max-[479px]:text-xs text-text-secondary mt-1">Sem dados ainda</p>
             </div>
           </div>
 
           {/* Recomendação */}
-          <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-neon-blue/5 to-neon-purple/5 border border-card-border">
-            <p className="text-sm text-text-secondary">
+          <div className="mt-6 max-[479px]:mt-4 p-4 max-[479px]:p-3 rounded-xl bg-gradient-to-r from-neon-blue/5 to-neon-purple/5 border border-card-border">
+            <p className="text-sm max-[479px]:text-xs text-text-secondary">
               <span className="text-neon-blue font-medium">💡 Recomendação:</span>{' '}
               Sem recomendações ainda. Inicie seus estudos para gerar insights.
             </p>

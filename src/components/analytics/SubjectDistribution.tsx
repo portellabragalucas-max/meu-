@@ -13,6 +13,7 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui';
 
 interface SubjectDistributionProps {
@@ -42,6 +43,15 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export default function SubjectDistribution({ data }: SubjectDistributionProps) {
+  const [isCompactMobile, setIsCompactMobile] = useState(false);
+
+  useEffect(() => {
+    const update = () => setIsCompactMobile(window.innerWidth < 480);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
   // Calcular porcentagens
   const totalHours = data.reduce((sum, d) => sum + d.hours, 0);
   const dataWithPercentage = data.map((d) => ({
@@ -51,14 +61,14 @@ export default function SubjectDistribution({ data }: SubjectDistributionProps) 
 
   return (
     <Card className="h-full min-w-0">
-      <h2 className="text-xl max-[480px]:text-lg font-heading font-bold text-white mb-2">
+      <h2 className="text-xl max-[479px]:text-lg font-heading font-bold text-white mb-2 max-[479px]:mb-1">
         Distribuição por Disciplina
       </h2>
-      <p className="text-sm max-[480px]:text-xs text-text-secondary mb-6">
+      <p className="text-sm max-[479px]:text-xs text-text-secondary mb-6 max-[479px]:mb-4">
         Tempo dedicado a cada disciplina esta semana
       </p>
 
-      <div className="h-72 max-[480px]:h-56">
+      <div className="h-72 max-[479px]:h-48">
         <div className="h-full w-full min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -68,8 +78,8 @@ export default function SubjectDistribution({ data }: SubjectDistributionProps) 
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                innerRadius={60}
-                outerRadius={90}
+                innerRadius={isCompactMobile ? 52 : 60}
+                outerRadius={isCompactMobile ? 84 : 90}
                 paddingAngle={2}
                 stroke="none"
               >
@@ -84,17 +94,17 @@ export default function SubjectDistribution({ data }: SubjectDistributionProps) 
       </div>
 
       {/* Legenda */}
-      <div className="grid grid-cols-2 gap-2 mt-4">
+      <div className="grid grid-cols-2 gap-2 max-[479px]:gap-1.5 mt-4 max-[479px]:mt-3">
         {dataWithPercentage.map((subject) => (
-          <div key={subject.name} className="flex items-center gap-2">
+          <div key={subject.name} className="flex items-center gap-2 max-[479px]:gap-1.5">
             <div
-              className="w-3 h-3 rounded-full flex-shrink-0"
+              className="w-3 h-3 max-[479px]:w-2.5 max-[479px]:h-2.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: subject.color }}
             />
-            <span className="text-sm text-text-secondary truncate">
+            <span className="text-sm max-[479px]:text-xs text-text-secondary truncate">
               {subject.name}
             </span>
-            <span className="text-sm font-medium text-white ml-auto">
+            <span className="text-sm max-[479px]:text-xs font-medium text-white ml-auto">
               {subject.hours.toFixed(1)}h
             </span>
           </div>

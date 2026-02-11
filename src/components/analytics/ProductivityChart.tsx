@@ -15,6 +15,7 @@ import {
   CartesianGrid,
   Legend,
 } from 'recharts';
+import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui';
 
 interface ProductivityChartProps {
@@ -44,16 +45,25 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function ProductivityChart({ data }: ProductivityChartProps) {
+  const [isCompactMobile, setIsCompactMobile] = useState(false);
+
+  useEffect(() => {
+    const update = () => setIsCompactMobile(window.innerWidth < 480);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
   return (
     <Card className="h-full min-w-0">
-      <h2 className="text-xl max-[480px]:text-lg font-heading font-bold text-white mb-2">
+      <h2 className="text-xl max-[479px]:text-lg font-heading font-bold text-white mb-2 max-[479px]:mb-1">
         Tendências de Produtividade
       </h2>
-      <p className="text-sm max-[480px]:text-xs text-text-secondary mb-6">
+      <p className="text-sm max-[479px]:text-xs text-text-secondary mb-6 max-[479px]:mb-4">
         Acompanhe seu foco e produtividade ao longo do tempo
       </p>
 
-      <div className="h-72 max-[480px]:h-56">
+      <div className="h-72 max-[479px]:h-48">
         <div className="h-full w-full min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
@@ -75,9 +85,9 @@ export default function ProductivityChart({ data }: ProductivityChartProps) {
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend
-                wrapperStyle={{ paddingTop: 20 }}
+                wrapperStyle={{ paddingTop: isCompactMobile ? 12 : 20 }}
                 formatter={(value) => (
-                  <span className="text-sm text-text-secondary">{value}</span>
+                  <span className="text-sm max-[479px]:text-xs text-text-secondary">{value}</span>
                 )}
               />
               <Line

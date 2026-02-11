@@ -65,16 +65,16 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
 
   return (
     <Card className="h-full">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+      <div className="flex flex-col gap-4 max-[479px]:gap-2 sm:flex-row sm:items-center sm:justify-between mb-6 max-[479px]:mb-4">
         <div>
-          <h2 className="text-xl max-[480px]:text-lg font-heading font-bold text-white">
+          <h2 className="text-xl max-[479px]:text-lg font-heading font-bold text-white">
             Mapa de Atividades
           </h2>
-          <p className="text-sm max-[480px]:text-xs text-text-secondary mt-1">
+          <p className="text-sm max-[479px]:text-xs text-text-secondary mt-1">
             Sua consistência de estudos nas últimas {weeks} semanas
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm">
+        <div className="flex flex-wrap items-center gap-3 max-[479px]:gap-2 sm:gap-4 text-sm max-[479px]:text-xs">
           <div>
             <span className="text-text-secondary">Total: </span>
             <span className="font-bold text-white">{totalHours.toFixed(1)}h</span>
@@ -86,16 +86,14 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
         </div>
       </div>
 
-      <div className="overflow-x-auto max-w-full">
-        <div className="min-w-max w-max">
-          <div className="flex mb-2 ml-8">
+      <div className="max-w-full overflow-hidden">
+        <div className="w-full">
+          <div className="flex mb-2 max-[479px]:mb-1.5 ml-8 max-[479px]:ml-6">
             {dayLabels.map((day, i) => (
               <div
                 key={day}
-                className="text-xs text-text-muted"
+                className="text-xs max-[479px]:text-[10px] text-text-muted w-[14px] max-[479px]:w-[11px] mr-[3px] max-[479px]:mr-[2px]"
                 style={{
-                  width: 14,
-                  marginRight: 3,
                   visibility: i % 2 === 1 ? 'visible' : 'hidden',
                 }}
               >
@@ -104,11 +102,11 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
             ))}
           </div>
 
-          <div className="flex gap-1">
-            <div className="w-6" />
+          <div className="flex gap-1 max-[479px]:gap-[3px]">
+            <div className="w-6 max-[479px]:w-5" />
 
             {weeksData.map((week, weekIndex) => (
-              <div key={weekIndex} className="flex flex-col gap-1">
+              <div key={weekIndex} className="flex flex-col gap-1 max-[479px]:gap-[3px]">
                 {week.map((day, dayIndex) => (
                   <motion.div
                     key={day.date}
@@ -119,7 +117,7 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
                   >
                     <div
                       className={cn(
-                        'w-[14px] h-[14px] rounded-sm border border-card-border',
+                        'w-[14px] h-[14px] max-[479px]:w-[11px] max-[479px]:h-[11px] rounded-sm border border-card-border',
                         levelColors[day.level],
                         day.level > 0 && 'border-transparent'
                       )}
@@ -147,12 +145,12 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
         </div>
       </div>
 
-      <div className="flex items-center justify-end gap-2 mt-4">
+      <div className="flex items-center justify-end gap-2 max-[479px]:gap-1.5 mt-4 max-[479px]:mt-3">
         <span className="text-xs text-text-muted">Menos</span>
         {levelColors.map((color, i) => (
           <div
             key={i}
-            className={cn('w-3 h-3 rounded-sm', color, i > 0 && 'border-none')}
+            className={cn('w-3 h-3 max-[479px]:w-2.5 max-[479px]:h-2.5 rounded-sm', color, i > 0 && 'border-none')}
             style={{ borderColor: i === 0 ? 'rgba(0,180,255,0.2)' : 'transparent' }}
           />
         ))}

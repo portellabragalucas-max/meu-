@@ -67,26 +67,30 @@ export default function StatsCard({
     <Card
       className={cn(
         'stats-card',
-        isMobile ? 'p-3 sm:p-6' : 'p-4 sm:p-6',
-        'max-[480px]:rounded-xl',
+        isMobile
+          ? 'p-3 sm:p-6 max-[479px]:p-2.5 max-[479px]:rounded-lg max-[479px]:min-h-[114px]'
+          : 'p-4 sm:p-6',
+        'max-[479px]:rounded-xl',
         className
       )}
       glow={styles.glow as 'blue' | 'purple' | 'cyan' | 'none'}
     >
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-2">
         {/* Icon */}
         <motion.div
           whileHover={{ scale: 1.1, rotate: 5 }}
           className={cn(
             isMobile
-              ? 'w-8 h-8 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center'
+              ? 'w-8 h-8 sm:w-12 sm:h-12 max-[479px]:w-7 max-[479px]:h-7 rounded-xl flex items-center justify-center'
               : 'w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center',
             styles.iconBg
           )}
         >
           <Icon
             className={cn(
-              isMobile ? 'w-4 h-4 sm:w-6 sm:h-6' : 'w-5 h-5 sm:w-6 sm:h-6',
+              isMobile
+                ? 'w-4 h-4 sm:w-6 sm:h-6 max-[479px]:w-[15px] max-[479px]:h-[15px]'
+                : 'w-5 h-5 sm:w-6 sm:h-6',
               styles.iconColor
             )}
           />
@@ -96,7 +100,9 @@ export default function StatsCard({
         {trend && (
           <div
             className={cn(
-              isMobile ? 'flex items-center gap-1 text-[11px] font-medium' : 'flex items-center gap-1 text-sm font-medium',
+              isMobile
+                ? 'flex items-center gap-1 text-[11px] max-[479px]:text-[10px] font-medium'
+                : 'flex items-center gap-1 text-sm font-medium',
               trend.isPositive ? 'text-neon-cyan' : 'text-red-400'
             )}
           >
@@ -111,18 +117,23 @@ export default function StatsCard({
       </div>
 
       {/* Value */}
-      <div className={cn(isMobile ? 'mt-2' : 'mt-3')}>
+      <div className={cn(isMobile ? 'mt-2 max-[479px]:mt-1.5' : 'mt-3')}>
         <motion.h3
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className={cn(
-            isMobile ? 'text-xl sm:text-3xl max-[480px]:text-[22px]' : 'text-2xl sm:text-3xl',
+            isMobile ? 'text-xl sm:text-3xl max-[479px]:text-[22px]' : 'text-2xl sm:text-3xl',
             'font-heading font-bold text-white'
           )}
         >
           {value}
         </motion.h3>
-        <p className={cn(isMobile ? 'text-xs max-[480px]:text-[12px]' : 'text-sm', 'text-text-secondary mt-1')}>
+        <p
+          className={cn(
+            isMobile ? 'text-xs max-[479px]:text-[12px]' : 'text-sm',
+            'text-text-secondary mt-1 max-[479px]:mt-0.5'
+          )}
+        >
           {displayTitle}
         </p>
         {subtitle && (
