@@ -456,7 +456,7 @@ export default function SettingsPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="app-page w-full min-w-0"
+      className="app-page w-full min-w-0 max-w-[980px] mx-auto"
     >
       {/* Cabeçalho */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -607,7 +607,7 @@ export default function SettingsPage() {
                     >
                       {label}
                     </button>
-                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3 md:flex-nowrap">
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3 lg:flex-nowrap">
                       <input
                         type="range"
                         min={0}
@@ -616,7 +616,7 @@ export default function SettingsPage() {
                         value={hours}
                         onChange={(e) => updateDayHours(index, Number(e.target.value))}
                         className={cn(
-                          'min-w-0 flex-1 accent-neon-purple',
+                          'min-w-[220px] flex-1 accent-neon-purple',
                           !isActive && 'opacity-40'
                         )}
                       />
