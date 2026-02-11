@@ -6,6 +6,7 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   DndContext,
   DragOverlay,
@@ -63,6 +64,7 @@ export default function WeeklyPlanner({
   const [currentWeekStart, setCurrentWeekStart] = useState(getWeekStart());
   const [blocks, setBlocks] = useState(initialBlocks);
   const [isMobile, setIsMobile] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [mobileDayIndex, setMobileDayIndex] = useState(0);
 
   // Sincronizar quando o pai atualizar os blocos (ex: após gerar agenda)
@@ -93,6 +95,10 @@ export default function WeeklyPlanner({
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    setIsMounted(true);
   }, []);
   const [activeBlock, setActiveBlock] = useState<StudyBlock | null>(null);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
@@ -131,6 +137,22 @@ export default function WeeklyPlanner({
       setMobileDayIndex(todayIndex);
     }
   }, [isMobile, weekDates]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    if (!isScheduleModalOpen && !isRescheduleModalOpen) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [isMounted, isScheduleModalOpen, isRescheduleModalOpen]);
+
   const formatDatePt = (date: Date) =>
     date.toLocaleDateString('pt-BR', {
       weekday: 'long',
@@ -857,10 +879,12 @@ export default function WeeklyPlanner({
         }}
       />
 
-      {isScheduleModalOpen && (
-        <div className="app-modal-overlay">
-          <div className="app-modal-panel">
-            <Card className="relative" padding="lg">
+      {isMounted &&
+        isScheduleModalOpen &&
+        createPortal(
+          <div className="app-modal-overlay">
+            <div className="app-modal-panel">
+              <Card className="relative" padding="lg">
               <h2 className="text-xl font-heading font-bold text-white mb-2">
                 Definir período do cronograma
               </h2>
@@ -925,15 +949,18 @@ export default function WeeklyPlanner({
                   Gerar
                 </Button>
               </div>
-            </Card>
-          </div>
-        </div>
-      )}
+              </Card>
+            </div>
+          </div>,
+          document.body
+        )}
 
-      {isRescheduleModalOpen && (
-        <div className="app-modal-overlay">
-          <div className="app-modal-panel">
-            <Card className="relative" padding="lg">
+      {isMounted &&
+        isRescheduleModalOpen &&
+        createPortal(
+          <div className="app-modal-overlay">
+            <div className="app-modal-panel">
+              <Card className="relative" padding="lg">
               <h2 className="text-xl font-heading font-bold text-white mb-2">
                 Reagendar pendências
               </h2>
@@ -1059,10 +1086,11 @@ export default function WeeklyPlanner({
                   Reagendar
                 </Button>
               </div>
-            </Card>
-          </div>
-        </div>
-      )}
+              </Card>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
