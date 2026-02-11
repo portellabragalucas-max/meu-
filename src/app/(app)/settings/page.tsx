@@ -9,15 +9,18 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
+import { signOut } from 'next-auth/react';
 import {
   User,
   Clock,
   Brain,
   Bell,
   Shield,
-  Palette,
+  AlertTriangle,
   Save,
   RefreshCw,
+  LogOut,
+  Trash2,
   RotateCcw,
   CheckCircle2,
 } from 'lucide-react';
@@ -100,6 +103,13 @@ export default function SettingsPage() {
     settings.alarmSound || 'pulse'
   );
   const [alarmApplied, setAlarmApplied] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [dangerFeedback, setDangerFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
 
   const dailyHoursByWeekday =
@@ -398,6 +408,18 @@ export default function SettingsPage() {
     setHasChanges(false);
   };
 
+  const clearLocalStudyData = () => {
+    try {
+      localStorage.removeItem('nexora_subjects');
+      localStorage.removeItem('nexora_onboarding');
+      localStorage.removeItem('nexora_planner_blocks');
+      localStorage.removeItem('nexora_analytics');
+      localStorage.removeItem('nexora_study_prefs');
+    } catch (error) {
+      console.warn('Erro ao limpar dados locais:', error);
+    }
+  };
+
   const handleReset = () => {
     setSettings(initialSettings);
     const fallbackHours =
@@ -422,15 +444,7 @@ export default function SettingsPage() {
 
   const handleResetOnboarding = () => {
     if (confirm('Isso vai reiniciar o tutorial e limpar suas preferências. Continuar?')) {
-      try {
-        localStorage.removeItem('nexora_subjects');
-        localStorage.removeItem('nexora_onboarding');
-        localStorage.removeItem('nexora_planner_blocks');
-        localStorage.removeItem('nexora_analytics');
-        localStorage.removeItem('nexora_study_prefs');
-      } catch (error) {
-        console.warn('Erro ao limpar dados locais:', error);
-      }
+      clearLocalStudyData();
       resetOnboarding();
       window.location.reload();
     }
@@ -438,17 +452,64 @@ export default function SettingsPage() {
 
   const handleResetProgress = () => {
     if (confirm('Isso vai apagar todas as disciplinas e progresso. Continuar?')) {
-      try {
-        localStorage.removeItem('nexora_subjects');
-        localStorage.removeItem('nexora_onboarding');
-        localStorage.removeItem('nexora_planner_blocks');
-        localStorage.removeItem('nexora_analytics');
-        localStorage.removeItem('nexora_study_prefs');
-      } catch (error) {
-        console.warn('Erro ao limpar dados locais:', error);
-      }
+      clearLocalStudyData();
       resetOnboarding();
       window.location.reload();
+    }
+  };
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    setDangerFeedback(null);
+    try {
+      await signOut({ callbackUrl: '/login' });
+    } catch (error) {
+      setDangerFeedback({
+        type: 'error',
+        message: 'Falha ao sair da conta. Tente novamente.',
+      });
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmationKeyword = 'EXCLUIR';
+
+    if (deleteConfirmText.trim().toUpperCase() !== confirmationKeyword) {
+      setDangerFeedback({
+        type: 'error',
+        message: `Digite "${confirmationKeyword}" para confirmar a exclusao da conta.`,
+      });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Esta acao e permanente e vai remover sua conta e todos os dados salvos. Deseja continuar?'
+    );
+    if (!confirmed) return;
+
+    setIsDeletingAccount(true);
+    setDangerFeedback(null);
+
+    try {
+      const response = await fetch('/api/auth/delete-account', { method: 'DELETE' });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || 'Nao foi possivel excluir sua conta agora.');
+      }
+
+      clearLocalStudyData();
+      setDeleteConfirmText('');
+      await signOut({ callbackUrl: '/login' });
+    } catch (error) {
+      setDangerFeedback({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Falha ao excluir conta.',
+      });
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -949,10 +1010,10 @@ export default function SettingsPage() {
       </Card>
 
       {/* Zona de Perigo */}
-      <Card className="border-red-500/20">
+      <Card className="border-red-500/35 bg-gradient-to-br from-red-950/20 via-background-light to-background-light">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-red-500" />
+          <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/25 flex items-center justify-center">
+            <Shield className="w-5 h-5 text-red-400" />
           </div>
           <div>
             <h2 className="text-lg font-heading font-bold text-white">
@@ -962,12 +1023,29 @@ export default function SettingsPage() {
               Ações irreversíveis
             </p>
           </div>
+          <Badge variant="danger" size="sm">Irreversivel</Badge>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4">
-          <Button 
-            variant="secondary" 
-            className="w-full sm:w-auto border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] p-3 mb-4">
+          <p className="text-xs sm:text-sm text-red-200/85 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-300 shrink-0" />
+            Revise antes de confirmar. Algumas acoes removem dados permanentemente.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Button
+            variant="ghost"
+            className="w-full border border-slate-700 text-slate-200 hover:bg-slate-800/70"
+            onClick={handleSignOut}
+            loading={isSigningOut}
+            leftIcon={<LogOut className="w-4 h-4" />}
+          >
+            Sair da Conta
+          </Button>
+          <Button
+            variant="secondary"
+            className="w-full border-orange-500/35 text-orange-300 hover:bg-orange-500/10"
             onClick={handleResetOnboarding}
             leftIcon={<RotateCcw className="w-4 h-4" />}
           >
@@ -975,14 +1053,51 @@ export default function SettingsPage() {
           </Button>
           <Button
             variant="secondary"
-            className="w-full sm:w-auto border-red-500/30 text-red-400 hover:bg-red-500/10"
+            className="w-full sm:col-span-2 border-red-500/35 text-red-300 hover:bg-red-500/10"
             onClick={handleResetProgress}
+            leftIcon={<RefreshCw className="w-4 h-4" />}
           >
             Resetar Todo o Progresso
           </Button>
-          <Button variant="secondary" className="w-full sm:w-auto border-red-500/30 text-red-400 hover:bg-red-500/10">
+        </div>
+
+        <div className="mt-4 rounded-xl border border-red-500/35 bg-red-950/20 p-4 space-y-3">
+          <div className="flex items-center gap-2 text-red-200">
+            <Trash2 className="w-4 h-4" />
+            <p className="text-sm font-semibold">Excluir conta permanentemente</p>
+          </div>
+          <p className="text-xs text-red-200/80">
+            Digite <span className="font-semibold text-red-100">EXCLUIR</span> para confirmar.
+          </p>
+          <input
+            type="text"
+            value={deleteConfirmText}
+            onChange={(e) => {
+              setDeleteConfirmText(e.target.value);
+              if (dangerFeedback) setDangerFeedback(null);
+            }}
+            placeholder="Digite EXCLUIR"
+            className="input-field border-red-500/30 focus:border-red-400 focus:shadow-none"
+          />
+          <Button
+            variant="danger"
+            className="w-full"
+            onClick={handleDeleteAccount}
+            loading={isDeletingAccount}
+            leftIcon={<Trash2 className="w-4 h-4" />}
+          >
             Excluir Conta
           </Button>
+          {dangerFeedback && (
+            <p
+              className={cn(
+                'text-xs',
+                dangerFeedback.type === 'error' ? 'text-red-300' : 'text-neon-cyan'
+              )}
+            >
+              {dangerFeedback.message}
+            </p>
+          )}
         </div>
       </Card>
     </motion.div>
