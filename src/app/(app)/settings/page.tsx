@@ -456,7 +456,7 @@ export default function SettingsPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="max-w-4xl mx-auto app-page w-full min-w-0"
+      className="app-page w-full min-w-0"
     >
       {/* Cabeçalho */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -510,7 +510,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
+          <div className="min-w-0">
             <label className="block text-sm font-medium text-text-secondary mb-2">
               Nome de Exibição
             </label>
@@ -521,7 +521,7 @@ export default function SettingsPage() {
               className="input-field"
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="block text-sm font-medium text-text-secondary mb-2">
               E-mail
             </label>
@@ -572,7 +572,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-card-border bg-card-bg/50 p-4">
+          <div className="rounded-xl border border-card-border bg-card-bg/50 p-4 overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-white">Horas por dia</p>
@@ -594,7 +594,7 @@ export default function SettingsPage() {
                 return (
                   <div
                     key={label}
-                    className="flex flex-col md:flex-row md:items-center gap-3 justify-between rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-3"
+                    className="flex min-w-0 flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-3 md:flex-row md:items-center md:justify-between"
                   >
                     <button
                       onClick={() => updateDayHours(index, isActive ? 0 : settings.dailyGoalHours)}
@@ -607,7 +607,7 @@ export default function SettingsPage() {
                     >
                       {label}
                     </button>
-                    <div className="flex flex-1 flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3">
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3 md:flex-nowrap">
                       <input
                         type="range"
                         min={0}
@@ -616,7 +616,7 @@ export default function SettingsPage() {
                         value={hours}
                         onChange={(e) => updateDayHours(index, Number(e.target.value))}
                         className={cn(
-                          'w-full accent-neon-purple',
+                          'min-w-0 flex-1 accent-neon-purple',
                           !isActive && 'opacity-40'
                         )}
                       />
@@ -627,7 +627,7 @@ export default function SettingsPage() {
                         step={0.5}
                         value={hours}
                         onChange={(e) => updateDayHours(index, Number(e.target.value))}
-                        className="input-field w-20 sm:w-24"
+                        className="input-field w-20 shrink-0 sm:w-24"
                       />
                       <span className="text-xs text-text-muted whitespace-nowrap">{formatHours(hours)}</span>
                     </div>
