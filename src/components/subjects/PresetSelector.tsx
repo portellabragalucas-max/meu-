@@ -239,7 +239,7 @@ export default function PresetSelector({
                 onClick={() => {
                   setSelectedPreset(preset.id);
                   setShowDetails(isExpanded ? null : preset.id);
-                  setShowWizard(true);
+                  setShowWizard(false);
                 }}
               >
                 <div className="flex items-start gap-4">
