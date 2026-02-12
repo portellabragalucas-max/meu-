@@ -925,7 +925,8 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      <AnimatePresence initial={false} custom={transitionDirection} mode="popLayout">
+      <div className="relative overflow-x-hidden">
+        <AnimatePresence initial={false} custom={transitionDirection} mode="popLayout">
         {!activeSection && (
           <motion.div
             key="settings-sections-list"
@@ -934,7 +935,7 @@ export default function SettingsPage() {
             animate="center"
             exit="exit"
             transition={mobileStackTransition}
-            className="md:hidden space-y-3"
+            className="md:hidden space-y-3 relative z-0"
           >
             {!hasRemotePrefs && !hasLocalPrefs && (
               <Card className="border-neon-cyan/40 bg-neon-cyan/5">
@@ -992,7 +993,7 @@ export default function SettingsPage() {
           animate="center"
           exit="exit"
           transition={mobileStackTransition}
-          className="md:!transform-none md:!opacity-100"
+          className="relative z-10 md:!transform-none md:!opacity-100"
         >
       <Card className={cn(activeSection === 'profile' ? 'block' : 'hidden', 'md:block')}>
         <div className="flex items-center gap-3 mb-6">
@@ -1642,6 +1643,7 @@ export default function SettingsPage() {
       </Card>
         </motion.div>
       </AnimatePresence>
+      </div>
     </motion.div>
   );
 }
