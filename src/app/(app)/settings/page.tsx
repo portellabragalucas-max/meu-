@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
 import TimePickerField from '@/components/settings/TimePickerField';
+import SystemNotificationsCard from '@/components/settings/SystemNotificationsCard';
 import { useIsMobile, useOnboarding, useLocalStorage } from '@/hooks';
 import { cn } from '@/lib/utils';
 import type { DailyHoursByWeekday, StudyPreferences, UserSettings, WeekdayKey } from '@/types';
@@ -1370,6 +1371,8 @@ export default function SettingsPage() {
         </div>
 
         <div className="space-y-4">
+          <SystemNotificationsCard />
+
           {[
             {
               key: 'dailyReminder' as const,

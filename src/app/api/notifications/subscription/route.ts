@@ -1,0 +1,127 @@
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { hasWebPush } from '@/lib/env';
+import { prisma } from '@/lib/prisma';
+
+const prismaAny = prisma as any;
+
+interface PushSubscriptionInput {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
+const isValidSubscription = (value: unknown): value is PushSubscriptionInput => {
+  if (!value || typeof value !== 'object') return false;
+
+  const candidate = value as Partial<PushSubscriptionInput>;
+  if (typeof candidate.endpoint !== 'string' || candidate.endpoint.length === 0) return false;
+  if (!candidate.keys || typeof candidate.keys !== 'object') return false;
+
+  const keys = candidate.keys as Partial<PushSubscriptionInput['keys']>;
+  return typeof keys.p256dh === 'string' && typeof keys.auth === 'string';
+};
+
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!hasWebPush) {
+      return NextResponse.json(
+        { success: false, error: 'Notificacoes push indisponiveis no momento.' },
+        { status: 503 }
+      );
+    }
+
+    if (!prismaAny.pushSubscription) {
+      return NextResponse.json(
+        { success: false, error: 'Persistencia de notificacoes indisponivel.' },
+        { status: 503 }
+      );
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const subscription = body?.subscription;
+
+    if (!isValidSubscription(subscription)) {
+      return NextResponse.json(
+        { success: false, error: 'Assinatura de notificacao invalida.' },
+        { status: 400 }
+      );
+    }
+
+    await prismaAny.pushSubscription.upsert({
+      where: { endpoint: subscription.endpoint },
+      update: {
+        userId,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+      },
+      create: {
+        userId,
+        endpoint: subscription.endpoint,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao salvar assinatura de notificacao:', error);
+    return NextResponse.json(
+      { success: false, error: 'Falha ao ativar notificacoes no dispositivo.' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!prismaAny.pushSubscription) {
+      return NextResponse.json({ success: true });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const endpoint =
+      typeof body?.endpoint === 'string' && body.endpoint.trim().length > 0
+        ? body.endpoint.trim()
+        : null;
+
+    if (endpoint) {
+      await prismaAny.pushSubscription.deleteMany({
+        where: {
+          userId,
+          endpoint,
+        },
+      });
+      return NextResponse.json({ success: true });
+    }
+
+    await prismaAny.pushSubscription.deleteMany({
+      where: { userId },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao remover assinatura de notificacao:', error);
+    return NextResponse.json(
+      { success: false, error: 'Falha ao desativar notificacoes do dispositivo.' },
+      { status: 500 }
+    );
+  }
+}

@@ -6,10 +6,14 @@ export const env = {
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
   emailServer: process.env.EMAIL_SERVER ?? '',
   emailFrom: process.env.EMAIL_FROM ?? '',
+  vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '',
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? '',
+  vapidSubject: process.env.VAPID_SUBJECT ?? '',
 };
 
 export const hasGoogleAuth = Boolean(env.googleClientId && env.googleClientSecret);
 export const hasEmailAuth = Boolean(env.emailServer && env.emailFrom);
+export const hasWebPush = Boolean(env.vapidPublicKey && env.vapidPrivateKey && env.vapidSubject);
 
 export const missingAuthEnv = () => {
   const missing: string[] = [];
