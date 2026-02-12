@@ -1153,7 +1153,7 @@ export default function SettingsPage() {
                 type="time"
                 value={settings.preferredStart}
                 onChange={(e) => updateSetting('preferredStart', e.target.value)}
-                className="input-field"
+                className="input-field py-2.5"
               />
             </div>
             <div>
@@ -1164,7 +1164,7 @@ export default function SettingsPage() {
                 type="time"
                 value={settings.preferredEnd}
                 onChange={(e) => updateSetting('preferredEnd', e.target.value)}
-                className="input-field"
+                className="input-field py-2.5"
               />
             </div>
           </div>
