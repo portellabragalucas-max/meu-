@@ -3,13 +3,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { hasWebPush } from '@/lib/env';
 import { prisma } from '@/lib/prisma';
-import { sendWebPushNotification } from '@/lib/web-push';
+import { createNotificationForUser } from '@/lib/notification-center';
 
-const prismaAny = prisma as any;
-
-interface WebPushError extends Error {
-  statusCode?: number;
-}
+export const dynamic = 'force-dynamic';
 
 export async function POST() {
   try {
@@ -27,21 +23,9 @@ export async function POST() {
       );
     }
 
-    if (!prismaAny.pushSubscription) {
-      return NextResponse.json(
-        { success: false, error: 'Persistencia de notificacoes indisponivel.' },
-        { status: 503 }
-      );
-    }
-
-    const latestSubscription = await prismaAny.pushSubscription.findFirst({
+    const latestSubscription = await prisma.pushSubscription.findFirst({
       where: { userId },
       orderBy: { updatedAt: 'desc' },
-      select: {
-        endpoint: true,
-        p256dh: true,
-        auth: true,
-      },
     });
 
     if (!latestSubscription) {
@@ -54,39 +38,27 @@ export async function POST() {
       );
     }
 
-    try {
-      await sendWebPushNotification({
-        subscription: {
-          endpoint: latestSubscription.endpoint,
-          keys: {
-            p256dh: latestSubscription.p256dh,
-            auth: latestSubscription.auth,
-          },
-        },
-        payload: {
-          title: 'Nexora',
-          body: 'Notificacoes push ativadas com sucesso.',
-          url: '/dashboard',
-          tag: 'nexora-push-test',
-        },
-      });
-    } catch (error) {
-      const typedError = error as WebPushError;
-      if (typedError.statusCode === 404 || typedError.statusCode === 410) {
-        await prismaAny.pushSubscription.deleteMany({
-          where: { endpoint: latestSubscription.endpoint },
-        });
+    const notificationResult = await createNotificationForUser({
+      userId,
+      type: 'system',
+      title: 'Nexora',
+      message: 'Notificacoes push ativadas com sucesso.',
+      url: '/dashboard',
+      dedupeKey: `system:test:${Date.now()}`,
+      sendPush: true,
+      metadata: {
+        source: 'manual_test',
+      },
+    });
 
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Assinatura expirada. Ative as notificacoes novamente.',
-          },
-          { status: 410 }
-        );
-      }
-
-      throw error;
+    if (notificationResult.pushDelivered === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Assinatura expirada. Ative as notificacoes novamente.',
+        },
+        { status: 410 }
+      );
     }
 
     return NextResponse.json({

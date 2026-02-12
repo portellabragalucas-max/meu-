@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { hasWebPush } from '@/lib/env';
 import { prisma } from '@/lib/prisma';
 
-const prismaAny = prisma as any;
+export const dynamic = 'force-dynamic';
 
 interface PushSubscriptionInput {
   endpoint: string;
@@ -41,13 +41,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!prismaAny.pushSubscription) {
-      return NextResponse.json(
-        { success: false, error: 'Persistencia de notificacoes indisponivel.' },
-        { status: 503 }
-      );
-    }
-
     const body = await request.json().catch(() => ({}));
     const subscription = body?.subscription;
 
@@ -58,7 +51,7 @@ export async function POST(request: Request) {
       );
     }
 
-    await prismaAny.pushSubscription.upsert({
+    await prisma.pushSubscription.upsert({
       where: { endpoint: subscription.endpoint },
       update: {
         userId,
@@ -92,10 +85,6 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!prismaAny.pushSubscription) {
-      return NextResponse.json({ success: true });
-    }
-
     const body = await request.json().catch(() => ({}));
     const endpoint =
       typeof body?.endpoint === 'string' && body.endpoint.trim().length > 0
@@ -103,7 +92,7 @@ export async function DELETE(request: Request) {
         : null;
 
     if (endpoint) {
-      await prismaAny.pushSubscription.deleteMany({
+      await prisma.pushSubscription.deleteMany({
         where: {
           userId,
           endpoint,
@@ -112,7 +101,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    await prismaAny.pushSubscription.deleteMany({
+    await prisma.pushSubscription.deleteMany({
       where: { userId },
     });
 

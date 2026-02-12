@@ -59,6 +59,7 @@ model User {
   accounts     Account[]
   sessions     Session[]
   pushSubscriptions PushSubscription[]
+  notifications UserNotification[]
 }
 
 model UserPreferences {
@@ -71,6 +72,10 @@ model UserPreferences {
   maxBlockMinutes Int      @default(120)
   breakMinutes    Int      @default(15)
   alarmSound      String?  @default("pulse")
+  dailyReminder   Boolean  @default(true)
+  streakReminder  Boolean  @default(true)
+  achievementAlerts Boolean @default(true)
+  weeklyReport    Boolean  @default(true)
   restDays        String   @default("[]")
   examDate        String?
   updatedAt       DateTime @updatedAt
@@ -330,6 +335,26 @@ model PushSubscription {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model UserNotification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  message   String?
+  url       String?
+  dedupeKey String?
+  readAt    DateTime?
+  pushedAt  DateTime?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@unique([userId, dedupeKey])
 }
 
 model VerificationToken {

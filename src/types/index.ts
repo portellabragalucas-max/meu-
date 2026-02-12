@@ -369,3 +369,20 @@ export interface ToastMessage {
   message: string;
   duration?: number;
 }
+
+export type AppNotificationType =
+  | 'daily'
+  | 'streak'
+  | 'weekly'
+  | 'achievement'
+  | 'system';
+
+export interface AppNotification {
+  id: string;
+  type: AppNotificationType;
+  title: string;
+  message?: string;
+  url?: string;
+  createdAt: string;
+  read: boolean;
+}

@@ -435,6 +435,16 @@ export default function SettingsPage() {
           maxBlockMinutes: remote.maxBlockMinutes ?? prev.maxBlockMinutes,
           breakMinutes: remote.breakMinutes ?? prev.breakMinutes,
           alarmSound: remote.alarmSound ?? prev.alarmSound,
+          dailyReminder:
+            typeof remote.dailyReminder === 'boolean' ? remote.dailyReminder : prev.dailyReminder,
+          streakReminder:
+            typeof remote.streakReminder === 'boolean' ? remote.streakReminder : prev.streakReminder,
+          achievementAlerts:
+            typeof remote.achievementAlerts === 'boolean'
+              ? remote.achievementAlerts
+              : prev.achievementAlerts,
+          weeklyReport:
+            typeof remote.weeklyReport === 'boolean' ? remote.weeklyReport : prev.weeklyReport,
           dailyHoursByWeekday: remoteDailyHours ?? prev.dailyHoursByWeekday,
           excludeDays: restDays.length > 0 ? restDays : prev.excludeDays,
           examDate: remote.examDate ?? prev.examDate,

@@ -7,8 +7,8 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
-import { useState, useMemo, useRef, useEffect, type RefObject } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState, useMemo, useRef, useEffect, useCallback, type RefObject } from 'react';
 import { motion } from 'framer-motion';
 import { signOut } from 'next-auth/react';
 import {
@@ -19,20 +19,12 @@ import {
   User,
   LogOut,
 } from 'lucide-react';
-import { percentage, formatNumber } from '@/lib/utils';
+import { percentage, formatNumber, cn } from '@/lib/utils';
 import { QuickSessionModal } from '@/components/session';
 import { useLocalStorage } from '@/hooks';
-import type { Subject } from '@/types';
+import type { AppNotification, Subject } from '@/types';
 import AppContainer from './AppContainer';
 import { navItems } from './navItems';
-
-interface NotificationItem {
-  id: string;
-  title: string;
-  message?: string;
-  createdAt: string;
-  read?: boolean;
-}
 
 interface TopBarProps {
   user: {
@@ -247,16 +239,20 @@ function TopBarDesktop({
 }
 
 export default function TopBar({ user }: TopBarProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const [showQuickSession, setShowQuickSession] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications] = useLocalStorage<NotificationItem[]>('nexora_notifications', []);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [isNotificationsLoading, setIsNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const [subjects] = useLocalStorage<Subject[]>('nexora_subjects', []);
 
   const desktopPanelRef = useRef<HTMLDivElement | null>(null);
   const mobilePanelRef = useRef<HTMLDivElement | null>(null);
   const desktopButtonRef = useRef<HTMLButtonElement | null>(null);
   const mobileButtonRef = useRef<HTMLButtonElement | null>(null);
+  const lastNotificationSyncRef = useRef(0);
 
   const xpProgress = percentage(user.xp, user.xpToNextLevel);
   const routeTitle = useMemo(() => resolveRouteTitle(pathname || '/dashboard'), [pathname]);
@@ -265,34 +261,165 @@ export default function TopBar({ user }: TopBarProps) {
     [subjects]
   );
   const unreadCount = notifications.filter((item) => !item.read).length;
+
+  const formatNotificationDate = useCallback((isoDate: string) => {
+    const parsed = new Date(isoDate);
+    if (Number.isNaN(parsed.getTime())) return isoDate;
+
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(parsed);
+  }, []);
+
+  const fetchNotifications = useCallback(async () => {
+    setIsNotificationsLoading(true);
+    setNotificationsError(null);
+
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'GET',
+        cache: 'no-store',
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || !payload?.success) {
+        setNotificationsError(payload?.error || 'Nao foi possivel carregar notificacoes.');
+        return;
+      }
+
+      setNotifications(Array.isArray(payload?.data?.notifications) ? payload.data.notifications : []);
+    } catch {
+      setNotificationsError('Nao foi possivel carregar notificacoes.');
+    } finally {
+      setIsNotificationsLoading(false);
+    }
+  }, []);
+
+  const syncNotifications = useCallback(async () => {
+    const now = Date.now();
+    if (now - lastNotificationSyncRef.current < 90_000) return;
+    lastNotificationSyncRef.current = now;
+
+    try {
+      await fetch('/api/notifications/sync', { method: 'POST' });
+    } catch {
+      // no-op
+    }
+  }, []);
+
+  const markAllNotificationsAsRead = useCallback(async () => {
+    if (unreadCount <= 0) return;
+
+    setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+
+    try {
+      await fetch('/api/notifications/read', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ markAll: true }),
+      });
+    } catch {
+      // no-op
+    }
+  }, [unreadCount]);
+
+  const markNotificationAsRead = useCallback(async (notificationId: string) => {
+    setNotifications((prev) =>
+      prev.map((item) => (item.id === notificationId ? { ...item, read: true } : item))
+    );
+
+    try {
+      await fetch('/api/notifications/read', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notificationId }),
+      });
+    } catch {
+      // no-op
+    }
+  }, []);
+
+  const handleNotificationClick = useCallback(
+    async (item: AppNotification) => {
+      if (!item.read) {
+        await markNotificationAsRead(item.id);
+      }
+
+      if (item.url) {
+        setShowNotifications(false);
+        router.push(item.url);
+      }
+    },
+    [markNotificationAsRead, router]
+  );
+
   const notificationsPanelContent = (
     <>
       <div className="mb-3 flex items-center justify-between">
         <p className="text-sm font-semibold text-white">Notificacoes</p>
-        <span className="text-xs text-text-muted">
-          {unreadCount > 0 ? `${unreadCount} novas` : 'Sem novas'}
-        </span>
+        <div className="flex items-center gap-3">
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={markAllNotificationsAsRead}
+              className="text-[11px] text-neon-blue hover:underline"
+            >
+              Marcar tudo como lida
+            </button>
+          )}
+          <span className="text-xs text-text-muted">
+            {unreadCount > 0 ? `${unreadCount} novas` : 'Sem novas'}
+          </span>
+        </div>
       </div>
-      {notifications.length === 0 ? (
+      {isNotificationsLoading ? (
+        <div className="text-sm text-text-muted">Carregando notificacoes...</div>
+      ) : notificationsError ? (
+        <div className="text-sm text-red-300">{notificationsError}</div>
+      ) : notifications.length === 0 ? (
         <div className="text-sm text-text-muted">Nenhuma notificacao por enquanto.</div>
       ) : (
         <div className="space-y-3 pr-1">
           {notifications.map((item) => (
-            <div
+            <button
               key={item.id}
-              className="rounded-xl border border-card-border bg-card-bg/60 p-3"
+              type="button"
+              onClick={() => handleNotificationClick(item)}
+              className={cn(
+                'w-full rounded-xl border bg-card-bg/60 p-3 text-left transition-all',
+                item.read ? 'border-card-border' : 'border-neon-cyan/35'
+              )}
             >
-              <p className="text-sm font-medium text-white">{item.title}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-medium text-white">{item.title}</p>
+                {!item.read && <span className="mt-1 h-2 w-2 rounded-full bg-neon-cyan" />}
+              </div>
               {item.message ? (
                 <p className="mt-1 text-xs text-text-secondary">{item.message}</p>
               ) : null}
-              <p className="mt-2 text-[11px] text-text-muted">{item.createdAt}</p>
-            </div>
+              <p className="mt-2 text-[11px] text-text-muted">{formatNotificationDate(item.createdAt)}</p>
+            </button>
           ))}
         </div>
       )}
     </>
   );
+
+  useEffect(() => {
+    if (!showNotifications) return;
+    const refreshNotifications = async () => {
+      await syncNotifications();
+      await fetchNotifications();
+    };
+    void refreshNotifications();
+  }, [fetchNotifications, showNotifications, syncNotifications]);
 
   useEffect(() => {
     if (!showNotifications) return;
@@ -324,7 +451,9 @@ export default function TopBar({ user }: TopBarProps) {
   useEffect(() => {
     setShowNotifications(false);
     setShowQuickSession(false);
-  }, [pathname]);
+    void syncNotifications();
+    void fetchNotifications();
+  }, [fetchNotifications, pathname, syncNotifications]);
 
   return (
     <>
