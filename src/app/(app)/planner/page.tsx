@@ -5,7 +5,7 @@
  * Agenda semanal com IA e arrastar e soltar
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Map as MapIcon, X } from 'lucide-react';
 import { WeeklyPlanner } from '@/components/planner';
@@ -88,7 +88,6 @@ export default function PlannerPage() {
     'nexora_first_cycle_all_subjects',
     true
   );
-  const lastAiSignature = useRef<string | null>(null);
 
   const activeDaysFromSettings = useMemo(() => {
     if (userSettings.dailyHoursByWeekday) {
@@ -486,50 +485,6 @@ export default function PlannerPage() {
     firstCycleAllSubjects,
     setBlocks,
     setScheduleRange,
-  ]);
-
-  const aiSignature = useMemo(
-    () =>
-      [
-        userSettings.aiDifficulty,
-        userSettings.focusMode,
-        userSettings.smartBreaks,
-        userSettings.maxBlockMinutes,
-        userSettings.breakMinutes,
-      ].join('|'),
-    [
-      userSettings.aiDifficulty,
-      userSettings.focusMode,
-      userSettings.smartBreaks,
-      userSettings.maxBlockMinutes,
-      userSettings.breakMinutes,
-    ]
-  );
-
-  useEffect(() => {
-    if (!userSettings.autoSchedule) {
-      lastAiSignature.current = aiSignature;
-      return;
-    }
-    if (lastAiSignature.current === null) {
-      lastAiSignature.current = aiSignature;
-      return;
-    }
-    if (lastAiSignature.current === aiSignature) return;
-    lastAiSignature.current = aiSignature;
-    if (subjects.length === 0) return;
-    const start = scheduleRange?.startDate ? new Date(scheduleRange.startDate) : getWeekStart(new Date());
-    const end = scheduleRange?.endDate
-      ? new Date(scheduleRange.endDate)
-      : new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
-    handleGenerateSchedule({ startDate: start, endDate: end });
-  }, [
-    aiSignature,
-    userSettings.autoSchedule,
-    subjects.length,
-    scheduleRange?.startDate,
-    scheduleRange?.endDate,
-    handleGenerateSchedule,
   ]);
 
   useEffect(() => {
