@@ -44,6 +44,17 @@ const resolveCallbackUrl = (rawUrl: string | null) => {
   return DEFAULT_CALLBACK_URL;
 };
 
+const navigateToPostLogin = (router: ReturnType<typeof useRouter>, targetUrl: string) => {
+  const safeTarget = resolveCallbackUrl(targetUrl);
+
+  if (typeof window !== 'undefined') {
+    window.location.assign(safeTarget);
+    return;
+  }
+
+  router.replace(safeTarget);
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -99,7 +110,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (status !== 'authenticated') return;
-    router.replace(callbackUrl);
+    navigateToPostLogin(router, callbackUrl);
   }, [status, router, callbackUrl]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,8 +139,8 @@ export default function LoginPage() {
         return;
       }
 
-      router.push(result.url || callbackUrl);
-      router.refresh();
+      navigateToPostLogin(router, result.url || callbackUrl);
+      return;
     } catch {
       setErrorMessage('Falha ao entrar agora. Tente novamente.');
     } finally {
@@ -241,9 +252,9 @@ export default function LoginPage() {
                   disabled={isBusy}
                   className={cn(
                     'w-full flex items-center justify-center gap-3',
-                    'p-4 rounded-xl border border-card-border',
+                    'min-h-[42px] px-4 py-2.5 rounded-xl border border-card-border',
                     'bg-card-bg hover:bg-white/5',
-                    'text-white font-medium',
+                    'text-sm text-white font-medium',
                     'transition-all duration-200',
                     'disabled:opacity-50 disabled:cursor-not-allowed'
                   )}
@@ -278,14 +289,14 @@ export default function LoginPage() {
             </div>
 
             {hasGoogle && (
-              <div className="flex items-center gap-4 mb-6">
+              <div className="flex items-center gap-3 mb-5">
                 <div className="flex-1 h-px bg-card-border" />
                 <span className="text-text-muted text-sm">ou</span>
                 <div className="flex-1 h-px bg-card-border" />
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3.5">
               {infoMessage && (
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
                   {infoMessage}
@@ -331,7 +342,7 @@ export default function LoginPage() {
                     disabled={isBusy || !hasCredentials}
                   />
                 </div>
-                <div className="mt-2 text-right">
+                <div className="mt-1.5 text-right">
                   <Link href="/forgot-password" className="text-xs text-neon-blue hover:underline">
                     Esqueci minha senha
                   </Link>
@@ -341,7 +352,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 variant="primary"
-                className="w-full"
+                className="w-full min-h-[42px] px-4 py-2.5 text-sm"
                 loading={isLoading}
                 rightIcon={!isLoading && <ArrowRight className="w-4 h-4" />}
                 disabled={isBusy || !hasCredentials}
