@@ -125,6 +125,32 @@ const isSettingsSection = (value: string | null): value is SettingsSection => {
   );
 };
 
+const mobileStackTransition = { duration: 0.22, ease: 'easeOut' } as const;
+
+const mobileRootScreenVariants = {
+  enter: (direction: number) => ({
+    x: direction < 0 ? -48 : 0,
+    opacity: direction < 0 ? 0 : 1,
+  }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction: number) => ({
+    x: direction > 0 ? -48 : 0,
+    opacity: direction > 0 ? 0 : 1,
+  }),
+};
+
+const mobileDetailScreenVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 48 : 0,
+    opacity: direction > 0 ? 0 : 1,
+  }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction: number) => ({
+    x: direction < 0 ? 48 : 0,
+    opacity: direction < 0 ? 0 : 1,
+  }),
+};
+
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -153,19 +179,35 @@ export default function SettingsPage() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteStep, setDeleteStep] = useState<'idle' | 'confirm'>('idle');
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  const [navDirection, setNavDirection] = useState(1);
-  const [dangerFeedback, setDangerFeedback] = useState<{
+  const [resetTutorialStep, setResetTutorialStep] = useState<'idle' | 'confirm'>('idle');
+  const [resetProgressStep, setResetProgressStep] = useState<'idle' | 'confirm'>('idle');
+  const [isResettingTutorial, setIsResettingTutorial] = useState(false);
+  const [isResettingProgress, setIsResettingProgress] = useState(false);
+  const [generalDangerFeedback, setGeneralDangerFeedback] = useState<{
     type: 'success' | 'error';
     message: string;
   } | null>(null);
+  const [deleteFeedback, setDeleteFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+  const deleteInputRef = useRef<HTMLInputElement | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
   const latestSettingsRef = useRef(settings);
   const saveInFlightRef = useRef(false);
   const saveQueuedRef = useRef(false);
   const previousSectionRef = useRef<SettingsSection | null>(null);
+  const rootScrollYRef = useRef(0);
+  const openedFromRootRef = useRef(false);
 
   const sectionParam = searchParams.get('section');
   const activeSection = isSettingsSection(sectionParam) ? sectionParam : null;
+  const transitionDirection = useMemo(() => {
+    const previousSection = previousSectionRef.current;
+    if (previousSection && !activeSection) return -1;
+    if (!previousSection && activeSection) return 1;
+    return 1;
+  }, [activeSection]);
 
   const setSectionQuery = useCallback(
     (section: SettingsSection | null, mode: 'push' | 'replace' = 'push') => {
@@ -190,7 +232,7 @@ export default function SettingsPage() {
   const openSection = useCallback(
     (section: SettingsSection) => {
       if (activeSection === section) return;
-      setNavDirection(1);
+      openedFromRootRef.current = true;
       setSectionQuery(section, 'push');
     },
     [activeSection, setSectionQuery]
@@ -198,9 +240,22 @@ export default function SettingsPage() {
 
   const closeSection = useCallback(() => {
     if (!activeSection) return;
-    setNavDirection(-1);
-    setSectionQuery(null, 'push');
-  }, [activeSection, setSectionQuery]);
+
+    // If the user navigated from the root list, behave like a real "pop" (so browser forward works).
+    if (openedFromRootRef.current) {
+      openedFromRootRef.current = false;
+      router.back();
+      return;
+    }
+
+    // Deep-link fallback: keep the user inside /settings and just clear the query param.
+    setSectionQuery(null, 'replace');
+  }, [activeSection, router, setSectionQuery]);
+
+  useEffect(() => {
+    if (activeSection) return;
+    openedFromRootRef.current = false;
+  }, [activeSection]);
 
   const dailyHoursByWeekday =
     settings.dailyHoursByWeekday ??
@@ -263,11 +318,19 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const previousSection = previousSectionRef.current;
-    if (previousSection && !activeSection) {
-      setNavDirection(-1);
-    } else if (!previousSection && activeSection) {
-      setNavDirection(1);
+
+    const isMobileViewport = window.matchMedia('(max-width: 767px)').matches;
+
+    if (isMobileViewport) {
+      // Keep separate scroll positions for the "root list" and the "detail screen" like iOS Settings.
+      if (!previousSection && activeSection) {
+        rootScrollYRef.current = window.scrollY;
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      } else if (previousSection && !activeSection) {
+        window.scrollTo({ top: rootScrollYRef.current, left: 0, behavior: 'auto' });
+      }
     }
+
     previousSectionRef.current = activeSection;
   }, [activeSection]);
 
@@ -401,6 +464,11 @@ export default function SettingsPage() {
     const timeout = setTimeout(() => setAlarmApplied(false), 1200);
     return () => clearTimeout(timeout);
   }, [alarmApplied]);
+
+  useEffect(() => {
+    if (deleteStep !== 'confirm') return;
+    deleteInputRef.current?.focus();
+  }, [deleteStep]);
 
   const ensureAudioContext = () => {
     try {
@@ -602,29 +670,85 @@ export default function SettingsPage() {
     setSaveState('idle');
   };
 
-  const handleResetOnboarding = () => {
-    if (confirm('Isso vai reiniciar o tutorial e limpar suas preferências. Continuar?')) {
+  const startResetTutorialFlow = () => {
+    setResetTutorialStep('confirm');
+    setResetProgressStep('idle');
+    setDeleteStep('idle');
+    setDeleteConfirmText('');
+    setGeneralDangerFeedback(null);
+    setDeleteFeedback(null);
+  };
+
+  const cancelResetTutorialFlow = () => {
+    if (isResettingTutorial) return;
+    setResetTutorialStep('idle');
+  };
+
+  const confirmResetTutorial = async () => {
+    setIsResettingTutorial(true);
+    setGeneralDangerFeedback(null);
+    setDeleteFeedback(null);
+
+    try {
       clearLocalStudyData();
       resetOnboarding();
-      window.location.reload();
+      setGeneralDangerFeedback({ type: 'success', message: 'Tutorial reiniciado. Recarregando...' });
+      setTimeout(() => window.location.reload(), 350);
+    } catch (error) {
+      console.warn('Erro ao reiniciar tutorial:', error);
+      setGeneralDangerFeedback({ type: 'error', message: 'Falha ao reiniciar tutorial. Tente novamente.' });
+    } finally {
+      setIsResettingTutorial(false);
+      setResetTutorialStep('idle');
     }
   };
 
-  const handleResetProgress = () => {
-    if (confirm('Isso vai apagar todas as disciplinas e progresso. Continuar?')) {
+  const startResetProgressFlow = () => {
+    setResetProgressStep('confirm');
+    setResetTutorialStep('idle');
+    setDeleteStep('idle');
+    setDeleteConfirmText('');
+    setGeneralDangerFeedback(null);
+    setDeleteFeedback(null);
+  };
+
+  const cancelResetProgressFlow = () => {
+    if (isResettingProgress) return;
+    setResetProgressStep('idle');
+  };
+
+  const confirmResetProgress = async () => {
+    setIsResettingProgress(true);
+    setGeneralDangerFeedback(null);
+    setDeleteFeedback(null);
+
+    try {
       clearLocalStudyData();
       resetOnboarding();
-      window.location.reload();
+      setGeneralDangerFeedback({ type: 'success', message: 'Progresso resetado. Recarregando...' });
+      setTimeout(() => window.location.reload(), 350);
+    } catch (error) {
+      console.warn('Erro ao resetar progresso:', error);
+      setGeneralDangerFeedback({ type: 'error', message: 'Falha ao resetar progresso. Tente novamente.' });
+    } finally {
+      setIsResettingProgress(false);
+      setResetProgressStep('idle');
     }
   };
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
-    setDangerFeedback(null);
+    setResetTutorialStep('idle');
+    setResetProgressStep('idle');
+    setDeleteStep('idle');
+    setDeleteConfirmText('');
+    setGeneralDangerFeedback(null);
+    setDeleteFeedback(null);
+
     try {
       await signOut({ callbackUrl: '/login' });
     } catch (error) {
-      setDangerFeedback({
+      setGeneralDangerFeedback({
         type: 'error',
         message: 'Falha ao sair da conta. Tente novamente.',
       });
@@ -636,20 +760,24 @@ export default function SettingsPage() {
   const startDeleteFlow = () => {
     setDeleteStep('confirm');
     setDeleteConfirmText('');
-    setDangerFeedback(null);
+    setResetTutorialStep('idle');
+    setResetProgressStep('idle');
+    setGeneralDangerFeedback(null);
+    setDeleteFeedback(null);
   };
 
   const cancelDeleteFlow = () => {
+    if (isDeletingAccount) return;
     setDeleteStep('idle');
     setDeleteConfirmText('');
-    setDangerFeedback(null);
+    setDeleteFeedback(null);
   };
 
   const handleDeleteAccount = async () => {
     const confirmationKeyword = 'EXCLUIR';
 
     if (deleteConfirmText.trim().toUpperCase() !== confirmationKeyword) {
-      setDangerFeedback({
+      setDeleteFeedback({
         type: 'error',
         message: `Digite "${confirmationKeyword}" para confirmar a exclusao da conta.`,
       });
@@ -657,7 +785,7 @@ export default function SettingsPage() {
     }
 
     setIsDeletingAccount(true);
-    setDangerFeedback(null);
+    setDeleteFeedback(null);
 
     try {
       const response = await fetch('/api/auth/delete-account', { method: 'DELETE' });
@@ -670,13 +798,13 @@ export default function SettingsPage() {
       clearLocalStudyData();
       setDeleteConfirmText('');
       setDeleteStep('idle');
-      setDangerFeedback({
+      setDeleteFeedback({
         type: 'success',
         message: 'Conta excluida. Redirecionando...',
       });
       await signOut({ callbackUrl: '/login' });
     } catch (error) {
-      setDangerFeedback({
+      setDeleteFeedback({
         type: 'error',
         message: error instanceof Error ? error.message : 'Falha ao excluir conta.',
       });
@@ -740,7 +868,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={closeSection}
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-neon-blue hover:bg-card-bg"
+              className="inline-flex min-h-[36px] items-center gap-1 rounded-lg px-2.5 py-2 text-sm text-neon-blue hover:bg-card-bg touch-manipulation active:scale-[0.99]"
             >
               <ChevronLeft className="w-4 h-4" />
               Voltar
@@ -780,8 +908,9 @@ export default function SettingsPage() {
         )}
       </div>
 
+      {/* Desktop-only. On mobile, this lives inside the root list screen so it animates with push/pop. */}
       {!hasRemotePrefs && !hasLocalPrefs && (
-        <Card className={cn('border-neon-cyan/40 bg-neon-cyan/5', activeSection && 'hidden md:block')}>
+        <Card className="hidden md:block border-neon-cyan/40 bg-neon-cyan/5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <p className="text-sm text-white font-medium">Ainda nao configurado</p>
@@ -796,17 +925,36 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      <AnimatePresence initial={false} custom={navDirection} mode="wait">
+      <AnimatePresence initial={false} custom={transitionDirection} mode="popLayout">
         {!activeSection && (
           <motion.div
             key="settings-sections-list"
-            custom={navDirection}
-            initial={{ x: -36, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 36, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
+            variants={mobileRootScreenVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={mobileStackTransition}
             className="md:hidden space-y-3"
           >
+            {!hasRemotePrefs && !hasLocalPrefs && (
+              <Card className="border-neon-cyan/40 bg-neon-cyan/5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-white font-medium">Ainda nao configurado</p>
+                    <p className="text-xs text-text-secondary">
+                      Escolha um modelo na pagina de disciplinas para aplicar um plano automatico.
+                    </p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    onClick={() => router.push('/subjects')}
+                    className="w-full sm:w-auto"
+                  >
+                    Configurar agora
+                  </Button>
+                </div>
+              </Card>
+            )}
             {sectionGroups.map((group) => (
               <Card key={group.title} padding="none" className="overflow-hidden">
                 <div className="border-b border-card-border/70 px-4 py-2.5">
@@ -818,7 +966,7 @@ export default function SettingsPage() {
                     type="button"
                     onClick={() => openSection(section)}
                     className={cn(
-                      'flex w-full min-h-[56px] items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/5',
+                      'flex w-full min-h-[56px] items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/5 touch-manipulation active:scale-[0.995]',
                       index !== group.sections.length - 1 && 'border-b border-card-border/70'
                     )}
                   >
@@ -836,14 +984,15 @@ export default function SettingsPage() {
       </AnimatePresence>
 
       {/* Seção de Perfil */}
-      <AnimatePresence initial={false} custom={navDirection} mode="wait">
+      <AnimatePresence initial={false} custom={transitionDirection} mode="popLayout">
         <motion.div
           key={activeSection ?? 'all-sections'}
-          custom={navDirection}
-          initial={{ x: activeSection ? 42 : 0, opacity: activeSection ? 0 : 1 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: activeSection ? -42 : 0, opacity: activeSection ? 0 : 1 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
+          variants={mobileDetailScreenVariants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={mobileStackTransition}
+          className="md:!transform-none md:!opacity-100"
         >
       <Card className={cn(activeSection === 'profile' ? 'block' : 'hidden', 'md:block')}>
         <div className="flex items-center gap-3 mb-6">
@@ -1341,23 +1490,86 @@ export default function SettingsPage() {
           >
             Sair da Conta
           </Button>
-          <Button
-            variant="secondary"
-            className="w-full border-orange-500/35 text-orange-300 hover:bg-orange-500/10"
-            onClick={handleResetOnboarding}
-            leftIcon={<RotateCcw className="w-4 h-4" />}
-          >
-            Reiniciar Tutorial
-          </Button>
-          <Button
-            variant="secondary"
-            className="w-full sm:col-span-2 border-red-500/35 text-red-300 hover:bg-red-500/10"
-            onClick={handleResetProgress}
-            leftIcon={<RefreshCw className="w-4 h-4" />}
-          >
-            Resetar Todo o Progresso
-          </Button>
+
+          {resetTutorialStep === 'idle' ? (
+            <Button
+              variant="secondary"
+              className="w-full border-orange-500/35 text-orange-300 hover:bg-orange-500/10"
+              onClick={startResetTutorialFlow}
+              leftIcon={<RotateCcw className="w-4 h-4" />}
+            >
+              Reiniciar Tutorial
+            </Button>
+          ) : (
+            <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.06] p-3 space-y-2">
+              <p className="text-xs text-orange-200/80">Etapa 2 de 2: confirmar reinicio do tutorial.</p>
+              <div className="grid grid-cols-1 gap-2">
+                <Button
+                  variant="ghost"
+                  className="w-full border border-slate-700 text-slate-200"
+                  onClick={cancelResetTutorialFlow}
+                  disabled={isResettingTutorial}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="w-full border-orange-500/35 text-orange-300 hover:bg-orange-500/10"
+                  onClick={confirmResetTutorial}
+                  loading={isResettingTutorial}
+                  leftIcon={<RotateCcw className="w-4 h-4" />}
+                >
+                  Confirmar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {resetProgressStep === 'idle' ? (
+            <Button
+              variant="secondary"
+              className="w-full sm:col-span-2 border-red-500/35 text-red-300 hover:bg-red-500/10"
+              onClick={startResetProgressFlow}
+              leftIcon={<RefreshCw className="w-4 h-4" />}
+            >
+              Resetar Todo o Progresso
+            </Button>
+          ) : (
+            <div className="sm:col-span-2 rounded-xl border border-red-500/25 bg-red-500/[0.06] p-3 space-y-2">
+              <p className="text-xs text-red-200/80">Etapa 2 de 2: confirmar reset do progresso.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button
+                  variant="ghost"
+                  className="w-full border border-slate-700 text-slate-200"
+                  onClick={cancelResetProgressFlow}
+                  disabled={isResettingProgress}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="danger"
+                  className="w-full"
+                  onClick={confirmResetProgress}
+                  loading={isResettingProgress}
+                  leftIcon={<RefreshCw className="w-4 h-4" />}
+                >
+                  Confirmar reset
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
+
+        {generalDangerFeedback && (
+          <p
+            className={cn(
+              'mt-3 text-xs',
+              generalDangerFeedback.type === 'error' ? 'text-red-300' : 'text-neon-cyan'
+            )}
+          >
+            {generalDangerFeedback.message}
+          </p>
+        )}
 
         <div className="mt-4 rounded-xl border border-red-500/35 bg-red-950/20 p-4 space-y-3">
           <div className="flex items-center gap-2 text-red-200">
@@ -1383,12 +1595,15 @@ export default function SettingsPage() {
                 Etapa 2 de 2: digite <span className="font-semibold text-red-100">EXCLUIR</span> para confirmar.
               </p>
               <input
+                ref={deleteInputRef}
+                autoFocus
                 type="text"
                 value={deleteConfirmText}
                 onChange={(e) => {
                   setDeleteConfirmText(e.target.value);
-                  if (dangerFeedback) setDangerFeedback(null);
+                  if (deleteFeedback) setDeleteFeedback(null);
                 }}
+                disabled={isDeletingAccount}
                 placeholder="Digite EXCLUIR"
                 className="input-field border-red-500/30 focus:border-red-400 focus:shadow-none"
               />
@@ -1397,6 +1612,7 @@ export default function SettingsPage() {
                   variant="ghost"
                   className="w-full border border-slate-700 text-slate-200"
                   onClick={cancelDeleteFlow}
+                  disabled={isDeletingAccount}
                 >
                   Cancelar
                 </Button>
@@ -1412,14 +1628,14 @@ export default function SettingsPage() {
               </div>
             </>
           )}
-          {dangerFeedback && (
+          {deleteFeedback && (
             <p
               className={cn(
                 'text-xs',
-                dangerFeedback.type === 'error' ? 'text-red-300' : 'text-neon-cyan'
+                deleteFeedback.type === 'error' ? 'text-red-300' : 'text-neon-cyan'
               )}
             >
-              {dangerFeedback.message}
+              {deleteFeedback.message}
             </p>
           )}
         </div>
