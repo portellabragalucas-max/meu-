@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Sparkles, User, Mail, Lock, ArrowRight } from 'lucide-react';
-import { signIn } from 'next-auth/react';
+import { getSession, signIn } from 'next-auth/react';
 import { Button } from '@/components/ui';
 
 type RegisterStep = 'form' | 'verify';
@@ -136,12 +136,18 @@ export default function RegisterPage() {
         redirect: false,
       });
 
-      if (!loginResult || loginResult.error || !loginResult.ok) {
+      if (loginResult?.error) {
         setErrorMessage('Codigo validado, mas nao foi possivel entrar automaticamente.');
         return;
       }
 
-      navigateToDashboard(loginResult.url || '/dashboard');
+      const activeSession = await getSession();
+      if (!activeSession?.user && loginResult?.ok === false) {
+        setErrorMessage('Codigo validado, mas nao foi possivel confirmar a sessao.');
+        return;
+      }
+
+      navigateToDashboard(loginResult?.url || '/dashboard');
     } catch {
       setErrorMessage('Nao foi possivel validar o codigo agora.');
     } finally {

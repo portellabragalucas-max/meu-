@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Sparkles, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
-import { getProviders, signIn, useSession } from 'next-auth/react';
+import { getProviders, getSession, signIn, useSession } from 'next-auth/react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
@@ -134,12 +134,18 @@ export default function LoginPage() {
         redirect: false,
       });
 
-      if (!result || result.error || !result.ok) {
+      if (result?.error) {
         setErrorMessage(mapAuthErrorMessage(result?.error));
         return;
       }
 
-      navigateToPostLogin(router, result.url || callbackUrl);
+      const activeSession = await getSession();
+      if (!activeSession?.user && result?.ok === false) {
+        setErrorMessage('Nao foi possivel confirmar sua sessao. Tente novamente.');
+        return;
+      }
+
+      navigateToPostLogin(router, result?.url || callbackUrl);
       return;
     } catch {
       setErrorMessage('Falha ao entrar agora. Tente novamente.');
