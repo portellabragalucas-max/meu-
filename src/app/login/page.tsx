@@ -1,68 +1,156 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Sparkles, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
-import { getProviders, signIn } from 'next-auth/react';
+import { getProviders, signIn, useSession } from 'next-auth/react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
+
+const DEFAULT_CALLBACK_URL = '/dashboard';
+
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  CredentialsSignin: 'E-mail ou senha invalidos.',
+  AccessDenied: 'Acesso negado. Verifique suas credenciais.',
+  OAuthAccountNotLinked: 'Ja existe conta com este e-mail. Entre com e-mail e senha.',
+  OAuthSignin: 'Falha ao iniciar login social. Tente novamente.',
+  OAuthCallback: 'Falha na validacao do login social. Tente novamente.',
+  SessionRequired: 'Sua sessao expirou. Faca login novamente.',
+};
+
+const mapAuthErrorMessage = (errorCode?: string | null) => {
+  if (!errorCode) return 'Falha ao entrar agora. Tente novamente.';
+  return AUTH_ERROR_MESSAGES[errorCode] || 'Falha ao entrar agora. Tente novamente.';
+};
+
+const resolveCallbackUrl = (rawUrl: string | null) => {
+  if (!rawUrl) return DEFAULT_CALLBACK_URL;
+  if (rawUrl.startsWith('/')) {
+    return rawUrl.startsWith('/login') ? DEFAULT_CALLBACK_URL : rawUrl;
+  }
+
+  try {
+    const parsed = new URL(rawUrl);
+    if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
+      if (parsed.pathname.startsWith('/login')) return DEFAULT_CALLBACK_URL;
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+  } catch {
+    // no-op
+  }
+
+  return DEFAULT_CALLBACK_URL;
+};
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
-  const [availableProviders, setAvailableProviders] = useState<Record<string, any> | null>(null);
+  const [availableProviders, setAvailableProviders] = useState<Record<string, unknown>>({});
+  const [providersError, setProvidersError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({ email: '', password: '' });
+  const callbackUrl = useMemo(
+    () => resolveCallbackUrl(searchParams.get('callbackUrl')),
+    [searchParams]
+  );
 
-  const hasGoogle = Boolean(availableProviders?.google);
-  const hasCredentials = Boolean(availableProviders?.credentials);
+  const hasGoogle = Boolean(availableProviders.google);
+  const hasCredentials = true;
+  const isBusy = isLoading || loadingProvider !== null;
 
   useEffect(() => {
-    getProviders().then((providers) => setAvailableProviders(providers));
+    let isMounted = true;
+
+    const loadProviders = async () => {
+      try {
+        const providers = await getProviders();
+        if (!isMounted) return;
+        setAvailableProviders(providers || {});
+        setProvidersError(false);
+      } catch {
+        if (!isMounted) return;
+        setAvailableProviders({});
+        setProvidersError(true);
+      }
+    };
+
+    void loadProviders();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
-    if (searchParams.get('reset') === 'success') {
-      setInfoMessage('Senha redefinida com sucesso. Faca login.');
+    const hasPasswordResetSuccess = searchParams.get('reset') === 'success';
+    const authError = searchParams.get('error');
+
+    setInfoMessage(hasPasswordResetSuccess ? 'Senha redefinida com sucesso. Faca login.' : null);
+    if (authError) {
+      setErrorMessage(mapAuthErrorMessage(authError));
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    router.replace(callbackUrl);
+  }, [status, router, callbackUrl]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errorMessage) setErrorMessage(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isBusy || !hasCredentials) return;
+
     setErrorMessage(null);
     setIsLoading(true);
 
-    const result = await signIn('credentials', {
-      email: formData.email.trim().toLowerCase(),
-      password: formData.password,
-      callbackUrl: '/dashboard',
-      redirect: false,
-    });
+    try {
+      const result = await signIn('credentials', {
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        callbackUrl,
+        redirect: false,
+      });
 
-    if (result?.error) {
-      setErrorMessage('E-mail ou senha invalidos.');
+      if (!result || result.error || !result.ok) {
+        setErrorMessage(mapAuthErrorMessage(result?.error));
+        return;
+      }
+
+      router.push(result.url || callbackUrl);
+      router.refresh();
+    } catch {
+      setErrorMessage('Falha ao entrar agora. Tente novamente.');
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    router.push(result?.url || '/dashboard');
-    router.refresh();
-    setIsLoading(false);
   };
 
   const handleSocialLogin = async (provider: string) => {
+    if (isBusy) return;
+
+    setErrorMessage(null);
     setLoadingProvider(provider);
-    await signIn(provider, { callbackUrl: '/dashboard' });
-    setLoadingProvider(null);
+
+    try {
+      // Keep redirect=true for OAuth providers to preserve the native auth flow.
+      await signIn(provider, { callbackUrl });
+    } catch {
+      setErrorMessage('Falha ao iniciar login social. Tente novamente.');
+    } finally {
+      setLoadingProvider(null);
+    }
   };
 
   return (
@@ -140,9 +228,9 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-3 mb-6">
-              {!hasGoogle && !hasCredentials && (
+              {providersError && (
                 <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
-                  Nenhum provedor de login configurado.
+                  Login social indisponivel no momento. Use e-mail e senha.
                 </div>
               )}
               {hasGoogle && (
@@ -150,7 +238,7 @@ export default function LoginPage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleSocialLogin('google')}
-                  disabled={loadingProvider !== null}
+                  disabled={isBusy}
                   className={cn(
                     'w-full flex items-center justify-center gap-3',
                     'p-4 rounded-xl border border-card-border',
@@ -189,11 +277,13 @@ export default function LoginPage() {
               )}
             </div>
 
-            <div className="flex items-center gap-4 mb-6">
-              <div className="flex-1 h-px bg-card-border" />
-              <span className="text-text-muted text-sm">ou</span>
-              <div className="flex-1 h-px bg-card-border" />
-            </div>
+            {hasGoogle && (
+              <div className="flex items-center gap-4 mb-6">
+                <div className="flex-1 h-px bg-card-border" />
+                <span className="text-text-muted text-sm">ou</span>
+                <div className="flex-1 h-px bg-card-border" />
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {infoMessage && (
@@ -219,7 +309,8 @@ export default function LoginPage() {
                     placeholder="seu@email.com"
                     className="input-field pl-12"
                     required
-                    disabled={!hasCredentials}
+                    autoComplete="email"
+                    disabled={isBusy || !hasCredentials}
                   />
                 </div>
               </div>
@@ -236,7 +327,8 @@ export default function LoginPage() {
                     placeholder="Sua senha"
                     className="input-field pl-12"
                     required
-                    disabled={!hasCredentials}
+                    autoComplete="current-password"
+                    disabled={isBusy || !hasCredentials}
                   />
                 </div>
                 <div className="mt-2 text-right">
@@ -252,7 +344,7 @@ export default function LoginPage() {
                 className="w-full"
                 loading={isLoading}
                 rightIcon={!isLoading && <ArrowRight className="w-4 h-4" />}
-                disabled={!hasCredentials}
+                disabled={isBusy || !hasCredentials}
               >
                 Entrar
               </Button>
