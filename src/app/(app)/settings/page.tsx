@@ -27,7 +27,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
-import { useOnboarding, useLocalStorage } from '@/hooks';
+import TimePickerField from '@/components/settings/TimePickerField';
+import { useIsMobile, useOnboarding, useLocalStorage } from '@/hooks';
 import { cn } from '@/lib/utils';
 import type { DailyHoursByWeekday, StudyPreferences, UserSettings, WeekdayKey } from '@/types';
 import { defaultSettings } from '@/lib/defaultSettings';
@@ -158,6 +159,8 @@ export default function SettingsPage() {
   const searchParams = useSearchParams();
   const { resetOnboarding } = useOnboarding();
   const { data: session } = useSession();
+  const isMobile = useIsMobile();
+  const [isIOS, setIsIOS] = useState(false);
   const [settings, setSettings] = useLocalStorage<UserSettings>('nexora_user_settings', initialSettings);
   const [studyPrefs, setStudyPrefs] = useLocalStorage<StudyPreferences>('nexora_study_prefs', {
     hoursPerDay: initialSettings.dailyGoalHours,
@@ -315,6 +318,17 @@ export default function SettingsPage() {
   useEffect(() => {
     latestSettingsRef.current = settings;
   }, [settings]);
+
+  useEffect(() => {
+    try {
+      const ua = navigator.userAgent || '';
+      const isiPhoneIPadIPod = /iPad|iPhone|iPod/.test(ua);
+      const isIPadOs = ua.includes('Mac') && 'ontouchend' in document;
+      setIsIOS(isiPhoneIPadIPod || isIPadOs);
+    } catch {
+      setIsIOS(false);
+    }
+  }, []);
 
   useEffect(() => {
     const previousSection = previousSectionRef.current;
@@ -1149,23 +1163,39 @@ export default function SettingsPage() {
               <label className="block text-sm font-medium text-text-secondary mb-2">
                 Horário de Início Preferido
               </label>
-              <input
-                type="time"
-                value={settings.preferredStart}
-                onChange={(e) => updateSetting('preferredStart', e.target.value)}
-                className="input-field py-2.5"
-              />
+              {isMobile && isIOS ? (
+                <TimePickerField
+                  label="Horario de Inicio Preferido"
+                  value={settings.preferredStart}
+                  onChange={(next) => updateSetting('preferredStart', next)}
+                />
+              ) : (
+                <input
+                  type="time"
+                  value={settings.preferredStart}
+                  onChange={(e) => updateSetting('preferredStart', e.target.value)}
+                  className="input-field py-2.5"
+                />
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-2">
                 Horário de Término Preferido
               </label>
-              <input
-                type="time"
-                value={settings.preferredEnd}
-                onChange={(e) => updateSetting('preferredEnd', e.target.value)}
-                className="input-field py-2.5"
-              />
+              {isMobile && isIOS ? (
+                <TimePickerField
+                  label="Horario de Termino Preferido"
+                  value={settings.preferredEnd}
+                  onChange={(next) => updateSetting('preferredEnd', next)}
+                />
+              ) : (
+                <input
+                  type="time"
+                  value={settings.preferredEnd}
+                  onChange={(e) => updateSetting('preferredEnd', e.target.value)}
+                  className="input-field py-2.5"
+                />
+              )}
             </div>
           </div>
 
