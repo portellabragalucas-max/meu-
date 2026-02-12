@@ -52,19 +52,31 @@ if (hasGoogleAuth) {
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
-    strategy: 'database',
+    strategy: 'jwt',
   },
   providers,
   pages: {
     signIn: '/login',
   },
   callbacks: {
-    session: async ({ session, user }) => {
+    jwt: async ({ token, user }) => {
+      if (user) {
+        token.sub = user.id;
+        token.name = user.name;
+        token.email = user.email;
+        token.picture = user.image;
+      }
+      return token;
+    },
+    session: async ({ session, token, user }) => {
+      const sessionUserId = user?.id ?? (typeof token?.sub === 'string' ? token.sub : undefined);
+
       if (session.user) {
-        session.user.id = user.id;
-        session.user.name = user.name;
-        session.user.email = user.email;
-        session.user.image = user.image || undefined;
+        session.user.id = sessionUserId || '';
+        session.user.name = session.user.name || token?.name || user?.name || '';
+        session.user.email = session.user.email || token?.email || user?.email || '';
+        session.user.image =
+          session.user.image || (typeof token?.picture === 'string' ? token.picture : null) || user?.image || undefined;
       }
       return session;
     },
