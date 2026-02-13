@@ -199,9 +199,49 @@ export default function SystemNotificationsCard() {
       }
 
       setIsSubscribed(true);
-      setFeedback({
+      await fetch('/api/notifications/sync', { method: 'POST' }).catch(() => undefined);
+
+      let activationFeedback: FeedbackState = {
         type: 'success',
         message: 'Notificacoes do dispositivo ativadas.',
+      };
+
+      try {
+        const testResponse = await fetch('/api/notifications/test', {
+          method: 'POST',
+        });
+        const testPayload = (await testResponse.json().catch(() => ({}))) as {
+          success?: boolean;
+          error?: string;
+        };
+
+        if (testResponse.ok && testPayload.success) {
+          activationFeedback = {
+            type: 'success',
+            message: 'Notificacoes ativadas e teste enviado com sucesso.',
+          };
+        } else if (testResponse.status === 410) {
+          activationFeedback = {
+            type: 'error',
+            message: 'Assinatura expirada. Toque em reativar para cadastrar novamente.',
+          };
+          setIsSubscribed(false);
+        } else {
+          activationFeedback = {
+            type: 'info',
+            message: 'Notificacoes ativadas. O teste pode demorar alguns segundos.',
+          };
+        }
+      } catch {
+        activationFeedback = {
+          type: 'info',
+          message: 'Notificacoes ativadas. O teste pode demorar alguns segundos.',
+        };
+      }
+
+      setFeedback({
+        type: activationFeedback.type,
+        message: activationFeedback.message,
       });
     } catch (error) {
       console.error('Erro ao ativar push:', error);
