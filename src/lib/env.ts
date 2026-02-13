@@ -6,10 +6,10 @@ export const env = {
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
   emailServer: process.env.EMAIL_SERVER ?? '',
   emailFrom: process.env.EMAIL_FROM ?? '',
-  vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '',
-  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? '',
-  vapidSubject: process.env.VAPID_SUBJECT ?? '',
-  notificationsCronSecret: process.env.NOTIFICATIONS_CRON_SECRET ?? '',
+  vapidPublicKey: (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '').trim(),
+  vapidPrivateKey: (process.env.VAPID_PRIVATE_KEY ?? '').trim(),
+  vapidSubject: (process.env.VAPID_SUBJECT ?? '').trim(),
+  notificationsCronSecret: (process.env.NOTIFICATIONS_CRON_SECRET ?? '').trim(),
 };
 
 export const hasGoogleAuth = Boolean(env.googleClientId && env.googleClientSecret);

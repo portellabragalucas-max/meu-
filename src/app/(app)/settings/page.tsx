@@ -103,7 +103,7 @@ const sectionMeta: Record<SettingsSection, { title: string; description: string 
   },
   notifications: {
     title: 'Notificacoes',
-    description: 'Lembretes e alertas',
+    description: 'Lembrete de estudo',
   },
   danger: {
     title: 'Zona de perigo',
@@ -1375,7 +1375,7 @@ export default function SettingsPage() {
               Notificações
             </h2>
             <p className="text-sm text-text-secondary">
-              Gerencie suas preferências de notificação
+              Gerencie seu lembrete de estudo
             </p>
           </div>
         </div>
@@ -1387,22 +1387,7 @@ export default function SettingsPage() {
             {
               key: 'dailyReminder' as const,
               label: 'Lembrete Diário de Estudo',
-              description: 'Receba notificações sobre sua agenda diária',
-            },
-            {
-              key: 'streakReminder' as const,
-              label: 'Lembrete de Sequência',
-              description: 'Avise-me antes da sequência estar em risco',
-            },
-            {
-              key: 'achievementAlerts' as const,
-              label: 'Alertas de Conquistas',
-              description: 'Notificar quando desbloquear novas conquistas',
-            },
-            {
-              key: 'weeklyReport' as const,
-              label: 'Relatório Semanal',
-              description: 'Receber resumo semanal de desempenho',
+              description: 'Envia um lembrete sutil quando você ainda não estudou no dia.',
             },
             ].map((item) => (
               <button

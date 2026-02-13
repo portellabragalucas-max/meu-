@@ -53,14 +53,14 @@ const getPermissionDescription = (
   }
 
   if (permission === 'granted' && isSubscribed) {
-    return 'Dispositivo inscrito para receber alertas mesmo com o app fechado.';
+    return 'Dispositivo inscrito para receber um lembrete de estudo mesmo com o app fechado.';
   }
 
   if (permission === 'granted') {
     return 'Permissao concedida, mas sem inscricao ativa. Toque em ativar notificacoes.';
   }
 
-  return 'Ative para receber lembretes e alertas da Nexora no seu dispositivo.';
+  return 'Ative para receber um lembrete de estudo sutil no seu dispositivo.';
 };
 
 export default function SystemNotificationsCard() {
@@ -201,7 +201,7 @@ export default function SystemNotificationsCard() {
       setIsSubscribed(true);
       setFeedback({
         type: 'success',
-        message: 'Notificacoes do dispositivo ativadas.',
+        message: 'Lembrete de estudo ativado no dispositivo.',
       });
     } catch (error) {
       console.error('Erro ao ativar push:', error);
@@ -243,7 +243,7 @@ export default function SystemNotificationsCard() {
       setIsSubscribed(false);
       setFeedback({
         type: 'info',
-        message: 'Notificacoes do dispositivo desativadas.',
+        message: 'Lembrete de estudo desativado no dispositivo.',
       });
     } catch (error) {
       console.error('Erro ao desativar push:', error);
@@ -321,7 +321,7 @@ export default function SystemNotificationsCard() {
           disabled={!isSupported || permission === 'denied' || isSendingTest}
           leftIcon={<Bell className="w-4 h-4" />}
         >
-          {isSubscribed ? 'Reativar' : 'Ativar notificacoes'}
+          {isSubscribed ? 'Reativar lembrete' : 'Ativar lembrete'}
         </Button>
 
         <Button
