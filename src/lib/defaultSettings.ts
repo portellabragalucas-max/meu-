@@ -31,9 +31,9 @@ export const defaultSettings: UserSettings = {
 
   // Notificações
   dailyReminder: true,
-  streakReminder: false,
-  achievementAlerts: false,
-  weeklyReport: false,
+  streakReminder: true,
+  achievementAlerts: true,
+  weeklyReport: true,
   alarmSound: 'pulse',
 
   // Prova

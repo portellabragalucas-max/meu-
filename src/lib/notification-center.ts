@@ -29,6 +29,24 @@ const toDayKey = (date: Date) => {
   return `${date.getUTCFullYear()}-${month}-${day}`;
 };
 
+const toIsoWeekKey = (date: Date) => {
+  const utcDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const dayNum = utcDate.getUTCDay() || 7;
+  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1));
+  const weekNumber = Math.ceil((((utcDate.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${utcDate.getUTCFullYear()}-W${String(weekNumber).padStart(2, '0')}`;
+};
+
+const formatHoursFromMinutes = (minutes: number) => {
+  const safeMinutes = Math.max(0, minutes);
+  const hours = Math.floor(safeMinutes / 60);
+  const remainingMinutes = safeMinutes % 60;
+  if (hours === 0) return `${remainingMinutes}min`;
+  if (remainingMinutes === 0) return `${hours}h`;
+  return `${hours}h${String(remainingMinutes).padStart(2, '0')}`;
+};
+
 const pushToUser = async ({
   userId,
   title,
@@ -204,6 +222,7 @@ export const syncNotificationsForUser = async (userId: string) => {
   const tomorrowStart = new Date(todayStart);
   tomorrowStart.setUTCDate(tomorrowStart.getUTCDate() + 1);
   const todayKey = toDayKey(now);
+  const weekKey = toIsoWeekKey(now);
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -215,6 +234,9 @@ export const syncNotificationsForUser = async (userId: string) => {
       preferences: {
         select: {
           dailyReminder: true,
+          streakReminder: true,
+          weeklyReport: true,
+          achievementAlerts: true,
         },
       },
     },
@@ -226,6 +248,9 @@ export const syncNotificationsForUser = async (userId: string) => {
 
   const preferences = user.preferences;
   const dailyReminderEnabled = preferences?.dailyReminder ?? true;
+  const streakReminderEnabled = preferences?.streakReminder ?? true;
+  const weeklyReportEnabled = preferences?.weeklyReport ?? true;
+  const achievementAlertsEnabled = preferences?.achievementAlerts ?? true;
 
   const fullName = user.name?.trim() || 'Estudante';
   const firstName = fullName.split(' ')[0] || fullName;
@@ -247,8 +272,8 @@ export const syncNotificationsForUser = async (userId: string) => {
     const dailyReminder = await createNotificationForUser({
       userId,
       type: 'daily',
-      title: 'Lembrete de estudo',
-      message: `${firstName}, quando puder, reserve alguns minutos para revisar hoje.`,
+      title: 'Hora de estudar',
+      message: `${firstName}, seu plano de hoje ja esta pronto para comecar.`,
       url: '/dashboard',
       dedupeKey: `daily:${todayKey}`,
       sendPush: true,
@@ -256,6 +281,105 @@ export const syncNotificationsForUser = async (userId: string) => {
 
     if (dailyReminder.created) {
       createdCount += 1;
+    }
+  }
+
+  if (streakReminderEnabled && user.streak > 0 && !hasStudiedToday) {
+    const streakReminder = await createNotificationForUser({
+      userId,
+      type: 'streak',
+      title: 'Mantenha sua sequencia',
+      message: `Voce esta com ${user.streak} dias seguidos. Faca uma sessao hoje para nao perder.`,
+      url: '/dashboard',
+      dedupeKey: `streak:${todayKey}`,
+      sendPush: true,
+    });
+
+    if (streakReminder.created) {
+      createdCount += 1;
+    }
+  }
+
+  if (weeklyReportEnabled && now.getUTCDay() === 1) {
+    const previousWeekStart = new Date(todayStart);
+    previousWeekStart.setUTCDate(previousWeekStart.getUTCDate() - 7);
+
+    const weeklyStats = await prisma.studySession.aggregate({
+      where: {
+        userId,
+        startedAt: {
+          gte: previousWeekStart,
+          lt: todayStart,
+        },
+      },
+      _sum: {
+        actualMinutes: true,
+      },
+      _count: {
+        _all: true,
+      },
+    });
+
+    const totalMinutes = weeklyStats._sum.actualMinutes ?? 0;
+    const totalSessions = weeklyStats._count._all;
+
+    const weeklyReport = await createNotificationForUser({
+      userId,
+      type: 'weekly',
+      title: 'Resumo semanal',
+      message: `Semana passada: ${formatHoursFromMinutes(totalMinutes)} em ${totalSessions} sessoes.`,
+      url: '/analytics',
+      dedupeKey: `weekly:${weekKey}`,
+      sendPush: true,
+      metadata: {
+        totalMinutes,
+        totalSessions,
+      },
+    });
+
+    if (weeklyReport.created) {
+      createdCount += 1;
+    }
+  }
+
+  if (achievementAlertsEnabled) {
+    const achievementWindowStart = new Date(now.getTime() - 1000 * 60 * 60 * 24);
+    const recentAchievements = await prisma.userAchievement.findMany({
+      where: {
+        userId,
+        unlockedAt: {
+          gte: achievementWindowStart,
+        },
+      },
+      include: {
+        achievement: {
+          select: {
+            id: true,
+            name: true,
+            rarity: true,
+          },
+        },
+      },
+      orderBy: {
+        unlockedAt: 'desc',
+      },
+      take: 3,
+    });
+
+    for (const unlockedAchievement of recentAchievements) {
+      const result = await createNotificationForUser({
+        userId,
+        type: 'achievement',
+        title: 'Nova conquista desbloqueada',
+        message: `${unlockedAchievement.achievement.name} (${unlockedAchievement.achievement.rarity})`,
+        url: '/dashboard',
+        dedupeKey: `achievement:${unlockedAchievement.achievement.id}`,
+        sendPush: true,
+      });
+
+      if (result.created) {
+        createdCount += 1;
+      }
     }
   }
 

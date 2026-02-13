@@ -41,8 +41,8 @@ export async function POST() {
     const notificationResult = await createNotificationForUser({
       userId,
       type: 'system',
-      title: 'Lembrete de estudo',
-      message: 'Tudo certo. Seus lembretes sutis de estudo estao ativos.',
+      title: 'Nexora',
+      message: 'Notificacoes push ativadas com sucesso.',
       url: '/dashboard',
       dedupeKey: `system:test:${Date.now()}`,
       sendPush: true,
@@ -63,7 +63,7 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
-      message: 'Lembrete de teste enviado.',
+      message: 'Notificacao de teste enviada.',
     });
   } catch (error) {
     console.error('Erro ao enviar notificacao de teste:', error);
