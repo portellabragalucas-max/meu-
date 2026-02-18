@@ -32,6 +32,14 @@ const toLocalKey = (date: Date) =>
     date.getDate()
   ).padStart(2, '0')}`;
 
+const parseLocalKey = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  const parsed = new Date(year, month - 1, day);
+  parsed.setHours(0, 0, 0, 0);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
 const getHoursForDate = (
   date: Date,
   dailyHoursByWeekday: UserSettings['dailyHoursByWeekday'],
@@ -87,6 +95,14 @@ export default function PlannerPage() {
   const [firstCycleAllSubjects, setFirstCycleAllSubjects] = useLocalStorage<boolean>(
     'nexora_first_cycle_all_subjects',
     true
+  );
+  const scheduleStartDate = useMemo(
+    () => (scheduleRange?.startDate ? parseLocalKey(scheduleRange.startDate) : null),
+    [scheduleRange?.startDate]
+  );
+  const scheduleEndDate = useMemo(
+    () => (scheduleRange?.endDate ? parseLocalKey(scheduleRange.endDate) : null),
+    [scheduleRange?.endDate]
   );
 
   const activeDaysFromSettings = useMemo(() => {
@@ -167,7 +183,7 @@ export default function PlannerPage() {
 
   const phaseInfo = getPhaseForDate(
     new Date(),
-    scheduleRange?.startDate ? new Date(scheduleRange.startDate) : getWeekStart(new Date())
+    scheduleStartDate ?? getWeekStart(new Date())
   );
   const aiModeLabel = useMemo(() => {
     const map = { easy: 'Leve', medium: 'Moderado', hard: 'Intenso', adaptive: 'Adaptativo' };
@@ -364,8 +380,24 @@ export default function PlannerPage() {
         ? [0, 1, 2, 3, 4, 5, 6].filter((day) => !activeDays.includes(day))
         : [0];
 
-    const startDate = range?.startDate ?? getWeekStart(new Date());
-    const endDate = range?.endDate ?? new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
+    const startDate = new Date(
+      (range?.startDate ?? scheduleStartDate ?? getWeekStart(new Date())).getTime()
+    );
+    startDate.setHours(0, 0, 0, 0);
+
+    let endDate = range?.endDate ? new Date(range.endDate.getTime()) : null;
+    if (!endDate && scheduleEndDate) {
+      endDate = new Date(scheduleEndDate.getTime());
+    }
+    if (!endDate) {
+      endDate = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
+    }
+    endDate.setHours(0, 0, 0, 0);
+
+    if (endDate < startDate) {
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 6);
+    }
 
     const baseLimits = buildDailyLimitByDate(
       startDate,
@@ -466,8 +498,8 @@ export default function PlannerPage() {
       return merged;
     });
     setScheduleRange({
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
+      startDate: toLocalKey(startDate),
+      endDate: toLocalKey(endDate),
     });
     setIsGenerating(false);
   }, [
@@ -483,6 +515,8 @@ export default function PlannerPage() {
     dailyLimits,
     blocks,
     firstCycleAllSubjects,
+    scheduleStartDate,
+    scheduleEndDate,
     setBlocks,
     setScheduleRange,
   ]);
@@ -644,6 +678,8 @@ export default function PlannerPage() {
         defaultDailyLimitMinutes={Math.round(averageDailyHours * 60)}
         dailyHoursByWeekday={userSettings.dailyHoursByWeekday}
         allowedDays={activeDaysFromSettings}
+        selectedScheduleStartDate={scheduleRange?.startDate ?? null}
+        selectedScheduleEndDate={scheduleRange?.endDate ?? null}
       />
     </motion.div>
   );

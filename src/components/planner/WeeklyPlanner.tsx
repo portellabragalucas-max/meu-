@@ -38,6 +38,19 @@ import BlockFormModal, { type BlockFormData } from './BlockFormModal';
 import { StudyBlockSessionModal } from '@/components/session';
 import type { DailyHoursByWeekday, StudyBlock, Subject, WeekdayKey } from '@/types';
 
+const toLocalDateKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate()
+  ).padStart(2, '0')}`;
+
+const parseLocalDateKey = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  const parsed = new Date(year, month - 1, day);
+  parsed.setHours(0, 0, 0, 0);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
 interface WeeklyPlannerProps {
   initialBlocks: StudyBlock[];
   onBlocksChange: (blocks: StudyBlock[]) => void;
@@ -48,6 +61,8 @@ interface WeeklyPlannerProps {
   defaultDailyLimitsByDate?: Record<string, number>;
   dailyHoursByWeekday?: DailyHoursByWeekday;
   allowedDays?: number[];
+  selectedScheduleStartDate?: string | null;
+  selectedScheduleEndDate?: string | null;
 }
 
 export default function WeeklyPlanner({
@@ -60,8 +75,15 @@ export default function WeeklyPlanner({
   defaultDailyLimitsByDate,
   dailyHoursByWeekday,
   allowedDays = [],
+  selectedScheduleStartDate,
+  selectedScheduleEndDate,
 }: WeeklyPlannerProps) {
-  const [currentWeekStart, setCurrentWeekStart] = useState(getWeekStart());
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => {
+    const selectedStart = selectedScheduleStartDate
+      ? parseLocalDateKey(selectedScheduleStartDate)
+      : null;
+    return getWeekStart(selectedStart ?? new Date());
+  });
   const [blocks, setBlocks] = useState(initialBlocks);
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -109,6 +131,7 @@ export default function WeeklyPlanner({
     durationMinutes: 60,
   });
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [scheduleStartDate, setScheduleStartDate] = useState('');
   const [scheduleEndDate, setScheduleEndDate] = useState('');
   const [scheduleError, setScheduleError] = useState('');
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
@@ -139,6 +162,16 @@ export default function WeeklyPlanner({
   }, [isMobile, weekDates]);
 
   useEffect(() => {
+    if (!isMobile || !selectedScheduleStartDate) return;
+    const selectedStart = parseLocalDateKey(selectedScheduleStartDate);
+    if (!selectedStart) return;
+    const selectedIndex = weekDates.findIndex((date) => isSameDay(date, selectedStart));
+    if (selectedIndex >= 0) {
+      setMobileDayIndex(selectedIndex);
+    }
+  }, [isMobile, weekDates, selectedScheduleStartDate]);
+
+  useEffect(() => {
     if (!isMounted) return;
     if (!isScheduleModalOpen && !isRescheduleModalOpen) return;
 
@@ -159,32 +192,47 @@ export default function WeeklyPlanner({
       day: '2-digit',
       month: 'long',
     });
-  const toLocalKey = (date: Date) =>
-    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-      date.getDate()
-    ).padStart(2, '0')}`;
+  const toLocalKey = toLocalDateKey;
   const parseLocalKey = (value: string) => {
-    const [year, month, day] = value.split('-').map(Number);
-    return new Date(year, month - 1, day);
+    return parseLocalDateKey(value) ?? new Date(Number.NaN);
   };
   const isAllowedDay = (date: Date) =>
     allowedDays.length === 0 || allowedDays.includes(date.getDay());
 
   useEffect(() => {
+    if (!selectedScheduleStartDate) return;
+    const selectedStart = parseLocalDateKey(selectedScheduleStartDate);
+    if (!selectedStart) return;
+    setCurrentWeekStart(getWeekStart(selectedStart));
+  }, [selectedScheduleStartDate]);
+
+  useEffect(() => {
     if (!isScheduleModalOpen) return;
-    const defaultEnd = new Date();
-    defaultEnd.setDate(defaultEnd.getDate() + 6);
-    setScheduleEndDate(toLocalKey(defaultEnd));
+    const todayKey = toLocalDateKey(new Date());
+    const selectedStart = selectedScheduleStartDate
+      ? parseLocalDateKey(selectedScheduleStartDate)
+      : null;
+    const defaultStart = selectedStart ?? parseLocalDateKey(todayKey) ?? new Date();
+    const defaultStartKey = toLocalDateKey(defaultStart);
+
+    let defaultEnd = selectedScheduleEndDate ? parseLocalDateKey(selectedScheduleEndDate) : null;
+    if (!defaultEnd || defaultEnd < defaultStart) {
+      defaultEnd = new Date(defaultStart);
+      defaultEnd.setDate(defaultEnd.getDate() + 6);
+    }
+
+    setScheduleStartDate(defaultStartKey);
+    setScheduleEndDate(toLocalDateKey(defaultEnd));
     setScheduleError('');
-  }, [isScheduleModalOpen]);
+  }, [isScheduleModalOpen, selectedScheduleStartDate, selectedScheduleEndDate]);
 
   useEffect(() => {
     if (!isRescheduleModalOpen) return;
     const today = new Date();
     const tomorrow = new Date();
     tomorrow.setDate(today.getDate() + 1);
-    const defaultSource = toLocalKey(today);
-    const defaultTarget = toLocalKey(tomorrow);
+    const defaultSource = toLocalDateKey(today);
+    const defaultTarget = toLocalDateKey(tomorrow);
     setRescheduleSourceDate(defaultSource);
     setRescheduleTargetDate(defaultTarget);
     setRescheduleError('');
@@ -897,9 +945,13 @@ export default function WeeklyPlanner({
                   <label className="block text-sm font-medium text-text-secondary mb-2">
                     Início
                   </label>
-                  <div className="input-field">
-                    {formatDatePt(new Date())}
-                  </div>
+                  <input
+                    type="date"
+                    className="input-field"
+                    min={scheduleStartDate || toLocalKey(new Date())}
+                    value={scheduleStartDate}
+                    onChange={(e) => setScheduleStartDate(e.target.value)}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-2">
@@ -930,13 +982,21 @@ export default function WeeklyPlanner({
                   variant="primary"
                   className="flex-1"
                   onClick={() => {
+                    if (!scheduleStartDate) {
+                      setScheduleError('Selecione a data de inicio.');
+                      return;
+                    }
                     if (!scheduleEndDate) {
                       setScheduleError('Selecione a data final.');
                       return;
                     }
-                    const startDate = new Date();
-                    startDate.setHours(0, 0, 0, 0);
+                    const startDate = parseLocalKey(scheduleStartDate);
                     const endDate = parseLocalKey(scheduleEndDate);
+                    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+                      setScheduleError('Informe datas validas para gerar a agenda.');
+                      return;
+                    }
+                    startDate.setHours(0, 0, 0, 0);
                     endDate.setHours(0, 0, 0, 0);
                     if (endDate < startDate) {
                       setScheduleError('A data final deve ser após o início.');
