@@ -198,6 +198,7 @@ export default function SettingsPage() {
   const deleteInputRef = useRef<HTMLInputElement | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
   const latestSettingsRef = useRef(settings);
+  const hasChangesRef = useRef(hasChanges);
   const saveInFlightRef = useRef(false);
   const saveQueuedRef = useRef(false);
   const previousSectionRef = useRef<SettingsSection | null>(null);
@@ -321,6 +322,10 @@ export default function SettingsPage() {
   }, [settings]);
 
   useEffect(() => {
+    hasChangesRef.current = hasChanges;
+  }, [hasChanges]);
+
+  useEffect(() => {
     try {
       const ua = navigator.userAgent || '';
       const isiPhoneIPadIPod = /iPad|iPhone|iPod/.test(ua);
@@ -390,6 +395,7 @@ export default function SettingsPage() {
   }, [session?.user, setSettings]);
 
   useEffect(() => {
+    if (!session?.user?.id) return;
     if (hasRemotePrefs) return;
     if (hasAttemptedRemotePrefs.current) return;
     let isMounted = true;
@@ -426,7 +432,7 @@ export default function SettingsPage() {
               })()
             : remote.dailyHoursByWeekday ?? null;
 
-        if (!isMounted || hasChanges) return;
+        if (!isMounted || hasChangesRef.current) return;
         setSettings((prev) => ({
           ...prev,
           dailyGoalHours: remote.dailyGoalHours ?? prev.dailyGoalHours,
@@ -478,7 +484,7 @@ export default function SettingsPage() {
     return () => {
       isMounted = false;
     };
-  }, [hasChanges, hasRemotePrefs, setSettings, setStudyPrefs, settings.dailyGoalHours, settings.excludeDays]);
+  }, [hasChanges, hasRemotePrefs, session?.user?.id, setSettings, setStudyPrefs, settings.dailyGoalHours, settings.excludeDays]);
 
   useEffect(() => {
     setPendingAlarmSound(settings.alarmSound || 'pulse');
@@ -893,7 +899,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={closeSection}
-              className="inline-flex min-h-[36px] items-center gap-1 rounded-lg px-2.5 py-2 text-sm text-neon-blue hover:bg-card-bg touch-manipulation active:scale-[0.99]"
+              className="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2.5 py-2 text-sm text-neon-blue hover:bg-card-bg touch-manipulation active:scale-[0.99]"
             >
               <ChevronLeft className="w-4 h-4" />
               Voltar
@@ -1121,26 +1127,26 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between gap-3">
                       <button
                         type="button"
-                        onClick={() => updateDayHours(index, isActive ? 0 : settings.dailyGoalHours)}
-                        className={cn(
-                          'h-10 min-w-[48px] rounded-lg border px-2 text-sm font-medium transition',
-                          isActive
-                            ? 'border-neon-purple/60 text-white'
-                            : 'border-slate-800 text-text-muted'
-                        )}
-                      >
+                          onClick={() => updateDayHours(index, isActive ? 0 : settings.dailyGoalHours)}
+                          className={cn(
+                            'h-11 min-w-[48px] rounded-lg border px-2 text-sm font-medium transition',
+                            isActive
+                              ? 'border-neon-purple/60 text-white'
+                              : 'border-slate-800 text-text-muted'
+                          )}
+                        >
                         {label}
                       </button>
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
                           min={0}
-                          max={12}
-                          step={0.5}
-                          value={hours}
-                          onChange={(e) => updateDayHours(index, Number(e.target.value))}
-                          className={cn('input-field h-10 w-20 px-3 py-2 text-sm', !isActive && 'opacity-70')}
-                        />
+                            max={12}
+                            step={0.5}
+                            value={hours}
+                            onChange={(e) => updateDayHours(index, Number(e.target.value))}
+                            className={cn('input-field h-11 w-20 px-3 py-2 text-sm', !isActive && 'opacity-70')}
+                          />
                         <span className="min-w-[38px] text-right text-xs text-text-muted">{formatHours(hours)}</span>
                       </div>
                     </div>

@@ -1,12 +1,12 @@
 /**
- * Root Page - Redireciona para Login ou Dashboard
+ * Root Page - Redirect users based on auth state
  */
 
 import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
-export default function Home() {
-  // Em produção, verificaria se o usuário está autenticado
-  // Por enquanto, redireciona para o dashboard
-  // Para testar a página de login, mude para '/login'
-  redirect('/dashboard');
+export default async function Home() {
+  const session = await getServerSession(authOptions);
+  redirect(session?.user ? '/dashboard' : '/login');
 }

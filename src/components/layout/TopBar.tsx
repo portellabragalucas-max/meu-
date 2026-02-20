@@ -88,7 +88,7 @@ function TopBarMobile({
           ref={notificationButtonRef}
           whileTap={{ scale: 0.94 }}
           onClick={onToggleNotifications}
-          className="relative flex h-10 w-10 items-center justify-center rounded-xl hover:bg-card-bg transition-colors"
+          className="relative flex h-11 w-11 items-center justify-center rounded-xl hover:bg-card-bg transition-colors"
           aria-label="Abrir notificacoes"
         >
           <Bell className="h-5 w-5 text-text-secondary" />
@@ -99,7 +99,7 @@ function TopBarMobile({
 
         <Link
           href="/settings"
-          className="flex h-10 w-10 items-center justify-center rounded-xl hover:bg-card-bg transition-colors"
+          className="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-card-bg transition-colors"
           aria-label="Abrir perfil"
         >
           {user.avatar ? (
@@ -192,7 +192,7 @@ function TopBarDesktop({
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={onOpenQuickSession}
-          className="btn-primary flex min-h-[42px] items-center gap-2 px-4 py-2 text-sm"
+          className="btn-primary flex min-h-[44px] items-center gap-2 px-4 py-2 text-sm"
         >
           <Plus className="h-4 w-4" />
           <span>Sessao Rapida</span>
@@ -212,10 +212,12 @@ function TopBarDesktop({
           )}
         </motion.button>
 
-        <motion.div
+        <motion.button
+          type="button"
           whileHover={{ scale: 1.05 }}
           className="flex max-w-full cursor-pointer items-center gap-3 rounded-xl p-2 transition-colors hover:bg-card-bg"
           onClick={() => signOut({ callbackUrl: '/login' })}
+          aria-label="Sair da conta"
         >
           {user.avatar ? (
             <Image
@@ -232,7 +234,7 @@ function TopBarDesktop({
           )}
           <span className="text-sm font-medium text-white">{user.name}</span>
           <LogOut className="h-4 w-4 text-text-muted" />
-        </motion.div>
+        </motion.button>
       </div>
     </AppContainer>
   );
@@ -451,9 +453,12 @@ export default function TopBar({ user }: TopBarProps) {
   useEffect(() => {
     setShowNotifications(false);
     setShowQuickSession(false);
+  }, [pathname]);
+
+  useEffect(() => {
     void syncNotifications();
     void fetchNotifications();
-  }, [fetchNotifications, pathname, syncNotifications]);
+  }, [fetchNotifications, syncNotifications]);
 
   return (
     <>

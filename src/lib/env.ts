@@ -1,7 +1,10 @@
+const allowLocalAuthFallback = process.env.VERCEL_ENV !== 'production';
+
 export const env = {
   databaseUrl: process.env.DATABASE_URL ?? '',
   nextAuthUrl: process.env.NEXTAUTH_URL ?? '',
-  nextAuthSecret: process.env.NEXTAUTH_SECRET ?? '',
+  nextAuthSecret:
+    process.env.NEXTAUTH_SECRET ?? (allowLocalAuthFallback ? 'nexora-local-auth-secret' : ''),
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? '',
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
   emailServer: process.env.EMAIL_SERVER ?? '',

@@ -13,13 +13,13 @@ export const metadata: Metadata = {
   description: 'Transform your learning with AI-powered study planning, smart scheduling, and gamified progress tracking.',
   keywords: ['study', 'learning', 'AI', 'productivity', 'education', 'planning'],
   authors: [{ name: 'Nexora Team' }],
-  themeColor: '#05080F',
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  themeColor: '#05080F',
 };
 
 export default function RootLayout({

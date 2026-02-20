@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Sparkles, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { getProviders, getSession, signIn, useSession } from 'next-auth/react';
@@ -57,7 +57,6 @@ const navigateToPostLogin = (router: ReturnType<typeof useRouter>, targetUrl: st
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
@@ -66,9 +65,14 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({ email: '', password: '' });
+  const [queryState, setQueryState] = useState<{ callbackUrl: string | null; resetSuccess: boolean; authError: string | null }>({
+    callbackUrl: null,
+    resetSuccess: false,
+    authError: null,
+  });
   const callbackUrl = useMemo(
-    () => resolveCallbackUrl(searchParams.get('callbackUrl')),
-    [searchParams]
+    () => resolveCallbackUrl(queryState.callbackUrl),
+    [queryState.callbackUrl]
   );
 
   const hasGoogle = Boolean(availableProviders.google);
@@ -99,14 +103,23 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    const hasPasswordResetSuccess = searchParams.get('reset') === 'success';
-    const authError = searchParams.get('error');
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    setQueryState({
+      callbackUrl: params.get('callbackUrl'),
+      resetSuccess: params.get('reset') === 'success',
+      authError: params.get('error'),
+    });
+  }, []);
 
-    setInfoMessage(hasPasswordResetSuccess ? 'Senha redefinida com sucesso. Faca login.' : null);
-    if (authError) {
-      setErrorMessage(mapAuthErrorMessage(authError));
+  useEffect(() => {
+    setInfoMessage(queryState.resetSuccess ? 'Senha redefinida com sucesso. Faca login.' : null);
+    if (queryState.authError) {
+      setErrorMessage(mapAuthErrorMessage(queryState.authError));
+      return;
     }
-  }, [searchParams]);
+    setErrorMessage(null);
+  }, [queryState.authError, queryState.resetSuccess]);
 
   useEffect(() => {
     if (status !== 'authenticated') return;
@@ -224,7 +237,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-4 py-6 sm:px-6 sm:py-8">
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -238,7 +251,7 @@ export default function LoginPage() {
             <span className="text-2xl font-heading font-bold gradient-text">Nexora</span>
           </div>
 
-          <div className="glass-card p-8">
+          <div className="glass-card p-6 sm:p-8">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-heading font-bold text-white mb-2">Bem-vindo de volta!</h2>
               <p className="text-text-secondary">Entre para continuar seus estudos</p>

@@ -47,8 +47,8 @@ const variantStyles = {
 };
 
 const sizeStyles = {
-  sm: 'min-h-[36px] px-3 py-1.5 text-sm rounded-lg',
-  md: 'min-h-[42px] px-4 py-2.5 text-sm rounded-xl',
+  sm: 'min-h-[44px] px-3 py-2 text-sm rounded-lg',
+  md: 'min-h-[44px] px-4 py-2.5 text-sm rounded-xl',
   lg: 'min-h-[46px] px-6 py-3 text-base rounded-xl',
 };
 

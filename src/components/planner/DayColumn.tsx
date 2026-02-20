@@ -121,14 +121,16 @@ export default function DayColumn({
               <button
                 type="button"
                 onClick={() => onAdjustDailyLimit(date, -30)}
-                className="px-2 py-1 rounded-md border border-card-border hover:border-neon-blue/50 hover:text-neon-blue transition-colors"
+                className="min-h-[44px] min-w-[44px] rounded-md border border-card-border px-2 py-1 hover:border-neon-blue/50 hover:text-neon-blue transition-colors"
+                aria-label="Reduzir limite diario em 30 minutos"
               >
                 -30m
               </button>
               <button
                 type="button"
                 onClick={() => onAdjustDailyLimit(date, 30)}
-                className="px-2 py-1 rounded-md border border-card-border hover:border-neon-blue/50 hover:text-neon-blue transition-colors"
+                className="min-h-[44px] min-w-[44px] rounded-md border border-card-border px-2 py-1 hover:border-neon-blue/50 hover:text-neon-blue transition-colors"
+                aria-label="Aumentar limite diario em 30 minutos"
               >
                 +30m
               </button>

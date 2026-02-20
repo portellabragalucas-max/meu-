@@ -30,17 +30,22 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   // Gerenciar sidebar responsiva
   useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 1024;
+    const mediaQuery = window.matchMedia('(max-width: 1023px)');
+    const applyViewportState = (mobile: boolean) => {
       setIsMobile(mobile);
       if (mobile) {
         setSidebarCollapsed(true);
       }
     };
 
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    applyViewportState(mediaQuery.matches);
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      applyViewportState(event.matches);
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
   const sidebarWidth = sidebarCollapsed ? 80 : 260;

@@ -51,6 +51,7 @@ if (hasGoogleAuth) {
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+  secret: env.nextAuthSecret || undefined,
   session: {
     strategy: 'jwt',
   },

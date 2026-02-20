@@ -82,9 +82,11 @@ export default function TimeBlock({
       <div className="flex items-center gap-2 sm:gap-3 ml-1.5 sm:ml-2">
         {/* Alça de Arrastar */}
         <button
+          type="button"
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 rounded hover:bg-white/5"
+          className="h-11 w-11 sm:h-9 sm:w-9 cursor-grab active:cursor-grabbing rounded-lg hover:bg-white/5"
+          aria-label="Arrastar bloco"
         >
           <GripVertical className="w-4 h-4 text-text-muted" />
         </button>
@@ -133,29 +135,35 @@ export default function TimeBlock({
         <div className="flex items-center gap-1 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           {onStart && (
             <button
+              type="button"
               onClick={() => onStart(block)}
               className={cn(
-                'p-2.5 rounded-lg transition-colors',
+                'h-11 w-11 rounded-lg transition-colors',
                 block.isBreak
                   ? 'hover:bg-neon-cyan/10 text-neon-cyan hover:text-neon-cyan'
                   : 'hover:bg-neon-blue/10 text-neon-blue hover:text-neon-cyan'
               )}
+              aria-label={block.isBreak ? 'Iniciar intervalo' : 'Iniciar bloco'}
             >
               <Play className="w-4 h-4" />
             </button>
           )}
           {onEdit && !block.isBreak && (
             <button
+              type="button"
               onClick={() => onEdit(block)}
-              className="p-2.5 rounded-lg hover:bg-white/5 text-text-secondary hover:text-white transition-colors"
+              className="h-11 w-11 rounded-lg hover:bg-white/5 text-text-secondary hover:text-white transition-colors"
+              aria-label="Editar bloco"
             >
               <Edit className="w-4 h-4" />
             </button>
           )}
           {onDelete && (
             <button
+              type="button"
               onClick={() => onDelete(block.id)}
-              className="p-2.5 rounded-lg hover:bg-red-500/10 text-text-secondary hover:text-red-400 transition-colors"
+              className="h-11 w-11 rounded-lg hover:bg-red-500/10 text-text-secondary hover:text-red-400 transition-colors"
+              aria-label="Excluir bloco"
             >
               <Trash2 className="w-4 h-4" />
             </button>
