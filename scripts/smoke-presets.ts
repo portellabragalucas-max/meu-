@@ -1,5 +1,6 @@
 import { getEnemPresetSubjects } from '@/lib/enemCatalog';
 import { getCanonicalSubjectName, getCuratedPresetById } from '@/lib/presetCatalog';
+import { buildConcursosPresetSubjectsFromAnswers } from '@/services/concursosPresetIntelligence';
 import { generateWeeklySchedule } from '@/services/studyAlgorithm';
 import type { ScheduleConfig, Subject } from '@/types';
 
@@ -180,6 +181,47 @@ for (const name of ['Direito Penal', 'Processo Penal', 'Contabilidade Geral', 'A
   assert(
     moduleSubjectNames.some((subjectName) => getCanonicalSubjectName(subjectName) === getCanonicalSubjectName(name)),
     `Concursos modules should include example "${name}"`
+  );
+}
+
+// Concursos intelligent questionnaire generation (backend resolver)
+const concursosPolicial = buildConcursosPresetSubjectsFromAnswers({
+  concursoArea: 'policial',
+  concursoLevel: 'superior',
+  concursoExperience: 'nunca',
+  concursoPriorityMode: 'equilibrado',
+});
+ensureNoDuplicateSubjects(concursosPolicial, 'Concursos policial (dynamic)');
+for (const name of ['Direito Penal', 'Processo Penal', 'Legislacao Penal Especial']) {
+  assert(
+    concursosPolicial.some((subject) => getCanonicalSubjectName(subject.name) === getCanonicalSubjectName(name)),
+    `Concursos policial dynamic generation should include "${name}"`
+  );
+}
+
+const concursosFiscal = buildConcursosPresetSubjectsFromAnswers({
+  concursoArea: 'fiscal',
+  concursoLevel: 'superior',
+  concursoExperience: 'intermediaria',
+  concursoPriorityMode: 'equilibrado',
+});
+for (const name of ['Direito Tributario', 'Contabilidade Geral', 'Contabilidade Publica', 'Matematica Financeira', 'Auditoria']) {
+  assert(
+    concursosFiscal.some((subject) => getCanonicalSubjectName(subject.name) === getCanonicalSubjectName(name)),
+    `Concursos fiscal dynamic generation should include "${name}"`
+  );
+}
+
+const concursosTribunais = buildConcursosPresetSubjectsFromAnswers({
+  concursoArea: 'tribunais',
+  concursoLevel: 'superior',
+  concursoExperience: 'pouco',
+  concursoPriorityMode: 'teoria',
+});
+for (const name of ['Direito Civil', 'Processo Civil', 'Direito Constitucional', 'Direito Administrativo']) {
+  assert(
+    concursosTribunais.some((subject) => getCanonicalSubjectName(subject.name) === getCanonicalSubjectName(name)),
+    `Concursos tribunais dynamic generation should include "${name}"`
   );
 }
 

@@ -179,7 +179,7 @@ export default function SubjectsPage() {
   // Handler para importar preset
   const handleImportPreset = async (
     presetId: string,
-    options?: { source: 'api' | 'local' }
+    options?: { source: 'api' | 'local'; wizardAnswers?: PresetWizardAnswers }
   ) => {
     setIsLoading(true);
     try {
@@ -191,7 +191,9 @@ export default function SubjectsPage() {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({}),
+            body: JSON.stringify({
+              wizardAnswers: options?.wizardAnswers,
+            }),
           });
 
           if (response.ok) {

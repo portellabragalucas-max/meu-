@@ -17,6 +17,8 @@ import {
   getCanonicalSubjectName,
   getCuratedPresetByName,
 } from '@/lib/presetCatalog';
+import { buildConcursosPresetSubjectsFromAnswers } from '@/services/concursosPresetIntelligence';
+import type { PresetWizardAnswers } from '@/types';
 
 type ImportPresetSubject = {
   name: string;
@@ -64,7 +66,8 @@ function getSubjectIcon(name: string): string {
 
 function toImportSubjects(
   dbPresetSubjects: ImportPresetSubject[],
-  dbPresetName: string
+  dbPresetName: string,
+  wizardAnswers?: PresetWizardAnswers
 ): ImportPresetSubject[] {
   if (dbPresetName.toLowerCase() === 'enem') {
     return dedupePresetSubjectsByCanonical(getEnemPresetSubjects()).map((subject) => ({
@@ -73,6 +76,10 @@ function toImportSubjects(
       difficulty: subject.difficulty,
       recommendedWeeklyHours: subject.recommendedWeeklyHours,
     }));
+  }
+
+  if (dbPresetName.toLowerCase().includes('concurso')) {
+    return buildConcursosPresetSubjectsFromAnswers(wizardAnswers);
   }
 
   const curated = getCuratedPresetByName(dbPresetName);
@@ -94,10 +101,17 @@ function toImportSubjects(
 }
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+    let body: { wizardAnswers?: PresetWizardAnswers } = {};
+    try {
+      body = await request.json();
+    } catch {
+      body = {};
+    }
+
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;
 
@@ -127,7 +141,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Preset not found' }, { status: 404 });
     }
 
-    const presetSubjects = toImportSubjects(preset.subjects, preset.name);
+    const presetSubjects = toImportSubjects(preset.subjects, preset.name, body.wizardAnswers);
 
     const existingSubjects = await prisma.subject.findMany({
       where: { userId },

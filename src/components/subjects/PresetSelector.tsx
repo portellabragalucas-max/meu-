@@ -49,7 +49,10 @@ interface Preset {
 }
 
 interface PresetSelectorProps {
-  onImport: (presetId: string, options?: { source: 'api' | 'local' }) => Promise<void>;
+  onImport: (
+    presetId: string,
+    options?: { source: 'api' | 'local'; wizardAnswers?: PresetWizardAnswers }
+  ) => Promise<void>;
   onSkip: () => void;
   userId: string;
   baseSettings: UserSettings;
@@ -200,14 +203,14 @@ export default function PresetSelector({
     [presets, selectedPreset]
   );
 
-  const handleImport = async () => {
+  const handleImport = async (wizardAnswers?: PresetWizardAnswers) => {
     if (!selectedPreset) return;
 
     setIsImporting(true);
     setError(null);
 
     try {
-      await onImport(selectedPreset, { source: presetSource });
+      await onImport(selectedPreset, { source: presetSource, wizardAnswers });
     } catch (err) {
       setError('Erro ao importar predefinicao. Tente novamente.');
       console.error('Error importing preset:', err);
@@ -508,7 +511,7 @@ export default function PresetSelector({
         onClose={() => setShowWizard(false)}
         onApply={(settings, studyPrefs, answers) => {
           onApplyPreferences(settings, studyPrefs, answers);
-          void handleImport();
+          void handleImport(answers);
         }}
       />
     </div>

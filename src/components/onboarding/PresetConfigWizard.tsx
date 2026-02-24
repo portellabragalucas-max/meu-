@@ -29,14 +29,23 @@ interface PresetConfigWizardProps {
   onApply: (settings: UserSettings, studyPrefs: StudyPreferences, answers: PresetWizardAnswers) => void;
 }
 
-const stepTitles = [
+const defaultStepTitles = [
   'Disponibilidade',
   'Horários',
   'Foco e pausas',
   'Rotina e descanso',
   'Confirmação',
 ];
-const stepTitlesShort = ['Disp.', 'Hor.', 'Foco', 'Rotina', 'Conf.'];
+const defaultStepTitlesShort = ['Disp.', 'Hor.', 'Foco', 'Rotina', 'Conf.'];
+const concursosStepTitles = [
+  'Area',
+  'Nivel',
+  'Experiencia',
+  'Disponibilidade',
+  'Prioridades',
+  'Confirmacao',
+];
+const concursosStepTitlesShort = ['Area', 'Nivel', 'Exp.', 'Disp.', 'Prior.', 'Conf.'];
 
 const dayOptions: { label: string; value: number; key: WeekdayKey }[] = [
   { label: 'Dom', value: 0, key: 'dom' },
@@ -67,6 +76,84 @@ const goals = [
   { label: 'Outros', value: 'outros' },
 ] as const;
 
+const concursoAreaOptions: Array<{
+  label: string;
+  value: NonNullable<PresetWizardAnswers['concursoArea']>;
+  description: string;
+}> = [
+  {
+    label: 'Area Policial / Seguranca Publica',
+    value: 'policial',
+    description: 'Penal, processo penal e legislacao penal especial como eixo especifico',
+  },
+  {
+    label: 'Tribunais / Juridica',
+    value: 'tribunais',
+    description: 'Base juridica com civil e processo civil',
+  },
+  {
+    label: 'Area Fiscal / Controle',
+    value: 'fiscal',
+    description: 'Tributario, contabilidade, auditoria e matematica financeira',
+  },
+  {
+    label: 'Area Administrativa / Gestao',
+    value: 'administrativa',
+    description: 'Administracao, gestao e administracao publica',
+  },
+  {
+    label: 'Bancaria',
+    value: 'bancaria',
+    description: 'Conhecimentos bancarios, matematica financeira e base comum',
+  },
+  {
+    label: 'INSS / Previdenciaria',
+    value: 'inss',
+    description: 'Previdenciario, seguridade social e legislacao previdenciaria',
+  },
+  {
+    label: 'Educacao',
+    value: 'educacao',
+    description: 'Didatica, legislacao educacional e politicas publicas',
+  },
+  {
+    label: 'Personalizado',
+    value: 'personalizado',
+    description: 'Importa base comum e voce complementa manualmente depois',
+  },
+];
+
+const concursoLevelOptions: Array<{
+  label: string;
+  value: NonNullable<PresetWizardAnswers['concursoLevel']>;
+  description: string;
+}> = [
+  { label: 'Medio', value: 'medio', description: 'Reduce complexidade e aprofunda menos disciplinas avancadas' },
+  { label: 'Superior', value: 'superior', description: 'Aumenta profundidade e peso de disciplinas juridicas/contabeis' },
+  { label: 'Ambos', value: 'ambos', description: 'Cobertura mais ampla para editais mistos' },
+];
+
+const concursoExperienceOptions: Array<{
+  label: string;
+  value: NonNullable<PresetWizardAnswers['concursoExperience']>;
+  description: string;
+}> = [
+  { label: 'Nunca comecei', value: 'nunca', description: 'Fortalece base e reduz carga inicial de materias especificas' },
+  { label: 'Ja estudei um pouco', value: 'pouco', description: 'Base reforcada com progressao moderada' },
+  { label: 'Tenho base intermediaria', value: 'intermediaria', description: 'Distribuicao equilibrada de base e especificas' },
+  { label: 'Nivel avancado', value: 'avancado', description: 'Mais peso em materias especificas e maior profundidade' },
+];
+
+const concursoPriorityOptions: Array<{
+  label: string;
+  value: NonNullable<PresetWizardAnswers['concursoPriorityMode']>;
+  description: string;
+}> = [
+  { label: 'Teoria', value: 'teoria', description: 'Mais carga em leitura, lei seca e consolidacao conceitual' },
+  { label: 'Exercicios', value: 'exercicios', description: 'Mais peso em treino e disciplinas de maior resolucao pratica' },
+  { label: 'Equilibrado', value: 'equilibrado', description: 'Balanceia teoria e pratica' },
+];
+
 const overlayVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1 },
@@ -84,6 +171,9 @@ const resolveGoal = (presetId: string, presetName: string): PresetWizardAnswers[
   if (base.includes('enem')) return 'enem';
   return 'outros';
 };
+
+const isConcursoPresetSelection = (presetId: string, presetName: string) =>
+  resolveGoal(presetId, presetName) === 'concurso';
 
 const clampHours = (value: number) => Math.min(12, Math.max(0, Math.round(value * 2) / 2));
 
@@ -159,6 +249,10 @@ const defaultAnswers = (presetId: string, presetName: string): PresetWizardAnswe
     goal,
     examDate: '',
     startDate: todayKey,
+    concursoArea: goal === 'concurso' ? 'policial' : undefined,
+    concursoLevel: goal === 'concurso' ? 'superior' : undefined,
+    concursoExperience: goal === 'concurso' ? 'nunca' : undefined,
+    concursoPriorityMode: goal === 'concurso' ? 'equilibrado' : undefined,
   };
 };
 
@@ -188,6 +282,13 @@ export default function PresetConfigWizard({
     next.setDate(next.getDate() + 1);
     return toLocalDateKey(next);
   }, []);
+  const isConcursoWizard = useMemo(
+    () => isConcursoPresetSelection(presetId, presetName),
+    [presetId, presetName]
+  );
+  const activeStepTitles = isConcursoWizard ? concursosStepTitles : defaultStepTitles;
+  const activeStepTitlesShort = isConcursoWizard ? concursosStepTitlesShort : defaultStepTitlesShort;
+  const totalSteps = activeStepTitles.length;
 
   useEffect(() => {
     setIsMounted(true);
@@ -241,7 +342,7 @@ export default function PresetConfigWizard({
     scrollContentRef.current.scrollLeft = 0;
   }, [isOpen, step]);
 
-  const progress = Math.round(((step + 1) / stepTitles.length) * 100);
+  const progress = Math.round(((step + 1) / totalSteps) * 100);
 
   const summary = useMemo(
     () => computeStudyPreferences(baseSettings, answers),
@@ -365,34 +466,72 @@ export default function PresetConfigWizard({
 
   const handleNext = () => {
     setError(null);
-    if (step === 0 && activeDays.length === 0) {
-      setError('Selecione pelo menos um dia de estudo para continuar.');
-      return;
-    }
 
-    if (step === 1 && answers.availableStart && answers.availableEnd) {
-      if (answers.availableStart >= answers.availableEnd) {
-        setError('O horario de inicio precisa ser antes do horario de termino.');
+    if (isConcursoWizard) {
+      if (step === 0 && !answers.concursoArea) {
+        setError('Selecione a area de concurso para continuar.');
         return;
+      }
+      if (step === 1 && !answers.concursoLevel) {
+        setError('Selecione o nivel do concurso.');
+        return;
+      }
+      if (step === 2 && !answers.concursoExperience) {
+        setError('Selecione sua experiencia com concursos.');
+        return;
+      }
+      if (step === 3 && activeDays.length === 0) {
+        setError('Selecione pelo menos um dia de estudo para continuar.');
+        return;
+      }
+      if (step === 4) {
+        if (answers.availableStart && answers.availableEnd && answers.availableStart >= answers.availableEnd) {
+          setError('O horario de inicio precisa ser antes do horario de termino.');
+          return;
+        }
+        if (!answers.concursoPriorityMode) {
+          setError('Selecione a prioridade de estudo (teoria/exercicios/equilibrado).');
+          return;
+        }
+        if (!answers.startDate) {
+          setError('Escolha quando deseja comecar.');
+          return;
+        }
+        if (answers.startDate < todayKey) {
+          setError('A data de inicio precisa ser hoje ou futura.');
+          return;
+        }
+      }
+    } else {
+      if (step === 0 && activeDays.length === 0) {
+        setError('Selecione pelo menos um dia de estudo para continuar.');
+        return;
+      }
+
+      if (step === 1 && answers.availableStart && answers.availableEnd) {
+        if (answers.availableStart >= answers.availableEnd) {
+          setError('O horario de inicio precisa ser antes do horario de termino.');
+          return;
+        }
+      }
+
+      if (step === 3 && activeDays.length === 0) {
+        setError('Escolha pelo menos um dia disponivel para estudo.');
+        return;
+      }
+      if (step === 3) {
+        if (!answers.startDate) {
+          setError('Escolha quando deseja comecar.');
+          return;
+        }
+        if (answers.startDate < todayKey) {
+          setError('A data de inicio precisa ser hoje ou futura.');
+          return;
+        }
       }
     }
 
-    if (step === 3 && activeDays.length === 0) {
-      setError('Escolha pelo menos um dia disponivel para estudo.');
-      return;
-    }
-    if (step === 3) {
-      if (!answers.startDate) {
-        setError('Escolha quando deseja comecar.');
-        return;
-      }
-      if (answers.startDate < todayKey) {
-        setError('A data de inicio precisa ser hoje ou futura.');
-        return;
-      }
-    }
-
-    setStep((prev) => Math.min(stepTitles.length - 1, prev + 1));
+    setStep((prev) => Math.min(totalSteps - 1, prev + 1));
   };
 
   const handleApply = () => {
@@ -440,8 +579,11 @@ export default function PresetConfigWizard({
 
             <div className="mt-4">
               <ProgressBar value={progress} label={`${progress}%`} />
-              <div className="mt-2 grid grid-cols-5 gap-2 text-[11px] text-text-muted text-center leading-tight">
-                {stepTitles.map((title, index) => (
+              <div
+                className="mt-2 grid gap-2 text-center text-[11px] leading-tight text-text-muted"
+                style={{ gridTemplateColumns: `repeat(${totalSteps}, minmax(0, 1fr))` }}
+              >
+                {activeStepTitles.map((title, index) => (
                   <span
                     key={title}
                     className={cn(
@@ -449,7 +591,7 @@ export default function PresetConfigWizard({
                       index === step ? 'text-white' : 'text-text-muted'
                     )}
                   >
-                    <span className="inline sm:hidden">{stepTitlesShort[index]}</span>
+                    <span className="inline sm:hidden">{activeStepTitlesShort[index]}</span>
                     <span className="hidden sm:inline">{title}</span>
                   </span>
                 ))}
@@ -461,7 +603,100 @@ export default function PresetConfigWizard({
               onScroll={handleWizardScroll}
               className="mt-6 flex-1 min-h-0 w-full min-w-0 overflow-y-auto overflow-x-hidden px-1 sm:px-2 pb-6 scroll-touch [touch-action:pan-y] [overscroll-behavior-x:none]"
             >
-              {step === 0 && (
+              {isConcursoWizard && step === 0 && (
+                <div className="w-full min-w-0 space-y-6">
+                  <div>
+                    <h3 className="mb-2 text-lg font-semibold text-white">
+                      Qual area de concurso voce pretende focar?
+                    </h3>
+                    <p className="text-sm text-text-secondary">
+                      Isso define os modulos especificos adicionados sobre a base comum.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {concursoAreaOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={cn(
+                          'rounded-xl border px-4 py-3 text-left transition',
+                          answers.concursoArea === option.value
+                            ? 'border-neon-blue bg-neon-blue/10 text-white'
+                            : 'border-slate-800 text-text-secondary hover:border-neon-blue/60'
+                        )}
+                        onClick={() =>
+                          setAnswers((prev) => ({ ...prev, concursoArea: option.value, goal: 'concurso' }))
+                        }
+                      >
+                        <div className="text-sm font-medium">{option.label}</div>
+                        <div className="mt-1 text-xs opacity-80">{option.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {isConcursoWizard && step === 1 && (
+                <div className="w-full min-w-0 space-y-6">
+                  <div>
+                    <h3 className="mb-2 text-lg font-semibold text-white">Qual nivel do concurso?</h3>
+                    <p className="text-sm text-text-secondary">
+                      O nivel influencia profundidade e dificuldade das disciplinas geradas.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    {concursoLevelOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={cn(
+                          'rounded-xl border px-4 py-3 text-left transition',
+                          answers.concursoLevel === option.value
+                            ? 'border-neon-cyan bg-neon-cyan/10 text-white'
+                            : 'border-slate-800 text-text-secondary hover:border-neon-cyan/60'
+                        )}
+                        onClick={() => setAnswers((prev) => ({ ...prev, concursoLevel: option.value }))}
+                      >
+                        <div className="text-sm font-medium">{option.label}</div>
+                        <div className="mt-1 text-xs opacity-80">{option.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {isConcursoWizard && step === 2 && (
+                <div className="w-full min-w-0 space-y-6">
+                  <div>
+                    <h3 className="mb-2 text-lg font-semibold text-white">
+                      Voce ja estudou para concursos antes?
+                    </h3>
+                    <p className="text-sm text-text-secondary">
+                      A experiencia ajusta pesos iniciais e profundidade da trilha.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {concursoExperienceOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={cn(
+                          'rounded-xl border px-4 py-3 text-left transition',
+                          answers.concursoExperience === option.value
+                            ? 'border-neon-purple bg-neon-purple/10 text-white'
+                            : 'border-slate-800 text-text-secondary hover:border-neon-purple/60'
+                        )}
+                        onClick={() => setAnswers((prev) => ({ ...prev, concursoExperience: option.value }))}
+                      >
+                        <div className="text-sm font-medium">{option.label}</div>
+                        <div className="mt-1 text-xs opacity-80">{option.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {((!isConcursoWizard && step === 0) || (isConcursoWizard && step === 3)) && (
                 <div className="w-full min-w-0 space-y-6">
                   <Card className="p-4 bg-slate-900/50 border-slate-800">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -663,7 +898,232 @@ export default function PresetConfigWizard({
                 </div>
               )}
 
-              {step === 1 && (
+              {isConcursoWizard && step === 4 && (
+                <div className="w-full min-w-0 space-y-6">
+                  <div>
+                    <h3 className="mb-2 text-lg font-semibold text-white">
+                      Quer focar mais em teoria, exercicios ou equilibrado?
+                    </h3>
+                    <p className="text-sm text-text-secondary">
+                      Isso ajusta pesos e carga horaria das disciplinas geradas automaticamente.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    {concursoPriorityOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={cn(
+                          'rounded-xl border px-4 py-3 text-left transition',
+                          answers.concursoPriorityMode === option.value
+                            ? 'border-neon-blue bg-neon-blue/10 text-white'
+                            : 'border-slate-800 text-text-secondary hover:border-neon-blue/60'
+                        )}
+                        onClick={() =>
+                          setAnswers((prev) => ({ ...prev, concursoPriorityMode: option.value, goal: 'concurso' }))
+                        }
+                      >
+                        <div className="text-sm font-medium">{option.label}</div>
+                        <div className="mt-1 text-xs opacity-80">{option.description}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <Card className="border-slate-800 bg-slate-900/40 p-4">
+                    <div>
+                      <h4 className="text-sm font-semibold text-white">Ajustes de rotina (opcional)</h4>
+                      <p className="mt-1 text-xs text-text-muted">
+                        Mantem a mesma UX do wizard e melhora a geracao inicial do cronograma.
+                      </p>
+                    </div>
+
+                    <div className="mt-4 space-y-5">
+                      <div>
+                        <h5 className="mb-2 text-sm font-medium text-white">Periodo em que rende mais</h5>
+                        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                          {timeOptions.map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              className={cn(
+                                'rounded-lg border px-3 py-2 text-left text-sm transition',
+                                answers.bestTime === opt.value
+                                  ? 'border-neon-cyan bg-neon-cyan/10 text-white'
+                                  : 'border-slate-800 text-text-secondary hover:border-neon-cyan/60'
+                              )}
+                              onClick={() => setAnswers((prev) => ({ ...prev, bestTime: opt.value }))}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="text-sm text-text-secondary">Inicio disponivel</label>
+                          <input
+                            type="time"
+                            value={answers.availableStart}
+                            onChange={(e) =>
+                              setAnswers((prev) => ({ ...prev, availableStart: e.target.value }))
+                            }
+                            className="input-field mt-2"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-text-secondary">Fim disponivel</label>
+                          <input
+                            type="time"
+                            value={answers.availableEnd}
+                            onChange={(e) =>
+                              setAnswers((prev) => ({ ...prev, availableEnd: e.target.value }))
+                            }
+                            className="input-field mt-2"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <h5 className="mb-2 text-sm font-medium text-white">Dias sem agendamento automatico</h5>
+                        <div className="flex flex-wrap gap-2">
+                          {dayOptions.map((day) => (
+                            <button
+                              key={day.value}
+                              type="button"
+                              className={cn(
+                                'rounded-lg border px-3 py-2 text-sm transition',
+                                restDays.includes(day.value)
+                                  ? 'border-neon-purple bg-neon-purple/20 text-white'
+                                  : 'border-slate-800 text-text-secondary hover:border-neon-purple/60'
+                              )}
+                              onClick={() => toggleDayActive(day.value)}
+                            >
+                              {day.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h5 className="mb-2 text-sm font-medium text-white">Quando deseja comecar</h5>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStartMode('today');
+                              setAnswers((prev) => ({ ...prev, startDate: todayKey }));
+                            }}
+                            className={cn(
+                              'rounded-xl border px-3 py-3 text-left transition',
+                              startMode === 'today'
+                                ? 'border-neon-cyan bg-neon-cyan/10 text-white'
+                                : 'border-slate-800 text-text-secondary hover:border-neon-cyan/60'
+                            )}
+                          >
+                            <div className="text-sm font-medium">Hoje</div>
+                            <div className="text-xs opacity-80">{formatDateLabel(todayKey)}</div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStartMode('tomorrow');
+                              setAnswers((prev) => ({ ...prev, startDate: tomorrowKey }));
+                            }}
+                            className={cn(
+                              'rounded-xl border px-3 py-3 text-left transition',
+                              startMode === 'tomorrow'
+                                ? 'border-neon-cyan bg-neon-cyan/10 text-white'
+                                : 'border-slate-800 text-text-secondary hover:border-neon-cyan/60'
+                            )}
+                          >
+                            <div className="text-sm font-medium">Amanha</div>
+                            <div className="text-xs opacity-80">{formatDateLabel(tomorrowKey)}</div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setStartMode('custom')}
+                            className={cn(
+                              'rounded-xl border px-3 py-3 text-left transition',
+                              startMode === 'custom'
+                                ? 'border-neon-cyan bg-neon-cyan/10 text-white'
+                                : 'border-slate-800 text-text-secondary hover:border-neon-cyan/60'
+                            )}
+                          >
+                            <div className="text-sm font-medium">Escolher data</div>
+                            <div className="text-xs opacity-80">{formatDateLabel(answers.startDate)}</div>
+                          </button>
+                        </div>
+                        {startMode === 'custom' && (
+                          <div className="mt-3">
+                            <label className="text-sm text-text-secondary">Data de inicio</label>
+                            <input
+                              type="date"
+                              min={todayKey}
+                              value={answers.startDate || ''}
+                              onChange={(e) =>
+                                setAnswers((prev) => ({ ...prev, startDate: e.target.value }))
+                              }
+                              className="input-field mt-2"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-text-secondary">Meta diaria ideal (ajuste fino)</label>
+                        <div className="mt-3">
+                          {(() => {
+                            const sliderValue =
+                              answers.targetDailyHours || Math.max(1, Math.round(averageDailyHours * 2) / 2);
+                            return (
+                              <input
+                                type="range"
+                                min={1}
+                                max={12}
+                                step={0.5}
+                                value={sliderValue}
+                                onChange={(e) =>
+                                  setAnswers((prev) => ({
+                                    ...prev,
+                                    targetDailyHours: Number(e.target.value),
+                                  }))
+                                }
+                                className="w-full accent-neon-blue"
+                              />
+                            );
+                          })()}
+                          <div className="mt-1 flex justify-between text-xs text-text-muted">
+                            <span>1h</span>
+                            <span className="font-medium text-white">
+                              {formatHours(
+                                answers.targetDailyHours || Math.max(1, Math.round(averageDailyHours * 2) / 2),
+                                false
+                              )}
+                            </span>
+                            <span>12h</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-text-secondary">Data da prova (opcional)</label>
+                        <input
+                          type="date"
+                          value={answers.examDate || ''}
+                          onChange={(e) =>
+                            setAnswers((prev) => ({ ...prev, examDate: e.target.value }))
+                          }
+                          className="input-field mt-2"
+                        />
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              )}
+
+              {!isConcursoWizard && step === 1 && (
                 <div className="w-full min-w-0 space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold text-white mb-2">
@@ -734,7 +1194,7 @@ export default function PresetConfigWizard({
                 </div>
               )}
 
-              {step === 2 && (
+              {!isConcursoWizard && step === 2 && (
                 <div className="w-full min-w-0 space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold text-white mb-2">
@@ -786,7 +1246,7 @@ export default function PresetConfigWizard({
                 </div>
               )}
 
-              {step === 3 && (
+              {!isConcursoWizard && step === 3 && (
                 <div className="w-full min-w-0 space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold text-white mb-2">
@@ -960,7 +1420,7 @@ export default function PresetConfigWizard({
                 </div>
               )}
 
-              {step === 4 && (
+              {((!isConcursoWizard && step === 4) || (isConcursoWizard && step === 5)) && (
                 <div className="w-full min-w-0 space-y-4">
                   <div className="flex items-center gap-2 text-neon-cyan">
                     <CheckCircle2 className="w-5 h-5" />
@@ -994,6 +1454,42 @@ export default function PresetConfigWizard({
                     </Card>
                   </div>
 
+                  {isConcursoWizard && (
+                    <Card className="p-4 bg-slate-900/50 border-slate-800 text-sm text-text-secondary">
+                      <p className="text-white font-medium mb-2">Perfil de concurso</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <p>
+                          Area:{' '}
+                          <span className="text-white">
+                            {concursoAreaOptions.find((item) => item.value === answers.concursoArea)?.label ||
+                              'Nao definido'}
+                          </span>
+                        </p>
+                        <p>
+                          Nivel:{' '}
+                          <span className="text-white">
+                            {concursoLevelOptions.find((item) => item.value === answers.concursoLevel)?.label ||
+                              'Nao definido'}
+                          </span>
+                        </p>
+                        <p>
+                          Experiencia:{' '}
+                          <span className="text-white">
+                            {concursoExperienceOptions.find((item) => item.value === answers.concursoExperience)
+                              ?.label || 'Nao definido'}
+                          </span>
+                        </p>
+                        <p>
+                          Foco:{' '}
+                          <span className="text-white">
+                            {concursoPriorityOptions.find((item) => item.value === answers.concursoPriorityMode)
+                              ?.label || 'Nao definido'}
+                          </span>
+                        </p>
+                      </div>
+                    </Card>
+                  )}
+
                   <div className="flex items-center gap-2 text-xs text-text-muted">
                     <Sparkles className="w-4 h-4" />
                     Aplicaremos automaticamente essas preferencias em Configuracoes.
@@ -1011,7 +1507,7 @@ export default function PresetConfigWizard({
             <div className="mt-4 shrink-0 flex items-center justify-between border-t border-slate-800/60 bg-gradient-to-b from-transparent via-slate-950/70 to-slate-950/90 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:pb-3">
               <div className="text-xs text-text-muted flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                Etapa {step + 1} de {stepTitles.length}
+                Etapa {step + 1} de {totalSteps}
               </div>
               <div className="flex gap-3">
                 <Button
@@ -1021,7 +1517,7 @@ export default function PresetConfigWizard({
                 >
                   Voltar
                 </Button>
-                {step < stepTitles.length - 1 ? (
+                {step < totalSteps - 1 ? (
                   <Button variant="primary" onClick={handleNext}>
                     Proximo
                   </Button>

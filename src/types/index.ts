@@ -398,6 +398,18 @@ export type FocusDuration = 25 | 50 | 90 | 120;
 export type BreakDuration = 5 | 10 | 15 | 20;
 export type WeekdayKey = 'dom' | 'seg' | 'ter' | 'qua' | 'qui' | 'sex' | 'sab';
 export type DailyHoursByWeekday = Record<WeekdayKey, number>;
+export type ConcursoAreaFocus =
+  | 'policial'
+  | 'tribunais'
+  | 'fiscal'
+  | 'administrativa'
+  | 'bancaria'
+  | 'inss'
+  | 'educacao'
+  | 'personalizado';
+export type ConcursoLevel = 'medio' | 'superior' | 'ambos';
+export type ConcursoExperienceLevel = 'nunca' | 'pouco' | 'intermediaria' | 'avancado';
+export type ConcursoStudyPriority = 'teoria' | 'exercicios' | 'equilibrado';
 
 export interface PresetWizardAnswers {
   dailyHoursByWeekday: DailyHoursByWeekday;
@@ -410,6 +422,10 @@ export interface PresetWizardAnswers {
   goal: 'enem' | 'medicina' | 'concurso' | 'outros';
   examDate?: string;
   startDate?: string;
+  concursoArea?: ConcursoAreaFocus;
+  concursoLevel?: ConcursoLevel;
+  concursoExperience?: ConcursoExperienceLevel;
+  concursoPriorityMode?: ConcursoStudyPriority;
 }
 
 export interface UserSettings {
