@@ -12,6 +12,7 @@ export interface EnemDisciplineDefinition {
   difficulty: number; // 1-10
   targetHours: number; // weekly suggested
   pesoNoExame: number; // 1-5
+  enemWeight?: number; // 0-1
   nivel: EnemProgressionLevel;
   topics: string[];
 }
@@ -361,6 +362,19 @@ export function getEnemPresetSubjects(): EnemPresetSubjectDefinition[] {
   }));
 }
 
+function getDisciplineEnemWeight(discipline: EnemDisciplineDefinition): number {
+  if (typeof discipline.enemWeight === 'number') {
+    return Math.min(1, Math.max(0.1, discipline.enemWeight));
+  }
+  const normalized = normalizeEnemText(discipline.name);
+  if (normalized.includes('matematica')) return 1.0;
+  if (normalized.includes('portugues')) return 0.95;
+  if (normalized.includes('redacao')) return 0.9;
+  if (discipline.area === 'natureza') return 0.75;
+  if (discipline.area === 'humanas') return 0.7;
+  return 0.5;
+}
+
 function buildSubjectFromDiscipline(
   discipline: EnemDisciplineDefinition,
   userId: string,
@@ -375,7 +389,9 @@ function buildSubjectFromDiscipline(
     area: discipline.area,
     nivel: discipline.nivel,
     pesoNoExame: discipline.pesoNoExame,
+    enemWeight: getDisciplineEnemWeight(discipline),
     prerequisitos: discipline.topics,
+    topicos: discipline.topics,
     tipo: 'enem-disciplina',
     priority: discipline.priority,
     difficulty: discipline.difficulty,
@@ -409,9 +425,14 @@ export function enrichSubjectWithEnemMetadata(subject: Subject): Subject {
     area: discipline.area,
     nivel: subject.nivel || discipline.nivel,
     pesoNoExame: subject.pesoNoExame ?? discipline.pesoNoExame,
+    enemWeight: subject.enemWeight ?? getDisciplineEnemWeight(discipline),
     prerequisitos:
       Array.isArray(subject.prerequisitos) && subject.prerequisitos.length > 0
         ? subject.prerequisitos
+        : discipline.topics,
+    topicos:
+      Array.isArray(subject.topicos) && subject.topicos.length > 0
+        ? subject.topicos
         : discipline.topics,
     tipo: subject.tipo || 'enem-disciplina',
   };

@@ -91,6 +91,12 @@ export function configureProfileFromAnswers(
     daysOfWeek: active_days,
     mode: 'random',
     examDate: '',
+    userLevel:
+      answers.daily_hours === '<1'
+        ? 'iniciante'
+        : answers.study_days >= 6 && answers.learning_style === 'exercicios'
+        ? 'avancado'
+        : 'intermediario',
   };
 
   const profile: UserProfileDTO = {

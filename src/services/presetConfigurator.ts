@@ -118,6 +118,12 @@ export function computeStudyPreferences(
     examDate: answers.examDate || '',
     startDate: answers.startDate || undefined,
     goal: answers.goal,
+    userLevel:
+      dailyGoalHours <= 1.5
+        ? 'iniciante'
+        : dailyGoalHours >= 4 && answers.focusMinutes >= 90
+        ? 'avancado'
+        : 'intermediario',
   };
 
   return { settings, studyPrefs };

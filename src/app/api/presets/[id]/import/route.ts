@@ -59,6 +59,7 @@ export async function POST(
     // Verify user exists
     const user = await prisma.user.findUnique({
       where: { id: userId },
+      select: { id: true },
     });
 
     if (!user) {
@@ -74,7 +75,9 @@ export async function POST(
     // Get preset with subjects
     const preset = await prisma.studyPreset.findUnique({
       where: { id: params.id },
-      include: {
+      select: {
+        id: true,
+        name: true,
         subjects: true,
       },
     });
@@ -92,6 +95,7 @@ export async function POST(
     // Check if user already has subjects (optional: prevent duplicate imports)
     const existingSubjects = await prisma.subject.findMany({
       where: { userId },
+      select: { id: true, name: true },
     });
 
     const presetSubjects =

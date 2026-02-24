@@ -153,6 +153,14 @@ const advancedSchedule = generateChronologicalSchedule({
 });
 
 const advancedBlocks = advancedSchedule.blocks.filter((b) => !b.isBreak);
+assert.ok(
+  advancedBlocks.some((b) => typeof b.pedagogicalStepIndex === 'number' && (b.pedagogicalStepTotal ?? 0) >= 4),
+  'blocks should include pedagogical progress metadata'
+);
+assert.ok(
+  advancedBlocks.some((b) => b.topicName),
+  'non-break blocks should include ENEM topic labels when available'
+);
 const firstArea = advancedBlocks.find((b) => b.type === 'SIMULADO_AREA');
 if (firstArea) {
   const diffDays = Math.floor(
@@ -185,3 +193,30 @@ assert.ok(!enemNames.has('Linguagens'), 'ENEM bank should not include generic Li
 assert.ok(!enemNames.has('Natureza'), 'ENEM bank should not include generic Natureza');
 
 console.log('enem structure tests passed');
+
+const cachedSchedule = generateChronologicalSchedule({
+  subjects,
+  preferences,
+  startDate,
+  endDate,
+  preferredStart: '09:00',
+  preferredEnd: '18:00',
+  maxBlockMinutes: 60,
+  breakMinutes: 10,
+  restDays: [0],
+  debug: false,
+});
+const cachedSchedule2 = generateChronologicalSchedule({
+  subjects,
+  preferences,
+  startDate,
+  endDate,
+  preferredStart: '09:00',
+  preferredEnd: '18:00',
+  maxBlockMinutes: 60,
+  breakMinutes: 10,
+  restDays: [0],
+  debug: false,
+});
+assert.ok(cachedSchedule2.cacheHit === true, 'second identical generation should hit cache');
+console.log('roadmap cache tests passed');

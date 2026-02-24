@@ -121,7 +121,17 @@ export default function TodayPlan({
                     {/* Informações de Horário */}
                     <div className="flex items-center gap-4 mt-2 max-[479px]:mt-1.5 text-sm max-[479px]:text-xs text-text-secondary">
                       <span>{formatDuration(block.durationMinutes)}</span>
+                      {!block.isBreak && block.pedagogicalStepIndex && (
+                        <span>
+                          Ciclo {block.pedagogicalStepIndex}/{block.pedagogicalStepTotal ?? 4}
+                        </span>
+                      )}
                     </div>
+                    {!block.isBreak && block.topicName && (
+                      <p className="mt-1 text-xs max-[479px]:text-[11px] text-neon-cyan/90">
+                        Topico: {block.topicName}
+                      </p>
+                    )}
                   </div>
 
                   {/* Status e Ações */}

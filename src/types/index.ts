@@ -36,6 +36,8 @@ export interface User {
 }
 
 export type AIDifficulty = 'easy' | 'medium' | 'hard' | 'adaptive';
+export type UserLearningLevel = 'iniciante' | 'intermediario' | 'avancado';
+export type StudySessionKind = 'AULA' | 'EXERCICIOS' | 'REVISAO' | 'SIMULADO' | 'ANALISE' | 'LIVRE';
 
 // ============================================
 // Subject Types
@@ -51,7 +53,9 @@ export interface Subject {
   area?: string;
   nivel?: string;
   pesoNoExame?: number;
+  enemWeight?: number; // 0-1, used for ENEM weighted scheduling
   prerequisitos?: string[];
+  topicos?: string[];
   tipo?: string;
   
   // Study parameters
@@ -77,6 +81,7 @@ export interface StudyPreferences {
   examDate?: string;
   startDate?: string;
   goal?: 'enem' | 'medicina' | 'concurso' | 'outros';
+  userLevel?: UserLearningLevel;
 }
 
 // ============================================
@@ -111,6 +116,10 @@ export interface StudyBlock {
   description?: string;
   sequenceIndex?: number;
   relatedSubjectId?: string;
+  topicName?: string;
+  pedagogicalStepIndex?: number;
+  pedagogicalStepTotal?: number;
+  adaptiveScore?: number;
   
   // Status
   status: BlockStatus;
@@ -143,6 +152,12 @@ export interface StudySession {
   // Performance
   focusScore: number;      // 0-100
   productivityScore: number; // 0-100
+  accuracyRate?: number; // 0-1
+  errorRate?: number; // 0-1
+  sessionType?: StudySessionKind;
+  difficultyScore?: number; // 1-10
+  correctAnswers?: number;
+  totalQuestions?: number;
   notes?: string;
   xpEarned: number;
   
@@ -210,8 +225,82 @@ export interface HeatmapData {
   level: 0 | 1 | 2 | 3 | 4; // intensity level
 }
 
+export interface TopicProgress {
+  topicName: string;
+  mastery: number; // 0-100
+  accuracyRate: number; // 0-1
+  sessionsCount: number;
+  lastStudiedAt?: string;
+  nextReviewDate?: string;
+  disciplineName?: string;
+}
+
+export interface SubjectPerformanceProfile {
+  subjectId: string;
+  subjectName?: string;
+  area?: string;
+  accuracyRate: number; // 0-1
+  errorRate: number; // 0-1
+  averageFocusScore: number; // 0-100
+  averageProductivityScore: number; // 0-100
+  averageDifficultyScore: number; // 1-10
+  lastStudiedAt?: string;
+  daysWithoutStudy?: number;
+  totalSessions: number;
+  lessonSessions: number;
+  exerciseSessions: number;
+  reviewSessions: number;
+  simulatedSessions: number;
+  weightedNeedScore?: number;
+  trend7d?: number;
+  topicProgress?: Record<string, TopicProgress>;
+}
+
+export interface PerformanceMetricsSnapshot {
+  date: string;
+  subjectId: string;
+  sessionType: StudySessionKind;
+  minutes: number;
+  accuracyRate: number; // 0-1
+  errorRate: number; // 0-1
+  focusScore: number; // 0-100
+  productivityScore: number; // 0-100
+  difficultyScore: number; // 1-10
+  topicName?: string;
+  blockId?: string;
+}
+
+export interface DailyAnalyticsRecord {
+  hours: number;
+  sessions: number;
+  focusScoreAvg?: number;
+  productivityScoreAvg?: number;
+  accuracyRateAvg?: number;
+  bySubject?: Record<
+    string,
+    {
+      hours: number;
+      sessions: number;
+      accuracyRateAvg?: number;
+      focusScoreAvg?: number;
+      productivityScoreAvg?: number;
+    }
+  >;
+}
+
 export interface AnalyticsStore {
-  daily: Record<string, { hours: number; sessions: number }>;
+  daily: Record<string, DailyAnalyticsRecord>;
+  performance?: {
+    subjects: Record<string, SubjectPerformanceProfile>;
+    sessionHistory: PerformanceMetricsSnapshot[];
+    topicProgress: Record<string, TopicProgress>;
+    lastUpdatedAt?: string;
+  };
+  scheduleCache?: {
+    key?: string;
+    generatedAt?: string;
+    range?: { startDate: string; endDate: string };
+  };
 }
 
 // ============================================

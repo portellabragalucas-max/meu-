@@ -20,8 +20,23 @@ export async function GET() {
     }
 
     const presets = await prisma.studyPreset.findMany({
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
         subjects: {
+          select: {
+            id: true,
+            presetId: true,
+            name: true,
+            priority: true,
+            difficulty: true,
+            recommendedWeeklyHours: true,
+            createdAt: true,
+            updatedAt: true,
+          },
           orderBy: {
             priority: 'desc',
           },

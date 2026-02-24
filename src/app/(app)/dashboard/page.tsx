@@ -30,6 +30,7 @@ import {
 } from '@/components/onboarding';
 import { useOnboarding, useLocalStorage } from '@/hooks';
 import { isSameDay, formatDate, getWeekStart, getWeekDates } from '@/lib/utils';
+import { applyBlockCompletionMetrics } from '@/services/adaptiveStudyIntelligence';
 import type { StudyBlock, Subject, AnalyticsStore, StudyPreferences, UserSettings } from '@/types';
 import { StudyBlockSessionModal } from '@/components/session';
 import { defaultSettings } from '@/lib/defaultSettings';
@@ -224,6 +225,7 @@ export default function DashboardPage() {
   const handleCompleteBlock = (blockId: string, minutesSpent?: number) => {
     const targetBlock = plannerBlocks.find((b) => b.id === blockId);
     if (!targetBlock) return;
+    const targetSubject = subjects.find((s) => s.id === targetBlock.subjectId);
 
     const effectiveMinutes = minutesSpent && minutesSpent > 0 ? minutesSpent : targetBlock.durationMinutes;
     const hours = effectiveMinutes / 60;
@@ -235,6 +237,15 @@ export default function DashboardPage() {
     );
 
     if (!targetBlock.isBreak && targetBlock.subjectId) {
+      const metricsUpdate = targetSubject
+        ? applyBlockCompletionMetrics({
+            analytics,
+            block: targetBlock,
+            subject: targetSubject,
+            minutesSpent: effectiveMinutes,
+          })
+        : null;
+
       setSubjects((prev) =>
         prev.map((subject) =>
           subject.id === targetBlock.subjectId
@@ -243,13 +254,19 @@ export default function DashboardPage() {
                 completedHours: Number((subject.completedHours + hours).toFixed(1)),
                 totalHours: Number((subject.totalHours + hours).toFixed(1)),
                 sessionsCount: subject.sessionsCount + 1,
+                averageScore:
+                  metricsUpdate?.subjectRollingAccuracy !== undefined
+                    ? Math.round(metricsUpdate.subjectRollingAccuracy * 100)
+                    : subject.averageScore,
               }
             : subject
         )
       );
-    }
-
-    if (!targetBlock.isBreak) {
+      if (metricsUpdate) {
+        setAnalytics(metricsUpdate.analytics);
+      }
+    } else if (!targetBlock.isBreak) {
+      // Fallback for cases where the subject was removed but the block still exists.
       const dateKey = new Date(targetBlock.date).toISOString().split('T')[0];
       setAnalytics((prev) => {
         const current = prev.daily[dateKey] || { hours: 0, sessions: 0 };
@@ -258,6 +275,7 @@ export default function DashboardPage() {
           daily: {
             ...prev.daily,
             [dateKey]: {
+              ...current,
               hours: Number((current.hours + hours).toFixed(2)),
               sessions: current.sessions + 1,
             },

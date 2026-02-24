@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { Map as MapIcon, X } from 'lucide-react';
 import { WeeklyPlanner } from '@/components/planner';
 import { generateChronologicalSchedule, getPhaseForDate } from '@/services/roadmapEngine';
+import { buildSubjectPerformanceProfiles, inferUserLearningLevel } from '@/services/adaptiveStudyIntelligence';
 import { useLocalStorage } from '@/hooks';
 import { cn, getWeekStart, timeToMinutes, minutesToTime } from '@/lib/utils';
 import { getStudyBlockTypeLabel } from '@/lib/studyBlockLabels';
@@ -210,6 +211,14 @@ export default function PlannerPage() {
   const phaseInfo = getPhaseForDate(
     new Date(),
     scheduleStartDate ?? getWeekStart(new Date())
+  );
+  const inferredUserLevel = useMemo(
+    () => inferUserLearningLevel(studyPrefs, subjects, analytics),
+    [studyPrefs, subjects, analytics]
+  );
+  const performanceProfilesBySubject = useMemo(
+    () => buildSubjectPerformanceProfiles(subjects, analytics, new Date()),
+    [subjects, analytics]
   );
   const aiModeLabel = useMemo(() => {
     const map = { easy: 'Leve', medium: 'Moderado', hard: 'Intenso', adaptive: 'Adaptativo' };
@@ -435,7 +444,10 @@ export default function PlannerPage() {
 
     const schedule = generateChronologicalSchedule({
       subjects,
-      preferences: studyPrefs,
+      preferences: {
+        ...studyPrefs,
+        userLevel: studyPrefs.userLevel || inferredUserLevel,
+      },
       startDate,
       endDate,
       preferredStart: userSettings.preferredStart || '09:00',
@@ -445,6 +457,10 @@ export default function PlannerPage() {
       restDays: userSettings.excludeDays || excludeDays,
       dailyLimitByDate: mergedLimits,
       firstCycleAllSubjects,
+      performanceMetricsBySubject: performanceProfilesBySubject,
+      userLevel: inferredUserLevel,
+      adaptiveNow: new Date(),
+      enableScheduleCache: true,
       completedLessonsTotal: blocks.filter(
         (block) =>
           block.status === 'completed' &&
@@ -461,13 +477,36 @@ export default function PlannerPage() {
         }
         return acc;
       }, {}),
+      completedPracticeTotal: blocks.filter(
+        (block) =>
+          block.status === 'completed' &&
+          !block.isBreak &&
+          (block.type === 'EXERCICIOS' || block.sessionType === 'pratica')
+      ).length,
+      completedPracticeBySubject: blocks.reduce<Record<string, number>>((acc, block) => {
+        if (
+          block.status === 'completed' &&
+          !block.isBreak &&
+          (block.type === 'EXERCICIOS' || block.sessionType === 'pratica')
+        ) {
+          acc[block.subjectId] = (acc[block.subjectId] || 0) + 1;
+        }
+        return acc;
+      }, {}),
       simuladoRules: (() => {
+        const examDate = studyPrefs.examDate ? new Date(studyPrefs.examDate) : null;
+        const daysToExam =
+          examDate && !Number.isNaN(examDate.getTime())
+            ? Math.ceil((examDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            : null;
+        const adaptiveFrequencyDays = daysToExam !== null && daysToExam <= 90 ? 7 : 14;
         if (studyPrefs.goal === 'medicina') {
           return {
             minLessonsBeforeSimulated: 20,
+            minPracticeBeforeSimulated: 12,
             minLessonsPerSubject: 3,
             minDaysBeforeSimulated: 14,
-            frequencyDays: 7,
+            frequencyDays: adaptiveFrequencyDays,
             minLessonsBeforeAreaSimulated: 8,
             minDaysBeforeAreaSimulated: 7,
           };
@@ -475,9 +514,10 @@ export default function PlannerPage() {
         if (studyPrefs.goal === 'concurso') {
           return {
             minLessonsBeforeSimulated: 16,
+            minPracticeBeforeSimulated: 10,
             minLessonsPerSubject: 2,
             minDaysBeforeSimulated: 14,
-            frequencyDays: 14,
+            frequencyDays: adaptiveFrequencyDays,
             minLessonsBeforeAreaSimulated: 6,
             minDaysBeforeAreaSimulated: 7,
           };
@@ -485,18 +525,20 @@ export default function PlannerPage() {
         if (studyPrefs.goal === 'enem') {
           return {
             minLessonsBeforeSimulated: 20,
+            minPracticeBeforeSimulated: 12,
             minLessonsPerSubject: 2,
             minDaysBeforeSimulated: 14,
-            frequencyDays: 7,
+            frequencyDays: adaptiveFrequencyDays,
             minLessonsBeforeAreaSimulated: 8,
             minDaysBeforeAreaSimulated: 7,
           };
         }
         return {
           minLessonsBeforeSimulated: 20,
+          minPracticeBeforeSimulated: 8,
           minLessonsPerSubject: 2,
           minDaysBeforeSimulated: 14,
-          frequencyDays: 14,
+          frequencyDays: adaptiveFrequencyDays,
           minLessonsBeforeAreaSimulated: 6,
           minDaysBeforeAreaSimulated: 7,
         };
@@ -541,6 +583,8 @@ export default function PlannerPage() {
     dailyLimits,
     blocks,
     firstCycleAllSubjects,
+    inferredUserLevel,
+    performanceProfilesBySubject,
     scheduleStartDate,
     scheduleEndDate,
     setBlocks,

@@ -123,7 +123,18 @@ export default function TimeBlock({
                 {typeBadge.label}
               </span>
             )}
+            {!block.isBreak && block.pedagogicalStepIndex && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-text-secondary">
+                Ciclo {block.pedagogicalStepIndex}/{block.pedagogicalStepTotal ?? 4}
+              </span>
+            )}
           </div>
+
+          {!block.isBreak && block.topicName && (
+            <p className="mt-1 text-[11px] text-neon-cyan/90 truncate">
+              Topico: {block.topicName}
+            </p>
+          )}
 
           {!block.isBreak && block.description && (
             <p className="mt-2 text-xs text-text-muted line-clamp-2">

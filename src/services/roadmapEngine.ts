@@ -1,4 +1,11 @@
-import type { StudyBlock, StudyBlockType, Subject, StudyPreferences } from '@/types';
+import type {
+  StudyBlock,
+  StudyBlockType,
+  Subject,
+  StudyPreferences,
+  SubjectPerformanceProfile,
+  UserLearningLevel,
+} from '@/types';
 import { generateId, minutesToTime, timeToMinutes } from '@/lib/utils';
 import {
   getEnemDisciplineByName,
@@ -6,6 +13,11 @@ import {
   normalizeEnemText,
   type EnemOfficialArea,
 } from '@/lib/enemCatalog';
+import {
+  buildScheduleComputationFingerprint,
+  computeAdaptivePriorityScore,
+  getEnemWeightForSubject,
+} from '@/services/adaptiveStudyIntelligence';
 
 export type SubjectArea =
   | EnemOfficialArea
@@ -21,6 +33,7 @@ export interface SubjectMeta {
   area: SubjectArea;
   nivel: SubjectLevel;
   pesoNoExame: number;
+  enemWeight: number;
   prerequisitos?: string[];
   tipo?: SessionType;
 }
@@ -40,9 +53,16 @@ export interface ChronologicalScheduleConfig {
   firstCycleAllSubjects?: boolean;
   completedLessonsTotal?: number;
   completedLessonsBySubject?: Record<string, number>;
+  completedPracticeTotal?: number;
+  completedPracticeBySubject?: Record<string, number>;
+  performanceMetricsBySubject?: Record<string, SubjectPerformanceProfile>;
+  userLevel?: UserLearningLevel;
+  adaptiveNow?: Date;
+  enableScheduleCache?: boolean;
   simuladoRules?: {
     minLessonsBeforeSimulated: number;
     minLessonsPerSubject?: number;
+    minPracticeBeforeSimulated?: number;
     minDaysBeforeSimulated: number;
     frequencyDays: number;
     minLessonsBeforeAreaSimulated?: number;
@@ -57,6 +77,7 @@ export interface ChronologicalScheduleResult {
   subjectDistribution: Record<string, number>;
   phaseByDate: Record<string, string>;
   debugLog: string[];
+  cacheHit?: boolean;
 }
 
 const AREA_ROTATION: SubjectArea[] = [
@@ -123,6 +144,39 @@ interface SubjectCycleState {
 }
 
 const CYCLE_ORDER: CycleStage[] = ['teoria', 'pratica', 'revisao', 'simulado'];
+const PEDAGOGICAL_STEP_INDEX: Record<SessionType, number> = {
+  teoria: 1,
+  pratica: 2,
+  revisao: 3,
+  simulado: 4,
+};
+const PEDAGOGICAL_STEP_TOTAL = 4;
+const ROADMAP_CACHE_TTL_MS = 2 * 60 * 1000;
+const roadmapScheduleCache = new Map<
+  string,
+  { createdAt: number; result: ChronologicalScheduleResult }
+>();
+
+function cloneBlock(block: StudyBlock): StudyBlock {
+  return {
+    ...block,
+    date: new Date(block.date),
+    subject: block.subject ? { ...block.subject, createdAt: new Date(block.subject.createdAt), updatedAt: new Date(block.subject.updatedAt) } : block.subject,
+    createdAt: new Date(block.createdAt),
+    updatedAt: new Date(block.updatedAt),
+  };
+}
+
+function cloneScheduleResult(result: ChronologicalScheduleResult, cacheHit?: boolean): ChronologicalScheduleResult {
+  return {
+    ...result,
+    blocks: result.blocks.map(cloneBlock),
+    subjectDistribution: { ...result.subjectDistribution },
+    phaseByDate: { ...result.phaseByDate },
+    debugLog: [...result.debugLog],
+    cacheHit,
+  };
+}
 
 function normalize(str: string) {
   return normalizeEnemText(str);
@@ -164,12 +218,31 @@ function resolvePesoNoExame(subject: Subject, fallback?: number) {
   return Math.min(5, Math.max(1, Math.round((subject.priority || 5) / 2)));
 }
 
-function getCycleRepeatTarget(level: SubjectLevel, stage: CycleStage) {
+function resolveEnemWeight(subject: Subject, fallback?: number) {
+  if (typeof subject.enemWeight === 'number') {
+    return Math.min(1, Math.max(0.1, subject.enemWeight));
+  }
+  if (typeof fallback === 'number') {
+    return Math.min(1, Math.max(0.1, fallback));
+  }
+  return getEnemWeightForSubject(subject);
+}
+
+function getCycleRepeatTarget(
+  level: SubjectLevel,
+  stage: CycleStage,
+  userLevel: UserLearningLevel = 'intermediario'
+) {
   if (stage === 'simulado' || stage === 'revisao') return 1;
-  if (stage === 'teoria') return level === 'basico' ? 2 : 1;
-  if (level === 'avancado') return 3;
-  if (level === 'intermediario') return 2;
-  return 1;
+  if (stage === 'teoria') {
+    let base = level === 'basico' ? 2 : 1;
+    if (userLevel === 'iniciante') base += 1;
+    return base;
+  }
+  let practice = level === 'avancado' ? 3 : level === 'intermediario' ? 2 : 1;
+  if (userLevel === 'avancado') practice += 1;
+  if (userLevel === 'iniciante') practice = Math.max(1, practice - 1);
+  return practice;
 }
 
 function getInitialCycleState(): SubjectCycleState {
@@ -180,10 +253,14 @@ function getExpectedCycleStage(state: SubjectCycleState | undefined): CycleStage
   return CYCLE_ORDER[state?.stageIndex ?? 0] || 'teoria';
 }
 
-function advanceCycleState(state: SubjectCycleState | undefined, level: SubjectLevel): SubjectCycleState {
+function advanceCycleState(
+  state: SubjectCycleState | undefined,
+  level: SubjectLevel,
+  userLevel: UserLearningLevel = 'intermediario'
+): SubjectCycleState {
   const current = state ? { ...state } : getInitialCycleState();
   const stage = getExpectedCycleStage(current);
-  const target = getCycleRepeatTarget(level, stage);
+  const target = getCycleRepeatTarget(level, stage, userLevel);
   const nextProgress = current.stageProgress + 1;
   if (nextProgress < target) {
     return { stageIndex: current.stageIndex, stageProgress: nextProgress };
@@ -208,14 +285,18 @@ export function inferSubjectMeta(subject: Subject): SubjectMeta {
   );
   const nivel = resolveLevel(subject, catalog?.nivel);
   const pesoNoExame = resolvePesoNoExame(subject, catalog?.pesoNoExame);
+  const enemWeight = resolveEnemWeight(subject, catalog?.enemWeight);
 
   return {
     area,
     nivel,
     pesoNoExame,
+    enemWeight,
     prerequisitos:
       Array.isArray(subject.prerequisitos) && subject.prerequisitos.length > 0
         ? subject.prerequisitos
+        : Array.isArray(subject.topicos) && subject.topicos.length > 0
+        ? subject.topicos
         : catalog?.topics,
   };
 }
@@ -256,13 +337,19 @@ function computeBlockMinutes(
   subject: Subject,
   meta: SubjectMeta,
   baseMax: number,
-  sessionType: SessionType
+  sessionType: SessionType,
+  adaptivePriorityScore?: number
 ) {
   const difficulty = subject.difficulty ?? 5;
   const difficultyFactor = 0.6 + (1 - difficulty / 12); // 0.6 - 1.2
   const levelFactor = meta.nivel === 'avancado' ? 0.8 : meta.nivel === 'intermediario' ? 0.9 : 1;
-  const weightFactor = 0.85 + (meta.pesoNoExame - 3) * 0.05;
+  const weightFactor = 0.8 + meta.enemWeight * 0.35 + (meta.pesoNoExame - 3) * 0.03;
+  const adaptiveFactor =
+    typeof adaptivePriorityScore === 'number'
+      ? Math.min(1.35, Math.max(0.85, 0.85 + adaptivePriorityScore * 0.12))
+      : 1;
   let duration = Math.round(baseMax * difficultyFactor * levelFactor * weightFactor);
+  duration = Math.round(duration * adaptiveFactor);
   if (sessionType === 'revisao') duration = Math.round(duration * 0.7);
   if (sessionType === 'simulado') duration = Math.round(duration * 1.1);
   return Math.min(baseMax, Math.max(25, duration));
@@ -271,10 +358,15 @@ function computeBlockMinutes(
 function pickTaskType(
   level: SubjectLevel,
   cycleState: SubjectCycleState | undefined,
-  hasLesson: boolean
+  hasLesson: boolean,
+  userLevel: UserLearningLevel = 'intermediario'
 ): SessionType {
   if (!hasLesson) return 'teoria';
-  return getExpectedCycleStage(cycleState);
+  const nextStage = getExpectedCycleStage(cycleState);
+  if (nextStage === 'simulado' && level === 'basico' && userLevel === 'iniciante') {
+    return 'revisao';
+  }
+  return nextStage;
 }
 
 const SESSION_TO_BLOCK_TYPE: Record<SessionType, StudyBlockType> = {
@@ -333,6 +425,52 @@ function createSimuladoSubject(): Subject {
 }
 
 export function generateChronologicalSchedule(config: ChronologicalScheduleConfig): ChronologicalScheduleResult {
+  const now = config.adaptiveNow ?? new Date();
+  const userLevel = config.userLevel ?? config.preferences.userLevel ?? 'intermediario';
+  const cacheEnabled = config.enableScheduleCache !== false;
+  const cacheKey = cacheEnabled
+    ? buildScheduleComputationFingerprint({
+        v: 2,
+        subjects: config.subjects.map((subject) => ({
+          id: subject.id,
+          name: subject.name,
+          priority: subject.priority,
+          difficulty: subject.difficulty,
+          targetHours: subject.targetHours,
+          completedHours: subject.completedHours,
+          area: subject.area,
+          nivel: subject.nivel,
+          pesoNoExame: subject.pesoNoExame,
+          enemWeight: subject.enemWeight,
+        })),
+        preferences: config.preferences,
+        startDate: config.startDate,
+        endDate: config.endDate,
+        preferredStart: config.preferredStart,
+        preferredEnd: config.preferredEnd,
+        maxBlockMinutes: config.maxBlockMinutes,
+        breakMinutes: config.breakMinutes,
+        restDays: config.restDays,
+        dailyLimitByDate: config.dailyLimitByDate,
+        firstCycleAllSubjects: config.firstCycleAllSubjects,
+        completedLessonsTotal: config.completedLessonsTotal,
+        completedLessonsBySubject: config.completedLessonsBySubject,
+        completedPracticeTotal: config.completedPracticeTotal,
+        completedPracticeBySubject: config.completedPracticeBySubject,
+        simuladoRules: config.simuladoRules,
+        userLevel,
+        examDate: config.preferences.examDate,
+        performanceMetricsBySubject: config.performanceMetricsBySubject,
+      })
+    : '';
+
+  if (cacheEnabled && cacheKey) {
+    const cached = roadmapScheduleCache.get(cacheKey);
+    if (cached && now.getTime() - cached.createdAt <= ROADMAP_CACHE_TTL_MS) {
+      return cloneScheduleResult(cached.result, true);
+    }
+  }
+
   const debugLog: string[] = [];
   const log = (message: string) => {
     if (config.debug) debugLog.push(message);
@@ -348,10 +486,11 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
   const excludeDays = allDays.filter((day) => !activeDays.includes(day));
   const subjectMeta = new Map(config.subjects.map((s) => [s.id, inferSubjectMeta(s)]));
   const simuladoSubject = createSimuladoSubject();
-  const simuladoMeta: SubjectMeta = { area: 'geral', nivel: 'intermediario', pesoNoExame: 5 };
+  const simuladoMeta: SubjectMeta = { area: 'geral', nivel: 'intermediario', pesoNoExame: 5, enemWeight: 1 };
   const simuladoRules = {
     minLessonsBeforeSimulated: 10,
     minLessonsPerSubject: 2,
+    minPracticeBeforeSimulated: 8,
     minDaysBeforeSimulated: 14,
     frequencyDays: 7,
     minLessonsBeforeAreaSimulated: 6,
@@ -361,6 +500,21 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
   let lastSimuladoDate: Date | null = null;
   const completedLessonsTotal = config.completedLessonsTotal ?? 0;
   const completedLessonsBySubject = config.completedLessonsBySubject ?? {};
+  const completedPracticeTotal = config.completedPracticeTotal ?? 0;
+  const completedPracticeBySubject = config.completedPracticeBySubject ?? {};
+  const performanceMetricsBySubject = config.performanceMetricsBySubject ?? {};
+  const adaptiveScoreBySubject = new Map<string, number>(
+    config.subjects.map((subject) => [
+      subject.id,
+      computeAdaptivePriorityScore({
+        subject,
+        profile: performanceMetricsBySubject[subject.id],
+        now,
+        examDate: config.preferences.examDate,
+        userLevel,
+      }),
+    ])
+  );
   const primarySubjects = [...config.subjects]
     .sort((a, b) => (b.priority || 0) - (a.priority || 0))
     .slice(0, 3)
@@ -371,9 +525,12 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
       (date.getTime() - config.startDate.getTime()) / (1000 * 60 * 60 * 24)
     );
     const plannedLessonsTotal = Array.from(plannedLessonsBySubject.values()).reduce((sum, count) => sum + count, 0);
+    const plannedPracticeTotal = Array.from(plannedPracticeBySubject.values()).reduce((sum, count) => sum + count, 0);
     const effectiveLessonsTotal = completedLessonsTotal + plannedLessonsTotal;
+    const effectivePracticeTotal = completedPracticeTotal + plannedPracticeTotal;
     if (daysSinceStart < simuladoRules.minDaysBeforeAreaSimulated) return false;
     if (effectiveLessonsTotal < simuladoRules.minLessonsBeforeAreaSimulated) return false;
+    if (simuladoRules.minPracticeBeforeSimulated && effectivePracticeTotal < Math.floor(simuladoRules.minPracticeBeforeSimulated / 2)) return false;
     return true;
   };
 
@@ -382,9 +539,12 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
       (date.getTime() - config.startDate.getTime()) / (1000 * 60 * 60 * 24)
     );
     const plannedLessonsTotal = Array.from(plannedLessonsBySubject.values()).reduce((sum, count) => sum + count, 0);
+    const plannedPracticeTotal = Array.from(plannedPracticeBySubject.values()).reduce((sum, count) => sum + count, 0);
     const effectiveLessonsTotal = completedLessonsTotal + plannedLessonsTotal;
+    const effectivePracticeTotal = completedPracticeTotal + plannedPracticeTotal;
     if (daysSinceStart < simuladoRules.minDaysBeforeSimulated) return false;
     if (effectiveLessonsTotal < simuladoRules.minLessonsBeforeSimulated) return false;
+    if (simuladoRules.minPracticeBeforeSimulated && effectivePracticeTotal < simuladoRules.minPracticeBeforeSimulated) return false;
     if (simuladoRules.minLessonsPerSubject && primarySubjects.length > 0) {
       const ready = primarySubjects.every(
         (subjectId) =>
@@ -428,21 +588,37 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
   );
 
   const weightSum = config.subjects.reduce(
-    (sum, s) => sum + (subjectMeta.get(s.id)?.pesoNoExame || 1),
+    (sum, s) => {
+      const meta = subjectMeta.get(s.id);
+      const adaptive = adaptiveScoreBySubject.get(s.id) || 1;
+      const examWeight = meta?.enemWeight || 0.5;
+      return sum + Math.max(0.1, examWeight * 2 + (meta?.pesoNoExame || 1) * 0.4 + adaptive);
+    },
     0
   );
   const remainingSlots = new Map(
     config.subjects.map((s) => [
       s.id,
-      Math.max(1, Math.round(((subjectMeta.get(s.id)?.pesoNoExame || 1) / weightSum) * totalSlots)),
+      Math.max(
+        1,
+        Math.round(
+          (((subjectMeta.get(s.id)?.enemWeight || 0.5) * 2 +
+            (subjectMeta.get(s.id)?.pesoNoExame || 1) * 0.4 +
+            (adaptiveScoreBySubject.get(s.id) || 1)) /
+            Math.max(weightSum, 0.1)) *
+            totalSlots
+        )
+      ),
     ])
   );
 
   const phaseByDate: Record<string, string> = {};
   const reviewQueue = new Map<string, string[]>();
   const plannedLessonsBySubject = new Map<string, number>();
+  const plannedPracticeBySubject = new Map<string, number>();
   const blocks: StudyBlock[] = [];
   const cycleStateBySubject = new Map<string, SubjectCycleState>();
+  const topicIndexBySubject = new Map<string, number>();
   const globalUsage = new Map<string, number>();
   const globalRecentSubjects: string[] = [];
   let globalLastSubjectId = '';
@@ -505,10 +681,13 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
         .map((subject) => {
           const meta = subjectMeta.get(subject.id)!;
           const weight = meta.pesoNoExame;
+          const enemWeight = meta.enemWeight;
           const remaining = remainingSlots.get(subject.id) || 0;
           const hasLesson =
             (completedLessonsBySubject[subject.id] || 0) > 0 ||
             (plannedLessonsBySubject.get(subject.id) || 0) > 0;
+          const profile = performanceMetricsBySubject[subject.id];
+          const adaptivePriority = adaptiveScoreBySubject.get(subject.id) || 1;
           const sameSubject = subject.id === lastSubjectId;
           const recentPenalty = recentSubjects.includes(subject.id) ? -12 : 0;
           const globalPenalty = globalRecentSubjects.includes(subject.id) ? -10 : 0;
@@ -522,15 +701,22 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
           const timeMinutes = currentTime;
           const bucket = timeMinutes < 12 * 60 ? 'manha' : timeMinutes < 18 * 60 ? 'tarde' : 'noite';
           const usagePenalty = (globalUsage.get(subject.id) || 0) * 3;
-          let score = weight * 10 + remaining * 2 - usagePenalty;
+          let score =
+            weight * 7 +
+            enemWeight * 16 +
+            remaining * 2 +
+            adaptivePriority * 18 -
+            usagePenalty;
           if (sameArea) score += 12;
           if (!sameSubject) score += 8;
           if (!hasLesson) score += 18;
           score += getDisciplinePriorityBonus(subject);
           score += recentPenalty + globalPenalty + prevDayPenalty;
+          if ((profile?.accuracyRate ?? 0.65) < 0.55) score += 10;
+          if ((profile?.daysWithoutStudy ?? 0) >= 4) score += 8;
           if (bucket === 'manha' && meta.nivel === 'avancado') score += 6;
           if (bucket === 'noite' && meta.nivel === 'basico') score += 4;
-          return { subject, score };
+          return { subject, score, adaptivePriority };
         })
         .sort((a, b) => b.score - a.score);
 
@@ -546,7 +732,8 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
       const expectedCycleStage = pickTaskType(
         meta.nivel,
         cycleStateBySubject.get(chosen.subject.id),
-        alreadyHasLesson
+        alreadyHasLesson,
+        userLevel
       );
       let cycleStageMatched = false;
       let queuedReviewOverride = false;
@@ -613,13 +800,30 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
       const isSimulado = blockType === 'SIMULADO_AREA' || blockType === 'SIMULADO_COMPLETO';
       const blockSubject = isSimulado ? simuladoSubject : chosen.subject;
       const blockMeta = isSimulado ? simuladoMeta : meta;
+      const topicCandidates =
+        (Array.isArray(meta.prerequisitos) && meta.prerequisitos.length > 0
+          ? meta.prerequisitos
+          : Array.isArray(chosen.subject.topicos)
+          ? chosen.subject.topicos
+          : []) ?? [];
+      const topicIndex = topicIndexBySubject.get(chosen.subject.id) || 0;
+      const topicName =
+        !isSimulado && topicCandidates.length > 0
+          ? topicCandidates[topicIndex % topicCandidates.length]
+          : undefined;
 
       let baseMax = config.maxBlockMinutes;
       if (isSimulado) {
         baseMax = Math.max(config.maxBlockMinutes, 90);
       }
 
-      let blockMinutes = computeBlockMinutes(blockSubject, blockMeta, baseMax, sessionType);
+      let blockMinutes = computeBlockMinutes(
+        blockSubject,
+        blockMeta,
+        baseMax,
+        sessionType,
+        chosen.adaptivePriority
+      );
       blockMinutes = Math.min(blockMinutes, availableMinutes);
       if (blockMinutes < 25) break;
 
@@ -643,6 +847,10 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
         type: blockType,
         description: buildBlockDescription(blockType, config.preferences.goal, simuladoAreaLabel),
         relatedSubjectId: sessionType === 'revisao' ? chosen.subject.id : undefined,
+        topicName,
+        pedagogicalStepIndex: PEDAGOGICAL_STEP_INDEX[sessionType],
+        pedagogicalStepTotal: PEDAGOGICAL_STEP_TOTAL,
+        adaptiveScore: Number((chosen.adaptivePriority || 0).toFixed(4)),
       } as StudyBlock;
 
       blocks.push(block);
@@ -672,8 +880,11 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
       ) {
         cycleStateBySubject.set(
           chosen.subject.id,
-          advanceCycleState(cycleStateBySubject.get(chosen.subject.id), meta.nivel)
+          advanceCycleState(cycleStateBySubject.get(chosen.subject.id), meta.nivel, userLevel)
         );
+        if (expectedCycleStage === 'simulado' && topicCandidates.length > 0) {
+          topicIndexBySubject.set(chosen.subject.id, (topicIndex + 1) % topicCandidates.length);
+        }
       }
 
       if (sessionType === 'teoria') {
@@ -681,7 +892,7 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
           chosen.subject.id,
           (plannedLessonsBySubject.get(chosen.subject.id) || 0) + 1
         );
-        const offsets = [2, 7, 21];
+        const offsets = [1, 7, 30];
         offsets.forEach((offset) => {
           const reviewDate = new Date(date);
           reviewDate.setDate(reviewDate.getDate() + offset);
@@ -691,6 +902,12 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
           list.push(chosen.subject.id);
           reviewQueue.set(key, list);
         });
+      }
+      if (sessionType === 'pratica') {
+        plannedPracticeBySubject.set(
+          chosen.subject.id,
+          (plannedPracticeBySubject.get(chosen.subject.id) || 0) + 1
+        );
       }
 
       currentTime += blockMinutes;
@@ -748,7 +965,13 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
       }
     }
 
-    log(`Dia ${dayKey}: ${blocks.filter((b) => b.date === date && !b.isBreak).length} blocos.`);
+    log(
+      `Dia ${dayKey}: ${
+        blocks.filter(
+          (b) => !b.isBreak && new Date(b.date).toISOString().split('T')[0] === dayKey
+        ).length
+      } blocos.`
+    );
     lastDaySubjects = daySubjects;
   }
 
@@ -766,13 +989,22 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
       subjectDistribution[b.subjectId] = (subjectDistribution[b.subjectId] || 0) + b.durationMinutes / 60;
     });
 
-  return {
+  const result: ChronologicalScheduleResult = {
     blocks: sortedBlocks,
     totalHours: Number((totalMinutes / 60).toFixed(1)),
     subjectDistribution,
     phaseByDate,
     debugLog,
   };
+
+  if (cacheEnabled && cacheKey) {
+    roadmapScheduleCache.set(cacheKey, {
+      createdAt: now.getTime(),
+      result: cloneScheduleResult(result),
+    });
+  }
+
+  return cloneScheduleResult(result, false);
 }
 
 export function replanAfterPerformanceUpdate(

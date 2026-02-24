@@ -19,6 +19,23 @@ enum StudyBlockType {
   ANALISE
 }
 
+enum StudySessionType {
+  AULA
+  EXERCICIOS
+  REVISAO
+  SIMULADO
+  ANALISE
+  LIVRE
+}
+
+enum DifficultyScore {
+  MUITO_BAIXA
+  BAIXA
+  MEDIA
+  ALTA
+  MUITO_ALTA
+}
+
 // User profile with gamification stats
 model User {
   id     String  @id @default(cuid())
@@ -60,6 +77,8 @@ model User {
   sessions     Session[]
   pushSubscriptions PushSubscription[]
   notifications UserNotification[]
+  performanceMetrics PerformanceMetrics[]
+  topicProgress TopicProgress[]
 }
 
 model UserPreferences {
@@ -110,6 +129,8 @@ model Subject {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   studyBlocks   StudyBlock[]
   studySessions StudySession[]
+  performanceMetrics PerformanceMetrics[]
+  topicProgress TopicProgress[]
 
   @@index([userId])
 }
@@ -166,6 +187,14 @@ model StudySession {
   // Performance metrics
   focusScore        Int     @default(0) // 0-100
   productivityScore Int     @default(0) // 0-100
+  accuracyRate      Float?
+  errorRate         Float?
+  sessionType       StudySessionType?
+  difficultyLabel   DifficultyScore?
+  difficultyScore   Int?
+  correctAnswers    Int?
+  totalQuestions    Int?
+  topicName         String?
   notes             String?
 
   // XP earned for this session
@@ -179,6 +208,54 @@ model StudySession {
   block   StudyBlock? @relation(fields: [blockId], references: [id])
 
   @@index([userId, startedAt])
+  @@index([subjectId])
+}
+
+model PerformanceMetrics {
+  id        String   @id @default(cuid())
+  userId    String
+  subjectId String
+  blockId   String?
+  date      DateTime @default(now())
+  sessionType StudySessionType @default(LIVRE)
+  accuracyRate Float @default(0.0)
+  errorRate    Float @default(0.0)
+  focusScore   Int   @default(0)
+  productivityScore Int @default(0)
+  difficultyScore   Int?
+  correctAnswers    Int?
+  totalQuestions    Int?
+  minutesStudied    Int @default(0)
+  topicName         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([subjectId, date])
+  @@index([userId, subjectId])
+}
+
+model TopicProgress {
+  id        String   @id @default(cuid())
+  userId    String
+  subjectId String
+  topicName String
+  mastery   Float    @default(0.0)
+  accuracyRate Float @default(0.0)
+  sessionsCount Int  @default(0)
+  lastStudiedAt DateTime?
+  nextReviewDate DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, subjectId, topicName])
+  @@index([userId, nextReviewDate])
   @@index([subjectId])
 }
 

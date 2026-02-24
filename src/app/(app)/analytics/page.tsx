@@ -22,6 +22,7 @@ import {
   SubjectDistribution,
   ActivityHeatmap,
 } from '@/components/analytics';
+import { computeIntelligentAnalyticsSummary } from '@/services/adaptiveStudyIntelligence';
 import type { AnalyticsStore, Subject } from '@/types';
 
 const emptyAnalytics: AnalyticsStore = { daily: {} };
@@ -60,12 +61,13 @@ export default function AnalyticsPage() {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
       const dateKey = date.toISOString().split('T')[0];
-      const hours = analytics.daily[dateKey]?.hours ?? 0;
+      const dayRecord = analytics.daily[dateKey];
+      const hours = dayRecord?.hours ?? 0;
 
       data.push({
         date: date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
-        focusScore: hours > 0 ? 80 : 0,
-        productivityScore: hours > 0 ? 75 : 0,
+        focusScore: hours > 0 ? Math.round(dayRecord?.focusScoreAvg ?? 80) : 0,
+        productivityScore: hours > 0 ? Math.round(dayRecord?.productivityScoreAvg ?? 75) : 0,
         hours,
       });
     }
@@ -109,21 +111,28 @@ export default function AnalyticsPage() {
   }, [analytics, now]);
 
   const totalHours = productivityData.reduce((sum, d) => sum + d.hours, 0);
+  const intelligentSummary = useMemo(
+    () => computeIntelligentAnalyticsSummary({ analytics, subjects, now: now ?? new Date() }),
+    [analytics, subjects, now]
+  );
   const avgFocus =
-    productivityData.length > 0
+    intelligentSummary.avgFocusScore ||
+    (productivityData.length > 0
       ? Math.round(
           productivityData.reduce((sum, d) => sum + d.focusScore, 0) /
             productivityData.length
         )
-      : 0;
+      : 0);
   const avgProductivity =
-    productivityData.length > 0
+    intelligentSummary.avgProductivityScore ||
+    (productivityData.length > 0
       ? Math.round(
           productivityData.reduce((sum, d) => sum + d.productivityScore, 0) /
             productivityData.length
         )
-      : 0;
+      : 0);
   const sessionsCompleted = productivityData.filter((d) => d.hours > 0).length;
+  const avgAccuracy = Math.round((intelligentSummary.avgAccuracyRate || 0) * 100);
 
   if (!mounted) {
     return (
@@ -167,6 +176,16 @@ export default function AnalyticsPage() {
           variant="mobile"
         />
         <StatsCard
+          title="Taxa Média de Acerto"
+          titleShort="Acerto"
+          value={`${avgAccuracy}%`}
+          subtitle="Média adaptativa"
+          icon={Target}
+          trend={{ value: 0, isPositive: avgAccuracy >= 70 }}
+          color="purple"
+          variant="mobile"
+        />
+        <StatsCard
           title="Pontuação Média de Foco"
           titleShort="Foco"
           value={`${avgFocus}%`}
@@ -191,7 +210,7 @@ export default function AnalyticsPage() {
           titleShort="Sessões"
           value={sessionsCompleted}
           subtitle="Últimos 14 dias"
-          icon={Target}
+          icon={Award}
           color="orange"
           variant="mobile"
         />
@@ -235,18 +254,30 @@ export default function AnalyticsPage() {
                 <Award className="w-5 h-5 max-[479px]:w-4 max-[479px]:h-4 text-neon-purple" />
                 <span className="font-medium text-white">Melhor Disciplina</span>
               </div>
-              <p className="text-2xl max-[479px]:text-[22px] font-heading font-bold text-neon-purple">--</p>
-              <p className="text-sm max-[479px]:text-xs text-text-secondary mt-1">Sem dados ainda</p>
+              <p className="text-2xl max-[479px]:text-[22px] font-heading font-bold text-neon-purple">
+                {intelligentSummary.strongestSubject?.name ?? '--'}
+              </p>
+              <p className="text-sm max-[479px]:text-xs text-text-secondary mt-1">
+                {intelligentSummary.strongestSubject
+                  ? `${Math.round(intelligentSummary.strongestSubject.accuracyRate * 100)}% de acerto`
+                  : 'Sem dados ainda'}
+              </p>
             </div>
 
-            {/* Consistência */}
+            {/* Matéria mais fraca */}
             <div className="p-4 max-[479px]:p-3 rounded-xl bg-neon-cyan/10 border border-neon-cyan/20">
               <div className="flex items-center gap-2 mb-2 max-[479px]:mb-1">
                 <Calendar className="w-5 h-5 max-[479px]:w-4 max-[479px]:h-4 text-neon-cyan" />
-                <span className="font-medium text-white">Consistência</span>
+                <span className="font-medium text-white">Matéria Mais Fraca</span>
               </div>
-              <p className="text-2xl max-[479px]:text-[22px] font-heading font-bold text-neon-cyan">0%</p>
-              <p className="text-sm max-[479px]:text-xs text-text-secondary mt-1">Sem dados ainda</p>
+              <p className="text-2xl max-[479px]:text-[22px] font-heading font-bold text-neon-cyan">
+                {intelligentSummary.weakestSubject?.name ?? '--'}
+              </p>
+              <p className="text-sm max-[479px]:text-xs text-text-secondary mt-1">
+                {intelligentSummary.weakestSubject
+                  ? `${Math.round(intelligentSummary.weakestSubject.accuracyRate * 100)}% de acerto`
+                  : 'Sem dados ainda'}
+              </p>
             </div>
           </div>
 
@@ -254,8 +285,34 @@ export default function AnalyticsPage() {
           <div className="mt-6 max-[479px]:mt-4 p-4 max-[479px]:p-3 rounded-xl bg-gradient-to-r from-neon-blue/5 to-neon-purple/5 border border-card-border">
             <p className="text-sm max-[479px]:text-xs text-text-secondary">
               <span className="text-neon-blue font-medium">💡 Recomendação:</span>{' '}
-              Sem recomendações ainda. Inicie seus estudos para gerar insights.
+              {subjects.length === 0
+                ? 'Sem recomendações ainda. Inicie seus estudos para gerar insights.'
+                : intelligentSummary.weakestSubject
+                ? `Priorize ${intelligentSummary.weakestSubject.name} nos próximos dias. Previsão de evolução em 30 dias: ${intelligentSummary.projectedImprovement30d > 0 ? '+' : ''}${intelligentSummary.projectedImprovement30d.toFixed(1)} pontos percentuais.`
+                : 'Continue registrando sessões para gerar recomendações adaptativas.'}
             </p>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 max-[479px]:gap-2 sm:gap-4">
+            <div className="p-4 max-[479px]:p-3 rounded-xl bg-white/5 border border-card-border">
+              <p className="text-xs text-text-secondary">Consistência (30 dias)</p>
+              <p className="text-xl font-heading font-bold text-white mt-1">
+                {Math.round((intelligentSummary.consistencyRate || 0) * 100)}%
+              </p>
+            </div>
+            <div className="p-4 max-[479px]:p-3 rounded-xl bg-white/5 border border-card-border">
+              <p className="text-xs text-text-secondary">Previsão de Evolução</p>
+              <p className="text-xl font-heading font-bold text-white mt-1">
+                {intelligentSummary.projectedImprovement30d > 0 ? '+' : ''}
+                {intelligentSummary.projectedImprovement30d.toFixed(1)} pp / 30d
+              </p>
+            </div>
+            <div className="p-4 max-[479px]:p-3 rounded-xl bg-white/5 border border-card-border">
+              <p className="text-xs text-text-secondary">Produtividade Média</p>
+              <p className="text-xl font-heading font-bold text-white mt-1">
+                {avgProductivity}%
+              </p>
+            </div>
           </div>
         </Card>
       </motion.div>
