@@ -1,11 +1,9 @@
 /**
  * API Route: POST /api/presets/[id]/import
  * Imports a preset's subjects to a user's subject list
- * 
- * Body: { userId: string }
- * 
- * Maps priority (1-5) to Subject priority (1-10): priority * 2
- * Maps difficulty (1-5) to Subject difficulty (1-10): difficulty * 2
+ *
+ * Uses session user, maps preset scale (1-5) to subject scale (1-10)
+ * and deduplicates by canonical subject name.
  */
 
 import { NextResponse } from 'next/server';
@@ -14,65 +12,108 @@ import { prisma } from '@/lib/prisma';
 import { authOptions } from '@/lib/auth';
 import { subjectColors } from '@/lib/utils';
 import { getEnemPresetSubjects } from '@/lib/enemCatalog';
+import {
+  dedupePresetSubjectsByCanonical,
+  getCanonicalSubjectName,
+  getCuratedPresetByName,
+} from '@/lib/presetCatalog';
 
-// Map preset priority (1-5) to subject priority (1-10)
+type ImportPresetSubject = {
+  name: string;
+  priority: number;
+  difficulty: number;
+  recommendedWeeklyHours: number;
+};
+
 function mapPriority(presetPriority: number): number {
   return Math.min(10, Math.max(1, presetPriority * 2));
 }
 
-// Map preset difficulty (1-5) to subject difficulty (1-10)
 function mapDifficulty(presetDifficulty: number): number {
   return Math.min(10, Math.max(1, presetDifficulty * 2));
 }
 
-// Get icon based on subject name
 function getSubjectIcon(name: string): string {
-  const nameLower = name.toLowerCase();
-  if (nameLower.includes('matemática') || nameLower.includes('matematica')) return 'calculator';
-  if (nameLower.includes('português') || nameLower.includes('portugues') || nameLower.includes('linguagens')) return 'book-open';
-  if (nameLower.includes('redação') || nameLower.includes('redacao')) return 'pen-tool';
-  if (nameLower.includes('biologia')) return 'leaf';
-  if (nameLower.includes('química') || nameLower.includes('quimica')) return 'flask';
-  if (nameLower.includes('física') || nameLower.includes('fisica')) return 'atom';
-  if (nameLower.includes('história') || nameLower.includes('historia')) return 'landmark';
-  if (nameLower.includes('geografia')) return 'globe';
-  if (nameLower.includes('filosofia')) return 'brain';
-  if (nameLower.includes('sociologia')) return 'users';
-  if (nameLower.includes('direito')) return 'scale';
-  if (nameLower.includes('raciocínio') || nameLower.includes('lógico')) return 'brain-circuit';
-  if (nameLower.includes('informática') || nameLower.includes('informatica')) return 'laptop';
-  if (nameLower.includes('atualidades')) return 'newspaper';
+  const canonical = getCanonicalSubjectName(name);
+
+  if (canonical.includes('matematica')) return 'calculator';
+  if (canonical.includes('lingua portuguesa') || canonical.includes('interpretacao') || canonical.includes('literatura')) {
+    return 'book-open';
+  }
+  if (canonical.includes('lingua estrangeira')) return 'languages';
+  if (canonical.includes('redacao')) return 'pen-tool';
+  if (canonical.includes('biologia')) return 'leaf';
+  if (canonical.includes('quimica')) return 'flask';
+  if (canonical.includes('fisica')) return 'atom';
+  if (canonical.includes('historia')) return 'landmark';
+  if (canonical.includes('geografia')) return 'globe';
+  if (canonical.includes('filosofia')) return 'brain';
+  if (canonical.includes('sociologia')) return 'users';
+  if (canonical.includes('direito')) return 'scale';
+  if (canonical.includes('raciocinio logico')) return 'brain-circuit';
+  if (canonical.includes('informatica')) return 'laptop';
+  if (canonical.includes('atualidades')) return 'newspaper';
+  if (canonical.includes('administracao')) return 'briefcase';
+  if (canonical === 'legislacao') return 'scroll-text';
+  if (canonical.includes('contabilidade')) return 'calculator';
+  if (canonical.includes('auditoria')) return 'clipboard-list';
+  if (canonical.includes('controle')) return 'shield-check';
+
   return 'book';
 }
 
+function toImportSubjects(
+  dbPresetSubjects: ImportPresetSubject[],
+  dbPresetName: string
+): ImportPresetSubject[] {
+  if (dbPresetName.toLowerCase() === 'enem') {
+    return dedupePresetSubjectsByCanonical(getEnemPresetSubjects()).map((subject) => ({
+      name: subject.name,
+      priority: subject.priority,
+      difficulty: subject.difficulty,
+      recommendedWeeklyHours: subject.recommendedWeeklyHours,
+    }));
+  }
+
+  const curated = getCuratedPresetByName(dbPresetName);
+  if (curated) {
+    return dedupePresetSubjectsByCanonical(curated.subjects).map((subject) => ({
+      name: subject.name,
+      priority: subject.priority,
+      difficulty: subject.difficulty,
+      recommendedWeeklyHours: subject.recommendedWeeklyHours,
+    }));
+  }
+
+  return dedupePresetSubjectsByCanonical(dbPresetSubjects).map((subject) => ({
+    name: subject.name,
+    priority: subject.priority,
+    difficulty: subject.difficulty,
+    recommendedWeeklyHours: subject.recommendedWeeklyHours,
+  }));
+}
+
 export async function POST(
-  request: Request,
+  _request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;
+
     if (!userId) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user exists
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true },
     });
 
     if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'User not found',
-        },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
 
-    // Get preset with subjects
     const preset = await prisma.studyPreset.findUnique({
       where: { id: params.id },
       select: {
@@ -83,41 +124,30 @@ export async function POST(
     });
 
     if (!preset) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Preset not found',
-        },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'Preset not found' }, { status: 404 });
     }
 
-    // Check if user already has subjects (optional: prevent duplicate imports)
+    const presetSubjects = toImportSubjects(preset.subjects, preset.name);
+
     const existingSubjects = await prisma.subject.findMany({
       where: { userId },
       select: { id: true, name: true },
     });
 
-    const presetSubjects =
-      preset.name.toLowerCase() === 'enem'
-        ? getEnemPresetSubjects().map((subject) => ({
-            ...subject,
-          }))
-        : preset.subjects;
+    const existingSubjectsByCanonical = new Map(
+      existingSubjects.map((subject) => [getCanonicalSubjectName(subject.name), subject])
+    );
 
-    // Import subjects from preset
     const importedSubjects = await Promise.all(
       presetSubjects.map((presetSubject, index) => {
-        // Check if subject with same name already exists
-        const existing = existingSubjects.find(
-          (s) => s.name.toLowerCase() === presetSubject.name.toLowerCase()
-        );
+        const canonicalName = getCanonicalSubjectName(presetSubject.name);
+        const existing = existingSubjectsByCanonical.get(canonicalName);
 
         if (existing) {
-          // Update existing subject with preset values
           return prisma.subject.update({
             where: { id: existing.id },
             data: {
+              name: presetSubject.name,
               priority: mapPriority(presetSubject.priority),
               difficulty: mapDifficulty(presetSubject.difficulty),
               targetHours: presetSubject.recommendedWeeklyHours,
@@ -125,7 +155,6 @@ export async function POST(
           });
         }
 
-        // Create new subject
         return prisma.subject.create({
           data: {
             userId,
@@ -148,22 +177,13 @@ export async function POST(
     return NextResponse.json({
       success: true,
       data: {
-        preset: {
-          id: preset.id,
-          name: preset.name,
-        },
+        preset: { id: preset.id, name: preset.name },
         importedCount: importedSubjects.length,
         subjects: importedSubjects,
       },
     });
   } catch (error) {
     console.error('Error importing preset:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to import preset',
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Failed to import preset' }, { status: 500 });
   }
 }

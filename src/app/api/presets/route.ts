@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getEnemPresetSubjects } from '@/lib/enemCatalog';
+import { getCanonicalSubjectName, getCuratedPresetByName } from '@/lib/presetCatalog';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,19 +49,49 @@ export async function GET() {
     });
 
     const normalizedPresets = presets.map((preset) => {
-      if (preset.name.toLowerCase() !== 'enem') return preset;
+      const isEnem = preset.name.toLowerCase() === 'enem';
+      const curated = getCuratedPresetByName(preset.name);
+
+      if (!isEnem && !curated) return preset;
+
+      const dbSubjectsByCanonical = new Map(
+        preset.subjects.map((subject) => [getCanonicalSubjectName(subject.name), subject])
+      );
+
+      if (isEnem) {
+        return {
+          ...preset,
+          subjects: getEnemPresetSubjects().map((subject, index) => ({
+            id: dbSubjectsByCanonical.get(getCanonicalSubjectName(subject.name))?.id ?? `enem-${index + 1}`,
+            presetId: preset.id,
+            name: subject.name,
+            priority: subject.priority,
+            difficulty: subject.difficulty,
+            recommendedWeeklyHours: subject.recommendedWeeklyHours,
+            createdAt: preset.createdAt,
+            updatedAt: preset.updatedAt,
+          })),
+        };
+      }
+
       return {
         ...preset,
-        subjects: getEnemPresetSubjects().map((subject, index) => ({
-          id: `enem-${index + 1}`,
-          presetId: preset.id,
-          name: subject.name,
-          priority: subject.priority,
-          difficulty: subject.difficulty,
-          recommendedWeeklyHours: subject.recommendedWeeklyHours,
-          createdAt: preset.createdAt,
-          updatedAt: preset.updatedAt,
-        })),
+        description: curated!.description,
+        subjects: curated!.subjects.map((subject, index) => {
+          const match = dbSubjectsByCanonical.get(getCanonicalSubjectName(subject.name));
+          return {
+            id: match?.id ?? `${preset.id}-curated-${index}`,
+            presetId: preset.id,
+            name: subject.name,
+            priority: subject.priority,
+            difficulty: subject.difficulty,
+            recommendedWeeklyHours: subject.recommendedWeeklyHours,
+            group: subject.group,
+            createdAt: match?.createdAt ?? preset.createdAt,
+            updatedAt: match?.updatedAt ?? preset.updatedAt,
+          };
+        }),
+        specificModules: curated!.specificModules ?? [],
       };
     });
 

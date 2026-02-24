@@ -15,7 +15,8 @@
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "vercel-build": "prisma migrate deploy && next build",
-    "test:roadmap": "tsx scripts/roadmap.test.ts"
+    "test:roadmap": "tsx scripts/roadmap.test.ts",
+    "test:smoke:presets": "tsx scripts/smoke-presets.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

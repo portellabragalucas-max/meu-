@@ -5,7 +5,7 @@
  * Allows users to select a study objective preset and import subjects automatically
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   GraduationCap,
@@ -15,19 +15,14 @@ import {
   Check,
   Loader2,
   AlertCircle,
+  Layers,
 } from 'lucide-react';
-import { Card, Button } from '@/components/ui';
+import { Card, Button, Badge } from '@/components/ui';
 import { PresetConfigWizard } from '@/components/onboarding';
 import { cn } from '@/lib/utils';
 import { getEnemPresetSubjects } from '@/lib/enemCatalog';
+import { getCuratedPresets, normalizeComparableText } from '@/lib/presetCatalog';
 import type { PresetWizardAnswers, StudyPreferences, UserSettings } from '@/types';
-
-interface Preset {
-  id: string;
-  name: string;
-  description: string;
-  subjects: PresetSubject[];
-}
 
 interface PresetSubject {
   id: string;
@@ -35,6 +30,22 @@ interface PresetSubject {
   priority: number;
   difficulty: number;
   recommendedWeeklyHours: number;
+  group?: string;
+}
+
+interface PresetModule {
+  id: string;
+  name: string;
+  description: string;
+  subjects: PresetSubject[];
+}
+
+interface Preset {
+  id: string;
+  name: string;
+  description: string;
+  subjects: PresetSubject[];
+  specificModules?: PresetModule[];
 }
 
 interface PresetSelectorProps {
@@ -49,92 +60,97 @@ interface PresetSelectorProps {
   ) => void;
 }
 
-// Preset icons mapping
+const GROUP_ORDER = ['Natureza', 'Exatas', 'Linguagens', 'Humanas', 'Base comum', 'Modulo especifico'];
+
 const presetIcons: Record<string, typeof GraduationCap> = {
-  ENEM: GraduationCap,
-  Medicina: Stethoscope,
-  Concursos: Scale,
-  'Concursos Públicos': Scale,
-  Personalizado: Sparkles,
+  enem: GraduationCap,
+  medicina: Stethoscope,
+  concursos: Scale,
+  'concursos publicos': Scale,
+  personalizado: Sparkles,
 };
 
-// Preset colors
 const presetColors: Record<string, string> = {
-  ENEM: 'from-neon-blue/20 to-neon-purple/20',
-  Medicina: 'from-red-500/20 to-pink-500/20',
-  Concursos: 'from-yellow-500/20 to-orange-500/20',
-  'Concursos Públicos': 'from-yellow-500/20 to-orange-500/20',
-  Personalizado: 'from-neon-cyan/20 to-neon-blue/20',
+  enem: 'from-neon-blue/20 to-neon-purple/20',
+  medicina: 'from-red-500/20 to-pink-500/20',
+  concursos: 'from-yellow-500/20 to-orange-500/20',
+  'concursos publicos': 'from-yellow-500/20 to-orange-500/20',
+  personalizado: 'from-neon-cyan/20 to-neon-blue/20',
 };
 
-// Mock presets for when database is not configured
-const mockPresets: Preset[] = [
-  {
-    id: 'enem',
-    name: 'ENEM',
-    description: 'Preparação completa para o Exame Nacional do Ensino Médio com todas as áreas do conhecimento',
-    subjects: [
-      { id: '1', name: 'Matemática', priority: 5, difficulty: 4, recommendedWeeklyHours: 12 },
-      { id: '2', name: 'Redação', priority: 5, difficulty: 3, recommendedWeeklyHours: 8 },
-      { id: '3', name: 'Português / Linguagens', priority: 4, difficulty: 3, recommendedWeeklyHours: 10 },
-      { id: '4', name: 'Biologia', priority: 4, difficulty: 3, recommendedWeeklyHours: 8 },
-      { id: '5', name: 'Física', priority: 4, difficulty: 4, recommendedWeeklyHours: 8 },
-      { id: '6', name: 'Química', priority: 4, difficulty: 4, recommendedWeeklyHours: 8 },
-      { id: '7', name: 'História', priority: 3, difficulty: 2, recommendedWeeklyHours: 6 },
-      { id: '8', name: 'Geografia', priority: 3, difficulty: 2, recommendedWeeklyHours: 6 },
-      { id: '9', name: 'Filosofia', priority: 3, difficulty: 2, recommendedWeeklyHours: 4 },
-      { id: '10', name: 'Sociologia', priority: 3, difficulty: 2, recommendedWeeklyHours: 4 },
-    ],
-  },
-  {
-    id: 'medicina',
-    name: 'Medicina',
-    description: 'Preparação para vestibular de Medicina com foco em ciências da natureza e exatas',
-    subjects: [
-      { id: '1', name: 'Biologia Avançada', priority: 5, difficulty: 5, recommendedWeeklyHours: 15 },
-      { id: '2', name: 'Química Avançada', priority: 5, difficulty: 5, recommendedWeeklyHours: 12 },
-      { id: '3', name: 'Física', priority: 4, difficulty: 4, recommendedWeeklyHours: 10 },
-      { id: '4', name: 'Matemática', priority: 4, difficulty: 4, recommendedWeeklyHours: 10 },
-      { id: '5', name: 'Redação', priority: 4, difficulty: 3, recommendedWeeklyHours: 8 },
-      { id: '6', name: 'Português', priority: 3, difficulty: 2, recommendedWeeklyHours: 6 },
-      { id: '7', name: 'História', priority: 2, difficulty: 2, recommendedWeeklyHours: 4 },
-      { id: '8', name: 'Geografia', priority: 2, difficulty: 2, recommendedWeeklyHours: 4 },
-    ],
-  },
-  {
-    id: 'concursos',
-    name: 'Concursos Públicos',
-    description: 'Preparação para concursos públicos com foco em português, raciocínio lógico e direito',
-    subjects: [
-      { id: '1', name: 'Português', priority: 5, difficulty: 3, recommendedWeeklyHours: 12 },
-      { id: '2', name: 'Raciocínio Lógico', priority: 4, difficulty: 4, recommendedWeeklyHours: 10 },
-      { id: '3', name: 'Direito Constitucional', priority: 4, difficulty: 3, recommendedWeeklyHours: 8 },
-      { id: '4', name: 'Direito Administrativo', priority: 4, difficulty: 3, recommendedWeeklyHours: 8 },
-      { id: '5', name: 'Informática', priority: 3, difficulty: 2, recommendedWeeklyHours: 6 },
-      { id: '6', name: 'Atualidades', priority: 3, difficulty: 2, recommendedWeeklyHours: 6 },
-    ],
-  },
-];
-
-function getOfficialEnemMockPresets() {
+function buildLocalMockPresets(): Preset[] {
   const enemSubjects = getEnemPresetSubjects().map((subject, index) => ({
-    id: String(index + 1),
+    id: `enem-${index + 1}`,
     name: subject.name,
     priority: subject.priority,
     difficulty: subject.difficulty,
     recommendedWeeklyHours: subject.recommendedWeeklyHours,
+    group: undefined,
   }));
 
-  return mockPresets.map((preset) =>
-    preset.id === 'enem'
-      ? {
-          ...preset,
-          description:
-            'Preparacao completa ENEM organizada por areas oficiais e disciplinas reais (Linguagens, Matematica, Natureza e Humanas)',
-          subjects: enemSubjects,
-        }
-      : preset
-  );
+  const curated = getCuratedPresets().map((preset) => ({
+    id: preset.id,
+    name: preset.name,
+    description: preset.description,
+    subjects: preset.subjects.map((subject, index) => ({
+      id: `${preset.id}-${index + 1}`,
+      name: subject.name,
+      priority: subject.priority,
+      difficulty: subject.difficulty,
+      recommendedWeeklyHours: subject.recommendedWeeklyHours,
+      group: subject.group,
+    })),
+    specificModules: (preset.specificModules || []).map((module) => ({
+      id: module.id,
+      name: module.name,
+      description: module.description,
+      subjects: module.subjects.map((subject, index) => ({
+        id: `${module.id}-${index + 1}`,
+        name: subject.name,
+        priority: subject.priority,
+        difficulty: subject.difficulty,
+        recommendedWeeklyHours: subject.recommendedWeeklyHours,
+        group: subject.group,
+      })),
+    })),
+  }));
+
+  return [
+    {
+      id: 'enem',
+      name: 'ENEM',
+      description:
+        'Preparacao completa ENEM organizada por areas oficiais e disciplinas reais',
+      subjects: enemSubjects,
+    },
+    ...curated,
+  ];
+}
+
+function groupSubjects(subjects: PresetSubject[]) {
+  const grouped = new Map<string, PresetSubject[]>();
+
+  for (const subject of subjects) {
+    const group = subject.group || 'Outros';
+    if (!grouped.has(group)) grouped.set(group, []);
+    grouped.get(group)!.push(subject);
+  }
+
+  return Array.from(grouped.entries()).sort((a, b) => {
+    const aIndex = GROUP_ORDER.indexOf(a[0]);
+    const bIndex = GROUP_ORDER.indexOf(b[0]);
+    const safeA = aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex;
+    const safeB = bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex;
+    return safeA - safeB || a[0].localeCompare(b[0]);
+  });
+}
+
+function resolvePresetVisualKey(name: string): string {
+  const normalized = normalizeComparableText(name);
+  if (normalized.startsWith('concursos')) return 'concursos publicos';
+  if (normalized.includes('medicina')) return 'medicina';
+  if (normalized.includes('enem')) return 'enem';
+  return normalized;
 }
 
 export default function PresetSelector({
@@ -153,24 +169,23 @@ export default function PresetSelector({
   const [presetSource, setPresetSource] = useState<'api' | 'local'>('local');
   const [showWizard, setShowWizard] = useState(false);
 
-  // Fetch presets on mount (with fallback to mock data)
+  void userId;
+
   useEffect(() => {
     async function fetchPresets() {
       try {
         const response = await fetch('/api/presets');
         const data = await response.json();
 
-        if (data.success && data.data && data.data.length > 0) {
-          setPresets(data.data);
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setPresets(data.data as Preset[]);
           setPresetSource('api');
         } else {
-          // Use mock data if API returns empty or fails
-          setPresets(getOfficialEnemMockPresets());
+          setPresets(buildLocalMockPresets());
           setPresetSource('local');
         }
-      } catch (err) {
-        // Use mock data on error
-        setPresets(getOfficialEnemMockPresets());
+      } catch {
+        setPresets(buildLocalMockPresets());
         setPresetSource('local');
       } finally {
         setIsLoading(false);
@@ -179,6 +194,11 @@ export default function PresetSelector({
 
     fetchPresets();
   }, []);
+
+  const selectedPresetData = useMemo(
+    () => presets.find((preset) => preset.id === selectedPreset) || null,
+    [presets, selectedPreset]
+  );
 
   const handleImport = async () => {
     if (!selectedPreset) return;
@@ -189,23 +209,19 @@ export default function PresetSelector({
     try {
       await onImport(selectedPreset, { source: presetSource });
     } catch (err) {
-      setError('Erro ao importar predefinição. Tente novamente.');
+      setError('Erro ao importar predefinicao. Tente novamente.');
       console.error('Error importing preset:', err);
     } finally {
       setIsImporting(false);
     }
   };
 
-  const handleSkip = () => {
-    onSkip();
-  };
-
   if (isLoading) {
     return (
       <Card className="py-16">
         <div className="flex flex-col items-center justify-center">
-          <Loader2 className="w-8 h-8 text-neon-blue animate-spin mb-4" />
-          <p className="text-text-secondary">Carregando predefinições...</p>
+          <Loader2 className="mb-4 h-8 w-8 animate-spin text-neon-blue" />
+          <p className="text-text-secondary">Carregando predefinicoes...</p>
         </div>
       </Card>
     );
@@ -215,10 +231,10 @@ export default function PresetSelector({
     return (
       <Card className="py-16">
         <div className="flex flex-col items-center justify-center">
-          <AlertCircle className="w-8 h-8 text-red-400 mb-4" />
-          <p className="text-text-secondary mb-4">{error}</p>
-          <Button variant="secondary" onClick={handleSkip}>
-            Continuar sem predefinição
+          <AlertCircle className="mb-4 h-8 w-8 text-red-400" />
+          <p className="mb-4 text-text-secondary">{error}</p>
+          <Button variant="secondary" onClick={onSkip}>
+            Continuar sem predefinicao
           </Button>
         </div>
       </Card>
@@ -227,36 +243,28 @@ export default function PresetSelector({
 
   return (
     <div className="min-w-0 space-y-6">
-      {/* Header */}
       <div className="min-w-0 text-center">
-        <h2 className="text-2xl font-heading font-bold text-white mb-2">
-          Qual é seu objetivo de estudo?
-        </h2>
+        <h2 className="mb-2 text-2xl font-heading font-bold text-white">Qual e seu objetivo de estudo?</h2>
         <p className="text-text-secondary">
-          Escolha uma predefinição para começar rapidamente ou crie suas próprias
-          disciplinas
+          Escolha uma predefinicao para comecar rapidamente ou crie suas proprias disciplinas
         </p>
       </div>
 
-      {/* Preset Cards */}
       <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
         {presets.map((preset) => {
-          const Icon = presetIcons[preset.name] || Sparkles;
+          const visualKey = resolvePresetVisualKey(preset.name);
+          const Icon = presetIcons[visualKey] || Sparkles;
           const isSelected = selectedPreset === preset.id;
           const isExpanded = showDetails === preset.id;
+          const moduleCount = preset.specificModules?.length || 0;
+          const weeklyHours = preset.subjects.reduce((sum, s) => sum + s.recommendedWeeklyHours, 0);
 
           return (
-            <motion.div
-              key={preset.id}
-              whileHover={{ y: -4 }}
-              className="relative"
-            >
+            <motion.div key={preset.id} whileHover={{ y: -4 }} className="relative">
               <Card
                 className={cn(
                   'cursor-pointer transition-all duration-200',
-                  isSelected
-                    ? 'ring-2 ring-neon-blue border-neon-blue/50'
-                    : 'hover:border-neon-blue/30'
+                  isSelected ? 'border-neon-blue/50 ring-2 ring-neon-blue' : 'hover:border-neon-blue/30'
                 )}
                 onClick={() => {
                   setSelectedPreset(preset.id);
@@ -265,17 +273,15 @@ export default function PresetSelector({
                 }}
               >
                 <div className="flex min-w-0 items-start gap-4">
-                  {/* Icon */}
                   <div
                     className={cn(
-                      'w-16 h-16 rounded-xl flex items-center justify-center bg-gradient-to-br',
-                      presetColors[preset.name] || 'from-neon-blue/20 to-neon-purple/20'
+                      'flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br',
+                      presetColors[visualKey] || 'from-neon-blue/20 to-neon-purple/20'
                     )}
                   >
-                    <Icon className="w-8 h-8 text-neon-blue" />
+                    <Icon className="h-8 w-8 text-neon-blue" />
                   </div>
 
-                  {/* Content */}
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 flex min-w-0 items-center justify-between gap-2">
                       <h3 className="min-w-0 truncate text-lg font-heading font-bold text-white">
@@ -285,60 +291,101 @@ export default function PresetSelector({
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
-                          className="w-6 h-6 rounded-full bg-neon-blue flex items-center justify-center"
+                          className="flex h-6 w-6 items-center justify-center rounded-full bg-neon-blue"
                         >
-                          <Check className="w-4 h-4 text-white" />
+                          <Check className="h-4 w-4 text-white" />
                         </motion.div>
                       )}
                     </div>
-                    <p className="mb-2 break-words text-sm text-text-secondary">
-                      {preset.description}
-                    </p>
+
+                    <p className="mb-2 break-words text-sm text-text-secondary">{preset.description}</p>
+
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
-                      <span>{preset.subjects.length} disciplinas</span>
-                      <span>
-                        {preset.subjects.reduce(
-                          (sum, s) => sum + s.recommendedWeeklyHours,
-                          0
-                        )}{' '}
-                        h/semana sugeridas
-                      </span>
+                      <span>{preset.subjects.length} disciplinas base</span>
+                      <span>{weeklyHours} h/semana sugeridas</span>
+                      {moduleCount > 0 && (
+                        <span className="inline-flex items-center gap-1">
+                          <Layers className="h-3 w-3" />
+                          {moduleCount} modulos
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Expanded Details */}
                 <AnimatePresence>
                   {isExpanded && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      className="mt-4 pt-4 border-t border-card-border overflow-hidden"
+                      className="mt-4 space-y-4 overflow-hidden border-t border-card-border pt-4"
                     >
-                      <p className="text-xs font-medium text-text-secondary mb-3">
-                        Disciplinas incluídas:
-                      </p>
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        {preset.subjects.map((subject) => (
-                          <div
-                            key={subject.id}
-                            className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-card-bg/50 p-2"
-                          >
-                            <span className="min-w-0 truncate text-xs text-white">
-                              {subject.name}
-                            </span>
-                            <div className="flex shrink-0 items-center gap-2">
-                              <span className="text-xs text-text-muted">
-                                P{subject.priority}
-                              </span>
-                              <span className="text-xs text-text-muted">
-                                {subject.recommendedWeeklyHours}h
-                              </span>
+                      <div>
+                        <p className="mb-3 text-xs font-medium text-text-secondary">
+                          Disciplinas base (organizadas):
+                        </p>
+                        <div className="space-y-3">
+                          {groupSubjects(preset.subjects).map(([group, groupItems]) => (
+                            <div key={group} className="rounded-lg border border-card-border/70 p-3">
+                              <div className="mb-2 flex items-center justify-between gap-2">
+                                <div className="text-xs font-semibold text-white">{group}</div>
+                                <Badge size="sm" variant="default">
+                                  {groupItems.reduce((sum, subject) => sum + subject.recommendedWeeklyHours, 0)}h/sem
+                                </Badge>
+                              </div>
+                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                {groupItems.map((subject) => (
+                                  <div
+                                    key={subject.id}
+                                    className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-card-bg/50 p-2"
+                                  >
+                                    <span className="min-w-0 truncate text-xs text-white">{subject.name}</span>
+                                    <div className="flex shrink-0 items-center gap-2">
+                                      <span className="text-xs text-text-muted">P{subject.priority}</span>
+                                      <span className="text-xs text-text-muted">{subject.recommendedWeeklyHours}h</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
+
+                      {!!preset.specificModules?.length && (
+                        <div>
+                          <p className="mb-3 text-xs font-medium text-text-secondary">
+                            Modulos especificos (opcionais, conforme edital):
+                          </p>
+                          <div className="space-y-2">
+                            {preset.specificModules.map((module) => (
+                              <div
+                                key={module.id}
+                                className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="text-xs font-semibold text-white">{module.name}</div>
+                                  <Badge size="sm" variant="warning">
+                                    {module.subjects.length} disciplinas
+                                  </Badge>
+                                </div>
+                                <p className="mt-1 text-xs text-text-secondary">{module.description}</p>
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  {module.subjects.map((subject) => (
+                                    <span
+                                      key={subject.id}
+                                      className="rounded-full border border-card-border bg-card-bg px-2 py-1 text-[11px] text-text-secondary"
+                                    >
+                                      {subject.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -347,13 +394,12 @@ export default function PresetSelector({
           );
         })}
 
-        {/* Custom Option */}
         <motion.div whileHover={{ y: -4 }}>
           <Card
             className={cn(
               'cursor-pointer transition-all duration-200',
               selectedPreset === 'custom'
-                ? 'ring-2 ring-neon-cyan border-neon-cyan/50'
+                ? 'border-neon-cyan/50 ring-2 ring-neon-cyan'
                 : 'hover:border-neon-cyan/30'
             )}
             onClick={() => {
@@ -363,26 +409,24 @@ export default function PresetSelector({
             }}
           >
             <div className="flex min-w-0 items-start gap-4">
-              <div className="w-16 h-16 rounded-xl flex items-center justify-center bg-gradient-to-br from-neon-cyan/20 to-neon-blue/20">
-                <Sparkles className="w-8 h-8 text-neon-cyan" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-neon-cyan/20 to-neon-blue/20">
+                <Sparkles className="h-8 w-8 text-neon-cyan" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="mb-1 flex min-w-0 items-center justify-between gap-2">
-                  <h3 className="min-w-0 truncate text-lg font-heading font-bold text-white">
-                    Personalizado
-                  </h3>
+                  <h3 className="min-w-0 truncate text-lg font-heading font-bold text-white">Personalizado</h3>
                   {selectedPreset === 'custom' && (
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="w-6 h-6 rounded-full bg-neon-cyan flex items-center justify-center"
+                      className="flex h-6 w-6 items-center justify-center rounded-full bg-neon-cyan"
                     >
-                      <Check className="w-4 h-4 text-white" />
+                      <Check className="h-4 w-4 text-white" />
                     </motion.div>
                   )}
                 </div>
                 <p className="text-sm text-text-secondary">
-                  Crie suas próprias disciplinas do zero com total controle
+                  Crie suas proprias disciplinas do zero com total controle
                 </p>
               </div>
             </div>
@@ -390,53 +434,66 @@ export default function PresetSelector({
         </motion.div>
       </div>
 
-      {/* Error Message */}
       {error && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center gap-3"
+          className="flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4"
         >
-          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+          <AlertCircle className="h-5 w-5 shrink-0 text-red-400" />
           <p className="text-sm text-red-400">{error}</p>
         </motion.div>
       )}
 
-      {/* Info Message */}
-      <Card className="bg-neon-blue/10 border-neon-blue/30">
+      <Card className="border-neon-blue/30 bg-neon-blue/10">
         <div className="flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-neon-blue flex-shrink-0 mt-0.5" />
+          <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-neon-blue" />
           <div>
-            <p className="text-sm text-white font-medium mb-1">
-              As predefinições são apenas sugestões
-            </p>
+            <p className="mb-1 text-sm font-medium text-white">As predefinicoes sao apenas sugestoes</p>
             <p className="text-xs text-text-secondary">
-              Você pode personalizar completamente as disciplinas, prioridades e
-              horas após importar. Tudo pode ser editado a qualquer momento.
+              Voce pode personalizar disciplinas, prioridades e horas depois de importar. O cronograma
+              automatico usa esses pesos para distribuir o tempo.
             </p>
           </div>
         </div>
       </Card>
 
-      {/* Actions */}
+      {selectedPresetData?.name === 'Medicina' && (
+        <Card className="border-red-500/20 bg-red-500/5">
+          <p className="text-sm text-red-100">
+            O preset Medicina prioriza Natureza, depois Redacao e Matematica, mantendo Linguagens e
+            Humanas como suporte para vestibulares.
+          </p>
+        </Card>
+      )}
+
+      {selectedPresetData && normalizeComparableText(selectedPresetData.name).startsWith('concursos') && (
+        <Card className="border-yellow-500/20 bg-yellow-500/5">
+          <p className="text-sm text-yellow-100">
+            O preset de Concursos importa a base comum. Modulos especificos aparecem como trilhas
+            opcionais para expansao futura conforme edital.
+          </p>
+        </Card>
+      )}
+
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <Button variant="secondary" onClick={handleSkip} className="w-full sm:w-auto">
+        <Button variant="secondary" onClick={onSkip} className="w-full sm:w-auto">
           Pular esta etapa
         </Button>
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
           {selectedPreset && selectedPreset !== 'custom' && (
             <Button
               variant="primary"
               onClick={() => setShowWizard(true)}
               disabled={isImporting}
               className="w-full sm:w-auto"
-              leftIcon={<Check className="w-4 h-4" />}
+              leftIcon={isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             >
-              Configurar modelo
+              {isImporting ? 'Importando...' : 'Configurar modelo'}
             </Button>
           )}
           {selectedPreset === 'custom' && (
-            <Button variant="primary" onClick={handleSkip} className="w-full sm:w-auto">
+            <Button variant="primary" onClick={onSkip} className="w-full sm:w-auto">
               Criar disciplinas manualmente
             </Button>
           )}
@@ -451,7 +508,7 @@ export default function PresetSelector({
         onClose={() => setShowWizard(false)}
         onApply={(settings, studyPrefs, answers) => {
           onApplyPreferences(settings, studyPrefs, answers);
-          handleImport();
+          void handleImport();
         }}
       />
     </div>
