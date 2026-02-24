@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Sparkles, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { Sparkles, Mail, Lock, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 import { getProviders, getSession, signIn, useSession } from 'next-auth/react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -64,6 +64,7 @@ export default function LoginPage() {
   const [providersError, setProvidersError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [queryState, setQueryState] = useState<{ callbackUrl: string | null; resetSuccess: boolean; authError: string | null }>({
     callbackUrl: null,
@@ -350,16 +351,26 @@ export default function LoginPage() {
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
                     placeholder="Sua senha"
-                    className="input-field pl-12"
+                    className="input-field pl-12 pr-12"
                     required
                     autoComplete="current-password"
                     disabled={isBusy || !hasCredentials}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-white/5 hover:text-white"
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    aria-pressed={showPassword}
+                    disabled={isBusy || !hasCredentials}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
                 <div className="mt-1.5 text-right">
                   <Link href="/forgot-password" className="text-xs text-neon-blue hover:underline">

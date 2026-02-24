@@ -45,6 +45,9 @@ if (hasGoogleAuth) {
     GoogleProvider({
       clientId: env.googleClientId,
       clientSecret: env.googleClientSecret,
+      // Permite vincular automaticamente a conta Google a uma conta existente
+      // com o mesmo e-mail (ex.: cadastro prévio por e-mail/senha).
+      allowDangerousEmailAccountLinking: true,
     })
   );
 }
@@ -60,6 +63,16 @@ export const authOptions: NextAuthOptions = {
     signIn: '/login',
   },
   callbacks: {
+    signIn: async ({ account, profile }) => {
+      // Exige e-mail verificado no Google antes de permitir login/link da conta.
+      if (account?.provider === 'google') {
+        const googleProfile = profile as { email_verified?: boolean } | undefined;
+        if (googleProfile && googleProfile.email_verified === false) {
+          return false;
+        }
+      }
+      return true;
+    },
     jwt: async ({ token, user }) => {
       if (user) {
         token.sub = user.id;
