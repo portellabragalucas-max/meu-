@@ -1,7 +1,19 @@
 import type { StudyBlock, StudyBlockType, Subject, StudyPreferences } from '@/types';
 import { generateId, minutesToTime, timeToMinutes } from '@/lib/utils';
+import {
+  getEnemDisciplineByName,
+  isEnemGoal,
+  normalizeEnemText,
+  type EnemOfficialArea,
+} from '@/lib/enemCatalog';
 
-export type SubjectArea = 'exatas' | 'humanas' | 'biologicas' | 'linguagens' | 'geral';
+export type SubjectArea =
+  | EnemOfficialArea
+  | 'exatas'
+  | 'humanas'
+  | 'biologicas'
+  | 'linguagens'
+  | 'geral';
 export type SubjectLevel = 'basico' | 'intermediario' | 'avancado';
 export type SessionType = 'teoria' | 'pratica' | 'revisao' | 'simulado';
 
@@ -33,6 +45,8 @@ export interface ChronologicalScheduleConfig {
     minLessonsPerSubject?: number;
     minDaysBeforeSimulated: number;
     frequencyDays: number;
+    minLessonsBeforeAreaSimulated?: number;
+    minDaysBeforeAreaSimulated?: number;
   };
   debug?: boolean;
 }
@@ -45,15 +59,24 @@ export interface ChronologicalScheduleResult {
   debugLog: string[];
 }
 
-const AREA_ROTATION: SubjectArea[] = ['exatas', 'humanas', 'biologicas', 'linguagens'];
+const AREA_ROTATION: SubjectArea[] = [
+  'matematica',
+  'linguagens',
+  'natureza',
+  'humanas',
+  'matematica',
+  'linguagens',
+  'natureza',
+  'humanas',
+];
 
 const SUBJECT_AREA_MAP: Record<string, SubjectArea> = {
-  matematica: 'exatas',
+  matematica: 'matematica',
   física: 'exatas',
-  fisica: 'exatas',
+  fisica: 'natureza',
   química: 'exatas',
-  quimica: 'exatas',
-  biologia: 'biologicas',
+  quimica: 'natureza',
+  biologia: 'natureza',
   geografia: 'humanas',
   historia: 'humanas',
   sociologia: 'humanas',
@@ -66,66 +89,135 @@ const SUBJECT_AREA_MAP: Record<string, SubjectArea> = {
   atualidades: 'humanas',
   direito: 'humanas',
   informática: 'exatas',
-  informatica: 'exatas',
+  informatica: 'linguagens',
+  // ENEM official mapping and legacy aliases (later keys override earlier legacy values)
+  'raciocinio logico': 'matematica',
+  natureza: 'natureza',
+  'ciencias da natureza': 'natureza',
+  ciencias: 'natureza',
+  literatura: 'linguagens',
+  ingles: 'linguagens',
+  espanhol: 'linguagens',
+  artes: 'linguagens',
+  tecnologia: 'linguagens',
+  comunicacao: 'linguagens',
+  exatas: 'matematica',
+  biologicas: 'natureza',
 };
 
-function normalize(str: string) {
-  return str
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+const LEGACY_AREA_ALIASES: Record<string, SubjectArea> = {
+  exatas: 'matematica',
+  biologicas: 'natureza',
+  natureza: 'natureza',
+  humanas: 'humanas',
+  linguagens: 'linguagens',
+  matematica: 'matematica',
+  geral: 'geral',
+};
+
+type CycleStage = SessionType;
+
+interface SubjectCycleState {
+  stageIndex: number;
+  stageProgress: number;
 }
 
-export function inferSubjectMeta(subject: Subject): SubjectMeta {
-  if (subject.area || subject.nivel || subject.pesoNoExame) {
-    const areaNormalized = subject.area ? normalize(subject.area) : '';
-    const areaFromField: SubjectArea =
-      areaNormalized.includes('exat')
-        ? 'exatas'
-        : areaNormalized.includes('human')
-        ? 'humanas'
-        : areaNormalized.includes('biolog')
-        ? 'biologicas'
-        : areaNormalized.includes('ling')
-        ? 'linguagens'
-        : 'geral';
+const CYCLE_ORDER: CycleStage[] = ['teoria', 'pratica', 'revisao', 'simulado'];
 
-    const nivelNormalized = subject.nivel ? normalize(subject.nivel) : '';
-    const nivelFromField: SubjectLevel =
-      nivelNormalized.includes('avan')
-        ? 'avancado'
-        : nivelNormalized.includes('inter')
-        ? 'intermediario'
-        : nivelNormalized.includes('bas')
-        ? 'basico'
-        : 'basico';
+function normalize(str: string) {
+  return normalizeEnemText(str);
+}
 
-    const pesoFromField =
-      typeof subject.pesoNoExame === 'number'
-        ? Math.min(5, Math.max(1, Math.round(subject.pesoNoExame)))
-        : undefined;
+function canonicalArea(area: SubjectArea): SubjectArea {
+  const normalized = normalize(area);
+  return LEGACY_AREA_ALIASES[normalized] || area;
+}
 
-    return {
-      area: areaFromField,
-      nivel: nivelFromField,
-      pesoNoExame: pesoFromField ?? Math.min(5, Math.max(1, Math.round((subject.priority || 5) / 2))),
-    };
-  }
-
-  const normalized = normalize(subject.name);
+function resolveAreaFromName(name: string): SubjectArea {
+  const normalized = normalize(name);
   let area: SubjectArea = 'geral';
   Object.keys(SUBJECT_AREA_MAP).forEach((key) => {
     if (normalized.includes(key)) {
       area = SUBJECT_AREA_MAP[key];
     }
   });
+  return canonicalArea(area);
+}
 
+function resolveLevel(subject: Subject, fallback?: SubjectLevel): SubjectLevel {
+  const nivelNormalized = subject.nivel ? normalize(subject.nivel) : '';
+  if (nivelNormalized.includes('avan')) return 'avancado';
+  if (nivelNormalized.includes('inter')) return 'intermediario';
+  if (nivelNormalized.includes('bas') || nivelNormalized.includes('inic')) return 'basico';
+  if (fallback) return fallback;
   const difficulty = subject.difficulty ?? 5;
-  const nivel: SubjectLevel =
-    difficulty <= 4 ? 'basico' : difficulty <= 7 ? 'intermediario' : 'avancado';
-  const pesoNoExame = Math.min(5, Math.max(1, Math.round((subject.priority || 5) / 2)));
+  return difficulty <= 4 ? 'basico' : difficulty <= 7 ? 'intermediario' : 'avancado';
+}
 
-  return { area, nivel, pesoNoExame };
+function resolvePesoNoExame(subject: Subject, fallback?: number) {
+  if (typeof subject.pesoNoExame === 'number') {
+    return Math.min(5, Math.max(1, Math.round(subject.pesoNoExame)));
+  }
+  if (typeof fallback === 'number') {
+    return Math.min(5, Math.max(1, Math.round(fallback)));
+  }
+  return Math.min(5, Math.max(1, Math.round((subject.priority || 5) / 2)));
+}
+
+function getCycleRepeatTarget(level: SubjectLevel, stage: CycleStage) {
+  if (stage === 'simulado' || stage === 'revisao') return 1;
+  if (stage === 'teoria') return level === 'basico' ? 2 : 1;
+  if (level === 'avancado') return 3;
+  if (level === 'intermediario') return 2;
+  return 1;
+}
+
+function getInitialCycleState(): SubjectCycleState {
+  return { stageIndex: 0, stageProgress: 0 };
+}
+
+function getExpectedCycleStage(state: SubjectCycleState | undefined): CycleStage {
+  return CYCLE_ORDER[state?.stageIndex ?? 0] || 'teoria';
+}
+
+function advanceCycleState(state: SubjectCycleState | undefined, level: SubjectLevel): SubjectCycleState {
+  const current = state ? { ...state } : getInitialCycleState();
+  const stage = getExpectedCycleStage(current);
+  const target = getCycleRepeatTarget(level, stage);
+  const nextProgress = current.stageProgress + 1;
+  if (nextProgress < target) {
+    return { stageIndex: current.stageIndex, stageProgress: nextProgress };
+  }
+  return { stageIndex: (current.stageIndex + 1) % CYCLE_ORDER.length, stageProgress: 0 };
+}
+
+function getDisciplinePriorityBonus(subject: Subject) {
+  const normalized = normalize(subject.name);
+  if (normalized.includes('matematica')) return 14;
+  if (normalized.includes('portugues')) return 12;
+  if (normalized.includes('redacao')) return 10;
+  return 0;
+}
+
+export function inferSubjectMeta(subject: Subject): SubjectMeta {
+  const catalog = getEnemDisciplineByName(subject.name);
+  const area = canonicalArea(
+    (subject.area ? resolveAreaFromName(subject.area) : undefined) ||
+      (catalog?.area as SubjectArea | undefined) ||
+      resolveAreaFromName(subject.name)
+  );
+  const nivel = resolveLevel(subject, catalog?.nivel);
+  const pesoNoExame = resolvePesoNoExame(subject, catalog?.pesoNoExame);
+
+  return {
+    area,
+    nivel,
+    pesoNoExame,
+    prerequisitos:
+      Array.isArray(subject.prerequisitos) && subject.prerequisitos.length > 0
+        ? subject.prerequisitos
+        : catalog?.topics,
+  };
 }
 
 const phaseForWeek = (weekIndex: number) => {
@@ -177,22 +269,12 @@ function computeBlockMinutes(
 }
 
 function pickTaskType(
-  phaseKey: string,
-  lastType: SessionType | undefined,
+  level: SubjectLevel,
+  cycleState: SubjectCycleState | undefined,
   hasLesson: boolean
 ): SessionType {
-  if (!hasLesson) {
-    return 'teoria';
-  }
-  if (phaseKey === 'base') {
-    if (lastType === 'teoria') return 'pratica';
-    return 'teoria';
-  }
-  if (phaseKey === 'aprofundamento') {
-    if (lastType === 'pratica') return 'teoria';
-    return 'pratica';
-  }
-  return lastType === 'pratica' ? 'simulado' : 'pratica';
+  if (!hasLesson) return 'teoria';
+  return getExpectedCycleStage(cycleState);
 }
 
 const SESSION_TO_BLOCK_TYPE: Record<SessionType, StudyBlockType> = {
@@ -288,8 +370,10 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
     const daysSinceStart = Math.floor(
       (date.getTime() - config.startDate.getTime()) / (1000 * 60 * 60 * 24)
     );
+    const plannedLessonsTotal = Array.from(plannedLessonsBySubject.values()).reduce((sum, count) => sum + count, 0);
+    const effectiveLessonsTotal = completedLessonsTotal + plannedLessonsTotal;
     if (daysSinceStart < simuladoRules.minDaysBeforeAreaSimulated) return false;
-    if (completedLessonsTotal < simuladoRules.minLessonsBeforeAreaSimulated) return false;
+    if (effectiveLessonsTotal < simuladoRules.minLessonsBeforeAreaSimulated) return false;
     return true;
   };
 
@@ -297,11 +381,15 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
     const daysSinceStart = Math.floor(
       (date.getTime() - config.startDate.getTime()) / (1000 * 60 * 60 * 24)
     );
+    const plannedLessonsTotal = Array.from(plannedLessonsBySubject.values()).reduce((sum, count) => sum + count, 0);
+    const effectiveLessonsTotal = completedLessonsTotal + plannedLessonsTotal;
     if (daysSinceStart < simuladoRules.minDaysBeforeSimulated) return false;
-    if (completedLessonsTotal < simuladoRules.minLessonsBeforeSimulated) return false;
+    if (effectiveLessonsTotal < simuladoRules.minLessonsBeforeSimulated) return false;
     if (simuladoRules.minLessonsPerSubject && primarySubjects.length > 0) {
       const ready = primarySubjects.every(
-        (subjectId) => (completedLessonsBySubject[subjectId] || 0) >= simuladoRules.minLessonsPerSubject!
+        (subjectId) =>
+          (completedLessonsBySubject[subjectId] || 0) + (plannedLessonsBySubject.get(subjectId) || 0) >=
+          simuladoRules.minLessonsPerSubject!
       );
       if (!ready) return false;
     }
@@ -353,14 +441,14 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
   const phaseByDate: Record<string, string> = {};
   const reviewQueue = new Map<string, string[]>();
   const plannedLessonsBySubject = new Map<string, number>();
-  const plannedReviewsBySubject = new Map<string, number>();
   const blocks: StudyBlock[] = [];
-  const lastTypeBySubject = new Map<string, SessionType>();
+  const cycleStateBySubject = new Map<string, SubjectCycleState>();
   const globalUsage = new Map<string, number>();
   const globalRecentSubjects: string[] = [];
   let globalLastSubjectId = '';
   let areaCursor = 0;
   let lastDaySubjects: Set<string> = new Set();
+  const maxDailyRepeatsPerSubject = isEnemGoal(config.preferences.goal) ? 1 : 2;
 
   for (const date of dates) {
     if (excludeDays.includes(date.getDay())) continue;
@@ -394,7 +482,7 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
 
       let candidatePool = config.subjects.filter((subject) => {
         const count = dailyCount.get(subject.id) || 0;
-        return count < 2;
+        return count < maxDailyRepeatsPerSubject;
       });
 
       if (candidatePool.length === 0) break;
@@ -438,6 +526,7 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
           if (sameArea) score += 12;
           if (!sameSubject) score += 8;
           if (!hasLesson) score += 18;
+          score += getDisciplinePriorityBonus(subject);
           score += recentPenalty + globalPenalty + prevDayPenalty;
           if (bucket === 'manha' && meta.nivel === 'avancado') score += 6;
           if (bucket === 'noite' && meta.nivel === 'basico') score += 4;
@@ -454,33 +543,52 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
       const alreadyHasLesson =
         (completedLessonsBySubject[chosen.subject.id] || 0) > 0 ||
         (plannedLessonsBySubject.get(chosen.subject.id) || 0) > 0;
+      const expectedCycleStage = pickTaskType(
+        meta.nivel,
+        cycleStateBySubject.get(chosen.subject.id),
+        alreadyHasLesson
+      );
+      let cycleStageMatched = false;
+      let queuedReviewOverride = false;
 
       if (reviewIndex.get(chosen.subject.id) && alreadyHasLesson) {
         sessionType = 'revisao';
         reviewIndex.set(chosen.subject.id, (reviewIndex.get(chosen.subject.id) || 1) - 1);
         blocksSinceReview = 0;
+        queuedReviewOverride = expectedCycleStage !== 'revisao';
+        cycleStageMatched = expectedCycleStage === 'revisao';
       } else if (blocksSinceReview >= 3 && recentSubjects.length >= 2 && alreadyHasLesson) {
         sessionType = 'revisao';
         blocksSinceReview = 0;
+        queuedReviewOverride = expectedCycleStage !== 'revisao';
+        cycleStageMatched = expectedCycleStage === 'revisao';
       } else {
-        sessionType = pickTaskType(phase.key, lastTypeBySubject.get(chosen.subject.id), alreadyHasLesson);
-        lastTypeBySubject.set(chosen.subject.id, sessionType);
-        blocksSinceReview += 1;
+        sessionType = expectedCycleStage;
+        cycleStageMatched = true;
+        if (sessionType !== 'revisao') {
+          blocksSinceReview += 1;
+        } else {
+          blocksSinceReview = 0;
+        }
       }
 
       if (!alreadyHasLesson && sessionType !== 'teoria') {
         sessionType = 'teoria';
+        cycleStageMatched = expectedCycleStage === 'teoria';
       }
 
       if (sessionType === 'simulado') {
         const shouldArea = canScheduleSimuladoArea(date);
         const shouldCompleto = canScheduleSimuladoCompleto(date);
         if (!shouldArea && !shouldCompleto) {
-          sessionType = 'pratica';
+          // Keep the cycle waiting for simulado and reinforce with practice meanwhile.
+          sessionType = alreadyHasLesson ? 'pratica' : 'teoria';
+          cycleStageMatched = false;
         }
       }
       if (sessionType === 'pratica' && !alreadyHasLesson) {
         sessionType = 'teoria';
+        cycleStageMatched = expectedCycleStage === 'teoria';
       }
 
       let blockType = SESSION_TO_BLOCK_TYPE[sessionType];
@@ -490,11 +598,11 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
         blockType = useCompleto ? 'SIMULADO_COMPLETO' : 'SIMULADO_AREA';
         if (blockType === 'SIMULADO_AREA') {
           simuladoAreaLabel =
-            meta.area === 'exatas'
+            meta.area === 'matematica' || meta.area === 'exatas'
               ? 'Matematica'
               : meta.area === 'humanas'
               ? 'Humanas'
-              : meta.area === 'biologicas'
+              : meta.area === 'natureza' || meta.area === 'biologicas'
               ? 'Natureza'
               : meta.area === 'linguagens'
               ? 'Linguagens'
@@ -557,12 +665,23 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
         lastSimuladoDate = new Date(date);
       }
 
+      if (
+        cycleStageMatched &&
+        !queuedReviewOverride &&
+        (sessionType === expectedCycleStage || (expectedCycleStage === 'simulado' && sessionType === 'simulado'))
+      ) {
+        cycleStateBySubject.set(
+          chosen.subject.id,
+          advanceCycleState(cycleStateBySubject.get(chosen.subject.id), meta.nivel)
+        );
+      }
+
       if (sessionType === 'teoria') {
         plannedLessonsBySubject.set(
           chosen.subject.id,
           (plannedLessonsBySubject.get(chosen.subject.id) || 0) + 1
         );
-        const offsets = [1, 7, 30];
+        const offsets = [2, 7, 21];
         offsets.forEach((offset) => {
           const reviewDate = new Date(date);
           reviewDate.setDate(reviewDate.getDate() + offset);

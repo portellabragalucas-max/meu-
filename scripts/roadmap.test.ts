@@ -1,4 +1,5 @@
 import { generateChronologicalSchedule } from '../src/services/roadmapEngine';
+import { createEnemSubjectBank } from '../src/lib/enemCatalog';
 import type { StudyPreferences, Subject } from '../src/types';
 import assert from 'node:assert';
 
@@ -174,3 +175,13 @@ if (firstSimulado) {
   const nextBlock = advancedBlocks[nextIndex];
   assert.ok(nextBlock && nextBlock.type === 'ANALISE', 'analysis should follow simulado');
 }
+
+const enemBank = createEnemSubjectBank('user1');
+const enemNames = new Set(enemBank.map((subject) => subject.name));
+assert.ok(enemNames.has('Matematica'), 'ENEM bank should include Matematica');
+assert.ok(enemNames.has('Portugues (Interpretacao)'), 'ENEM bank should include Portugues (Interpretacao)');
+assert.ok(enemNames.has('Tecnologias da Comunicacao'), 'ENEM bank should include Tecnologias da Comunicacao');
+assert.ok(!enemNames.has('Linguagens'), 'ENEM bank should not include generic Linguagens');
+assert.ok(!enemNames.has('Natureza'), 'ENEM bank should not include generic Natureza');
+
+console.log('enem structure tests passed');

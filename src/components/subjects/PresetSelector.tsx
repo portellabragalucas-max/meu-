@@ -19,6 +19,7 @@ import {
 import { Card, Button } from '@/components/ui';
 import { PresetConfigWizard } from '@/components/onboarding';
 import { cn } from '@/lib/utils';
+import { getEnemPresetSubjects } from '@/lib/enemCatalog';
 import type { PresetWizardAnswers, StudyPreferences, UserSettings } from '@/types';
 
 interface Preset {
@@ -115,6 +116,27 @@ const mockPresets: Preset[] = [
   },
 ];
 
+function getOfficialEnemMockPresets() {
+  const enemSubjects = getEnemPresetSubjects().map((subject, index) => ({
+    id: String(index + 1),
+    name: subject.name,
+    priority: subject.priority,
+    difficulty: subject.difficulty,
+    recommendedWeeklyHours: subject.recommendedWeeklyHours,
+  }));
+
+  return mockPresets.map((preset) =>
+    preset.id === 'enem'
+      ? {
+          ...preset,
+          description:
+            'Preparacao completa ENEM organizada por areas oficiais e disciplinas reais (Linguagens, Matematica, Natureza e Humanas)',
+          subjects: enemSubjects,
+        }
+      : preset
+  );
+}
+
 export default function PresetSelector({
   onImport,
   onSkip,
@@ -143,12 +165,12 @@ export default function PresetSelector({
           setPresetSource('api');
         } else {
           // Use mock data if API returns empty or fails
-          setPresets(mockPresets);
+          setPresets(getOfficialEnemMockPresets());
           setPresetSource('local');
         }
       } catch (err) {
         // Use mock data on error
-        setPresets(mockPresets);
+        setPresets(getOfficialEnemMockPresets());
         setPresetSource('local');
       } finally {
         setIsLoading(false);

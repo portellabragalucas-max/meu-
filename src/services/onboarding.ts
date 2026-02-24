@@ -1,4 +1,5 @@
 import { generateWeeklySchedule } from './studyAlgorithm';
+import { createEnemSubjectBank } from '@/lib/enemCatalog';
 import type {
   OnboardingAnswers,
   UserProfileDTO,
@@ -76,10 +77,14 @@ export function configureProfileFromAnswers(
     answers.study_days >= 6 ? 'high' : answers.daily_hours === '<1' ? 'light' : 'standard';
   const practice_weight = answers.learning_style === 'exercicios' ? 1.3 : 1;
 
-  const focus_subjects =
+  let focus_subjects =
     answers.daily_hours === '<1'
       ? goalPresets[answers.study_goal]?.subjects.slice(0, 2) ?? []
       : goalPresets[answers.study_goal]?.subjects ?? [];
+  if (answers.study_goal === 'ENEM') {
+    const enemSubjects = createEnemSubjectBank('local-demo').map((subject) => subject.name);
+    focus_subjects = answers.daily_hours === '<1' ? enemSubjects.slice(0, 2) : enemSubjects;
+  }
 
   const studyPrefs: StudyPreferences = {
     hoursPerDay: dailyHours,
@@ -103,6 +108,9 @@ export function configureProfileFromAnswers(
 }
 
 function createSubjectsFromGoal(goal: GoalKey): Subject[] {
+  if (goal === 'ENEM') {
+    return createEnemSubjectBank('local-demo');
+  }
   const preset = goalPresets[goal];
   if (!preset) return [];
 

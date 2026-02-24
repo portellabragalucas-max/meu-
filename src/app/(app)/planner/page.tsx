@@ -12,6 +12,8 @@ import { WeeklyPlanner } from '@/components/planner';
 import { generateChronologicalSchedule, getPhaseForDate } from '@/services/roadmapEngine';
 import { useLocalStorage } from '@/hooks';
 import { cn, getWeekStart, timeToMinutes, minutesToTime } from '@/lib/utils';
+import { getStudyBlockTypeLabel } from '@/lib/studyBlockLabels';
+import { isEnemGoal, upgradeSubjectsToOfficialEnemStructure } from '@/lib/enemCatalog';
 import type {
   AnalyticsStore,
   StudyBlock,
@@ -71,7 +73,7 @@ const buildDailyLimitByDate = (
 };
 
 export default function PlannerPage() {
-  const [subjects] = useLocalStorage<Subject[]>('nexora_subjects', []);
+  const [subjects, setSubjects] = useLocalStorage<Subject[]>('nexora_subjects', []);
   const [studyPrefs] = useLocalStorage<StudyPreferences>('nexora_study_prefs', {
     hoursPerDay: 2,
     daysOfWeek: [1, 2, 3, 4, 5],
@@ -104,6 +106,30 @@ export default function PlannerPage() {
     () => (scheduleRange?.endDate ? parseLocalKey(scheduleRange.endDate) : null),
     [scheduleRange?.endDate]
   );
+
+  useEffect(() => {
+    if (!isEnemGoal(studyPrefs.goal)) return;
+    if (subjects.length === 0) return;
+
+    const upgraded = upgradeSubjectsToOfficialEnemStructure(subjects);
+    const changed =
+      upgraded.length !== subjects.length ||
+      upgraded.some((subject, index) => {
+        const current = subjects[index];
+        if (!current) return true;
+        return (
+          subject.id !== current.id ||
+          subject.name !== current.name ||
+          subject.area !== current.area ||
+          subject.pesoNoExame !== current.pesoNoExame ||
+          subject.icon !== current.icon
+        );
+      });
+
+    if (changed) {
+      setSubjects(upgraded);
+    }
+  }, [studyPrefs.goal, subjects, setSubjects]);
 
   const activeDaysFromSettings = useMemo(() => {
     if (userSettings.dailyHoursByWeekday) {
@@ -648,14 +674,14 @@ export default function PlannerPage() {
                     <p className="truncate text-sm font-medium text-white">{item.subject.name}</p>
                   </div>
                   <span className="shrink-0 text-xs text-text-muted">
-                    Proximo: {item.nextBlock?.type ?? 'AULA'}
+                    Proximo: {getStudyBlockTypeLabel(item.nextBlock?.type, item.nextBlock?.sessionType) ?? 'Aula'}
                   </span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs text-text-secondary">
                   <span>Aula {item.counts.AULA ?? 0}</span>
                   <span>Exercicios {item.counts.EXERCICIOS ?? 0}</span>
                   <span>Revisao {item.counts.REVISAO ?? 0}</span>
-                  <span>Simulado {item.counts.SIMULADO ?? 0}</span>
+                  <span>Simulado {(item.counts.SIMULADO_AREA ?? 0) + (item.counts.SIMULADO_COMPLETO ?? 0)}</span>
                 </div>
                 {item.nextBlock?.date && (
                   <p className="mt-1 text-[11px] text-text-muted">

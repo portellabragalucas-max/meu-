@@ -13,6 +13,7 @@ import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '@/lib/auth';
 import { subjectColors } from '@/lib/utils';
+import { getEnemPresetSubjects } from '@/lib/enemCatalog';
 
 // Map preset priority (1-5) to subject priority (1-10)
 function mapPriority(presetPriority: number): number {
@@ -93,9 +94,16 @@ export async function POST(
       where: { userId },
     });
 
+    const presetSubjects =
+      preset.name.toLowerCase() === 'enem'
+        ? getEnemPresetSubjects().map((subject) => ({
+            ...subject,
+          }))
+        : preset.subjects;
+
     // Import subjects from preset
     const importedSubjects = await Promise.all(
-      preset.subjects.map((presetSubject, index) => {
+      presetSubjects.map((presetSubject, index) => {
         // Check if subject with same name already exists
         const existing = existingSubjects.find(
           (s) => s.name.toLowerCase() === presetSubject.name.toLowerCase()

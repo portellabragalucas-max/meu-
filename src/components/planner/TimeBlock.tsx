@@ -10,6 +10,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
 import { GripVertical, Coffee, Trash2, Edit, Play, BookOpen, PenTool, Repeat, Timer } from 'lucide-react';
 import { cn, formatDuration } from '@/lib/utils';
+import { getStudyBlockDisplayTitle } from '@/lib/studyBlockLabels';
 import type { StudyBlock } from '@/types';
 
 interface TimeBlockProps {
@@ -103,7 +104,7 @@ export default function TimeBlock({
               />
             )}
             <h4 className="font-medium text-white truncate">
-              {block.isBreak ? 'Intervalo' : block.subject?.name || 'Bloco de Estudo'}
+              {getStudyBlockDisplayTitle(block)}
             </h4>
           </div>
 

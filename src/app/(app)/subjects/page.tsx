@@ -13,6 +13,11 @@ import { SubjectCard, SubjectForm, PresetSelector } from '@/components/subjects'
 import { EmptySubjects } from '@/components/onboarding';
 import { useOnboarding, useLocalStorage } from '@/hooks';
 import { generateId } from '@/lib/utils';
+import {
+  createEnemSubjectBank,
+  isEnemGoal,
+  upgradeSubjectsToOfficialEnemStructure,
+} from '@/lib/enemCatalog';
 import type { PresetWizardAnswers, Subject, StudyPreferences, UserSettings } from '@/types';
 import { defaultSettings } from '@/lib/defaultSettings';
 
@@ -72,6 +77,30 @@ export default function SubjectsPage() {
       setAutoOpenedPresetSelector(true);
     }
   }, [subjects.length, hasAddedFirstSubject, autoOpenedPresetSelector]);
+
+  useEffect(() => {
+    if (!isEnemGoal(studyPrefs.goal)) return;
+    if (subjects.length === 0) return;
+
+    const upgraded = upgradeSubjectsToOfficialEnemStructure(subjects);
+    const changed =
+      upgraded.length !== subjects.length ||
+      upgraded.some((subject, index) => {
+        const current = subjects[index];
+        if (!current) return true;
+        return (
+          subject.id !== current.id ||
+          subject.name !== current.name ||
+          subject.area !== current.area ||
+          subject.pesoNoExame !== current.pesoNoExame ||
+          subject.icon !== current.icon
+        );
+      });
+
+    if (changed) {
+      setSubjects(upgraded);
+    }
+  }, [studyPrefs.goal, subjects, setSubjects]);
 
   // Mock presets data for local import (when database is not configured)
   const mockPresetsData: Record<string, { name: string; priority: number; difficulty: number; targetHours: number }[]> = {
@@ -152,11 +181,15 @@ export default function SubjectsPage() {
                 createdAt: new Date(s.createdAt),
                 updatedAt: new Date(s.updatedAt),
               }));
+              const normalizedImported =
+                presetId === 'enem' || isEnemGoal(studyPrefs.goal)
+                  ? upgradeSubjectsToOfficialEnemStructure(importedSubjects)
+                  : importedSubjects;
 
               if (subjects.length > 0) {
-                setSubjects((prev) => [...prev, ...importedSubjects]);
+                setSubjects((prev) => [...prev, ...normalizedImported]);
               } else {
-                setSubjects(importedSubjects);
+                setSubjects(normalizedImported);
               }
               
               setShowPresetSelector(false);
@@ -174,23 +207,26 @@ export default function SubjectsPage() {
         throw new Error('Preset não encontrado');
       }
 
-      const importedSubjects: Subject[] = presetData.map((s, index) => ({
-        id: generateId(),
-        userId: 'user1',
-        name: s.name,
-        color: subjectColors[index % subjectColors.length],
-        icon: 'book',
-        priority: s.priority,
-        difficulty: s.difficulty,
-        targetHours: s.targetHours,
-        completedHours: 0,
-        totalHours: 0,
-        sessionsCount: 0,
-        averageScore: 0,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }));
+      const importedSubjects: Subject[] =
+        presetId === 'enem'
+          ? createEnemSubjectBank('user1')
+          : presetData.map((s, index) => ({
+              id: generateId(),
+              userId: 'user1',
+              name: s.name,
+              color: subjectColors[index % subjectColors.length],
+              icon: 'book',
+              priority: s.priority,
+              difficulty: s.difficulty,
+              targetHours: s.targetHours,
+              completedHours: 0,
+              totalHours: 0,
+              sessionsCount: 0,
+              averageScore: 0,
+              isActive: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }));
 
       if (subjects.length > 0) {
         setSubjects((prev) => [...prev, ...importedSubjects]);

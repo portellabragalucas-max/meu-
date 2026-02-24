@@ -8,6 +8,7 @@
 import { motion } from 'framer-motion';
 import { Clock, Play, CheckCircle2, SkipForward, Coffee } from 'lucide-react';
 import { cn, formatDuration } from '@/lib/utils';
+import { getStudyBlockDisplayTitle } from '@/lib/studyBlockLabels';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -113,7 +114,7 @@ export default function TodayPlan({
                         />
                       )}
                       <h4 className="min-w-0 break-words font-medium text-white max-[479px]:text-sm">
-                        {block.isBreak ? 'Intervalo' : block.subject?.name || 'Bloco de Estudo'}
+                        {getStudyBlockDisplayTitle(block)}
                       </h4>
                     </div>
 
