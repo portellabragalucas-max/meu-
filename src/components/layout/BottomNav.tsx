@@ -13,14 +13,14 @@ export default function BottomNav() {
   return (
     <nav
       className={cn(
-        'fixed inset-x-0 bottom-0 z-40 lg:hidden',
+        'fixed inset-x-0 bottom-0 z-40 w-full min-w-0 lg:hidden',
         'border-t border-card-border bg-background-light/92 backdrop-blur-glass'
       )}
       aria-label="Navegacao principal"
     >
       <div className="safe-area-bottom">
         <AppContainer>
-          <ul className="flex items-center justify-between gap-1 py-1.5">
+          <ul className="mx-auto flex w-full max-w-[34rem] items-center justify-between gap-1 py-1.5">
             {navItems.map((item) => {
               const isActive = isActiveRoute(item.href);
               const Icon = item.icon;

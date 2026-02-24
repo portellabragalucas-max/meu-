@@ -185,7 +185,7 @@ export default function QuickSessionModal({
                       <label className="block text-sm font-medium text-text-secondary mb-3">
                         Escolha a disciplina
                       </label>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {subjects.map((subject) => (
                           <button
                             key={subject.id}
@@ -319,7 +319,7 @@ export default function QuickSessionModal({
                     )}
 
                     {/* Controls */}
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+                    <div className="flex w-full flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center sm:gap-4">
                       <Button
                         variant="secondary"
                         onClick={stopSession}
@@ -388,7 +388,7 @@ export default function QuickSessionModal({
                     </div>
 
                     {/* Actions */}
-                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
                       <Button
                         variant="secondary"
                         className="flex-1"

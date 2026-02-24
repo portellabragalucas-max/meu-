@@ -74,7 +74,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         whileTap={disabled || loading ? undefined : { scale: 0.98 }}
         disabled={disabled || loading}
         className={cn(
-          'inline-flex items-center justify-center gap-2 whitespace-nowrap',
+          'inline-flex min-w-0 max-w-full items-center justify-center gap-2 whitespace-nowrap',
           'transition-all duration-200',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           variantStyles[variant],

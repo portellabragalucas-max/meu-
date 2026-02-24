@@ -7,12 +7,12 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, BookOpen, Search, Filter } from 'lucide-react';
+import { Plus, BookOpen, Search } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { SubjectCard, SubjectForm, PresetSelector } from '@/components/subjects';
 import { EmptySubjects } from '@/components/onboarding';
 import { useOnboarding, useLocalStorage } from '@/hooks';
-import { cn, generateId } from '@/lib/utils';
+import { generateId } from '@/lib/utils';
 import type { PresetWizardAnswers, Subject, StudyPreferences, UserSettings } from '@/types';
 import { defaultSettings } from '@/lib/defaultSettings';
 
@@ -326,8 +326,8 @@ export default function SubjectsPage() {
       className="app-page"
     >
       {/* Cabeçalho */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-heading font-bold text-white">
             Disciplinas
           </h1>
@@ -366,9 +366,9 @@ export default function SubjectsPage() {
       {/* Barra de Estatísticas */}
       {subjects.length > 0 && (
         <Card padding="sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             {/* Busca */}
-            <div className="relative w-full sm:w-auto">
+            <div className="relative w-full min-w-0 sm:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
               <input
                 type="text"
@@ -380,7 +380,7 @@ export default function SubjectsPage() {
             </div>
 
             {/* Resumo das Estatísticas */}
-            <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm">
+            <div className="flex min-w-0 flex-wrap items-center gap-4 text-sm sm:gap-6">
               <div>
                 <span className="text-text-secondary">Total: </span>
                 <span className="font-bold text-white">{subjects.length}</span>
@@ -403,8 +403,8 @@ export default function SubjectsPage() {
       {/* Preset Selector */}
       {showPresetSelector ? (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h2 className="text-xl font-heading font-bold text-white">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="min-w-0 text-xl font-heading font-bold text-white">
               Selecionar Predefinição
             </h2>
             <Button
@@ -443,10 +443,10 @@ export default function SubjectsPage() {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+          className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3"
         >
           {sortedSubjects.map((subject) => (
-            <motion.div key={subject.id} variants={itemVariants}>
+            <motion.div key={subject.id} variants={itemVariants} className="min-w-0">
               <SubjectCard
                 subject={subject}
                 onEdit={handleEditSubject}

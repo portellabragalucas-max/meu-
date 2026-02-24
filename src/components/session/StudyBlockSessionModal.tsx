@@ -220,7 +220,7 @@ export default function StudyBlockSessionModal({
               <X className="w-5 h-5" />
             </button>
 
-            <div className="text-center space-y-4">
+            <div className="space-y-4 text-center">
               <div className="w-14 h-14 rounded-2xl bg-neon-blue/20 flex items-center justify-center mx-auto">
                 {block.isBreak ? (
                   <Coffee className="w-6 h-6 text-neon-cyan" />
@@ -229,7 +229,7 @@ export default function StudyBlockSessionModal({
                 )}
               </div>
               <div>
-                <h2 className="text-2xl font-heading font-bold text-white">
+                <h2 className="break-words text-2xl font-heading font-bold text-white">
                   {subjectName}
                 </h2>
                 <p className="text-sm text-text-secondary">

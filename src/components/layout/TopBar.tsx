@@ -78,12 +78,12 @@ function TopBarMobile({
   notificationButtonRef,
 }: TopBarMobileProps) {
   return (
-    <AppContainer className="flex h-14 items-center justify-between gap-3 lg:hidden">
-      <div className="min-w-0">
+    <AppContainer className="flex h-14 min-w-0 items-center justify-between gap-3 lg:hidden">
+      <div className="min-w-0 flex-1">
         <h1 className="truncate text-base font-heading font-semibold text-white">{routeTitle}</h1>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         <motion.button
           ref={notificationButtonRef}
           whileTap={{ scale: 0.94 }}
@@ -130,9 +130,9 @@ function TopBarDesktop({
   notificationButtonRef,
 }: TopBarDesktopProps) {
   return (
-    <AppContainer className="hidden h-16 items-center justify-between gap-3 lg:flex">
-      <div className="flex min-w-0 items-center gap-4">
-        <div className="relative w-72 min-w-0">
+    <AppContainer className="hidden h-16 min-w-0 items-center gap-3 lg:flex">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="relative w-full min-w-0 max-w-xs xl:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
           <input
             type="text"
@@ -142,14 +142,14 @@ function TopBarDesktop({
         </div>
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="hidden shrink-0 items-center gap-4 2xl:gap-6 xl:flex">
         <motion.div whileHover={{ scale: 1.05 }} className="flex cursor-pointer items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/20">
             <Flame className="h-4 w-4 text-orange-500" />
           </div>
           <div className="text-sm">
             <span className="font-bold text-white">{user.streak}</span>
-            <span className="ml-1 text-text-secondary">dias seguidos</span>
+            <span className="ml-1 hidden text-text-secondary 2xl:inline">dias seguidos</span>
           </div>
         </motion.div>
 
@@ -178,7 +178,7 @@ function TopBarDesktop({
               </defs>
             </svg>
           </div>
-          <div className="text-sm">
+          <div className="hidden text-sm 2xl:block">
             <div className="font-bold text-white">Nivel {user.level}</div>
             <div className="text-xs text-text-secondary">
               {formatNumber(user.xp)} / {formatNumber(user.xpToNextLevel)} XP
@@ -187,15 +187,16 @@ function TopBarDesktop({
         </motion.div>
       </div>
 
-      <div className="flex min-w-0 items-center justify-end gap-3">
+      <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 xl:gap-3">
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={onOpenQuickSession}
-          className="btn-primary flex min-h-[44px] items-center gap-2 px-4 py-2 text-sm"
+          className="btn-primary flex min-h-[44px] items-center gap-2 px-3 xl:px-4 py-2 text-sm"
         >
           <Plus className="h-4 w-4" />
-          <span>Sessao Rapida</span>
+          <span className="hidden xl:inline">Sessao Rapida</span>
+          <span className="xl:hidden">Sessao</span>
         </motion.button>
 
         <motion.button
@@ -215,7 +216,7 @@ function TopBarDesktop({
         <motion.button
           type="button"
           whileHover={{ scale: 1.05 }}
-          className="flex max-w-full cursor-pointer items-center gap-3 rounded-xl p-2 transition-colors hover:bg-card-bg"
+          className="flex max-w-full cursor-pointer items-center gap-2 xl:gap-3 rounded-xl p-2 transition-colors hover:bg-card-bg"
           onClick={() => signOut({ callbackUrl: '/login' })}
           aria-label="Sair da conta"
         >
@@ -232,7 +233,9 @@ function TopBarDesktop({
               <User className="h-4 w-4 text-white" />
             </div>
           )}
-          <span className="text-sm font-medium text-white">{user.name}</span>
+          <span className="hidden max-w-[10rem] truncate text-sm font-medium text-white 2xl:inline">
+            {user.name}
+          </span>
           <LogOut className="h-4 w-4 text-text-muted" />
         </motion.button>
       </div>
@@ -364,9 +367,9 @@ export default function TopBar({ user }: TopBarProps) {
 
   const notificationsPanelContent = (
     <>
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-semibold text-white">Notificacoes</p>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
           {unreadCount > 0 && (
             <button
               type="button"
@@ -399,12 +402,12 @@ export default function TopBar({ user }: TopBarProps) {
                 item.read ? 'border-card-border' : 'border-neon-cyan/35'
               )}
             >
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium text-white">{item.title}</p>
+              <div className="flex min-w-0 items-start justify-between gap-2">
+                <p className="min-w-0 flex-1 break-words text-sm font-medium text-white">{item.title}</p>
                 {!item.read && <span className="mt-1 h-2 w-2 rounded-full bg-neon-cyan" />}
               </div>
               {item.message ? (
-                <p className="mt-1 text-xs text-text-secondary">{item.message}</p>
+                <p className="mt-1 break-words text-xs text-text-secondary">{item.message}</p>
               ) : null}
               <p className="mt-2 text-[11px] text-text-muted">{formatNotificationDate(item.createdAt)}</p>
             </button>
@@ -462,7 +465,7 @@ export default function TopBar({ user }: TopBarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-card-border bg-background-light/85 backdrop-blur-glass">
+      <header className="sticky top-0 z-30 w-full min-w-0 border-b border-card-border bg-background-light/85 backdrop-blur-glass">
         <div className="safe-area-top">
           <TopBarMobile
             routeTitle={routeTitle}

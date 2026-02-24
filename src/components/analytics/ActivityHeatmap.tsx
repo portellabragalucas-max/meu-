@@ -65,8 +65,8 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
 
   return (
     <Card className="h-full">
-      <div className="flex flex-col gap-4 max-[479px]:gap-2 sm:flex-row sm:items-center sm:justify-between mb-6 max-[479px]:mb-4">
-        <div>
+      <div className="mb-6 flex min-w-0 flex-col gap-4 max-[479px]:mb-4 max-[479px]:gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h2 className="text-xl max-[479px]:text-lg font-heading font-bold text-white">
             Mapa de Atividades
           </h2>
@@ -74,7 +74,7 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
             Sua consistência de estudos nas últimas {weeks} semanas
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 max-[479px]:gap-2 sm:gap-4 text-sm max-[479px]:text-xs">
+        <div className="flex flex-wrap items-center gap-3 text-sm max-[479px]:gap-2 max-[479px]:text-xs sm:gap-4">
           <div>
             <span className="text-text-secondary">Total: </span>
             <span className="font-bold text-white">{totalHours.toFixed(1)}h</span>
@@ -87,7 +87,7 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
       </div>
 
       <div className="max-w-full overflow-hidden">
-        <div className="w-full">
+        <div className="w-full min-w-0">
           <div className="flex mb-2 max-[479px]:mb-1.5 ml-8 max-[479px]:ml-6">
             {dayLabels.map((day, i) => (
               <div

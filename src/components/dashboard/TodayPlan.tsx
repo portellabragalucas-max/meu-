@@ -100,10 +100,10 @@ export default function TodayPlan({
                   />
                 )}
 
-                <div className="flex flex-col gap-3 max-[479px]:gap-2 md:flex-row md:items-start md:justify-between ml-2">
-                  <div className="flex-1">
+                <div className="ml-2 flex min-w-0 flex-col gap-3 max-[479px]:gap-2 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0 flex-1">
                     {/* Título do Bloco */}
-                    <div className="flex items-center gap-2 max-[479px]:gap-1.5">
+                    <div className="flex min-w-0 items-center gap-2 max-[479px]:gap-1.5">
                       {block.isBreak ? (
                         <Coffee className="w-4 h-4 max-[479px]:w-3.5 max-[479px]:h-3.5 text-neon-cyan" />
                       ) : (
@@ -112,7 +112,7 @@ export default function TodayPlan({
                           style={{ backgroundColor: block.subject?.color || '#00B4FF' }}
                         />
                       )}
-                      <h4 className="font-medium text-white break-words max-[479px]:text-sm">
+                      <h4 className="min-w-0 break-words font-medium text-white max-[479px]:text-sm">
                         {block.isBreak ? 'Intervalo' : block.subject?.name || 'Bloco de Estudo'}
                       </h4>
                     </div>
@@ -130,7 +130,7 @@ export default function TodayPlan({
                       {config.label}
                     </Badge>
 
-                    <div className="flex flex-wrap gap-2 max-[479px]:gap-1.5 w-full md:w-auto justify-start md:justify-end">
+                    <div className="flex w-full flex-wrap justify-start gap-2 max-[479px]:gap-1.5 md:w-auto md:justify-end">
                       {onStartBlock && (
                         <Button
                           variant={block.isBreak ? 'secondary' : 'primary'}

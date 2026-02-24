@@ -50,6 +50,8 @@ html {
   scroll-behavior: smooth;
   height: 100%;
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 body {
@@ -72,6 +74,14 @@ body {
 body > * {
   min-width: 0;
   max-width: 100%;
+}
+
+main,
+section,
+article,
+header,
+footer {
+  min-width: 0;
 }
 
 img,
@@ -201,7 +211,9 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .app-modal-panel {
-    width: min(100%, 36rem);
+    width: min(360px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
+    margin-inline: 16px;
     max-height: calc(100dvh - 1.5rem);
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -243,6 +255,9 @@ h1, h2, h3, h4, h5, h6 {
     }
 
     .app-modal-panel {
+      width: min(100%, 36rem);
+      max-width: min(36rem, calc(100vw - 32px));
+      margin-inline: auto;
       max-height: calc(100dvh - 2rem);
       border-radius: 22px;
     }
@@ -378,7 +393,7 @@ h1, h2, h3, h4, h5, h6 {
   
   /* Sidebar nav item */
   .nav-item {
-    @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200;
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 border-l-[3px] border-l-transparent;
     color: var(--text-secondary);
   }
   
@@ -390,7 +405,7 @@ h1, h2, h3, h4, h5, h6 {
   .nav-item.active {
     background: rgba(0, 180, 255, 0.15);
     color: var(--neon-blue);
-    border-left: 3px solid var(--neon-blue);
+    border-left-color: var(--neon-blue);
   }
   
   /* Progress bar */

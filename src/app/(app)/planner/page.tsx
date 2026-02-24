@@ -560,18 +560,18 @@ export default function PlannerPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="app-page min-h-0 pb-2 sm:pb-4"
+      className="app-page min-h-0 min-w-0 pb-2 sm:pb-4"
     >
       {isMobile && !showRoadmap && (
         <button
-          className="flex items-center gap-2 rounded-full border border-neon-cyan/30 bg-slate-900/60 px-3 py-2 text-xs text-neon-cyan shadow-sm"
+          className="flex min-w-0 items-center gap-2 rounded-full border border-neon-cyan/30 bg-slate-900/60 px-3 py-2 text-xs text-neon-cyan shadow-sm"
           onClick={() => setShowRoadmap(true)}
           aria-label="Abrir trilha de aprovação"
         >
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-neon-cyan/15 text-neon-cyan">
             <MapIcon className="h-4 w-4" />
           </span>
-          <span>Base (Fundamentos)</span>
+          <span className="min-w-0 truncate">Base (Fundamentos)</span>
         </button>
       )}
 
@@ -581,11 +581,11 @@ export default function PlannerPage() {
           animate={{ opacity: 1, y: 0 }}
           className="rounded-2xl border border-neon-cyan/20 bg-slate-900/60 p-3 sm:p-4 shadow-lg"
         >
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-              <div>
+          <div className="flex min-w-0 flex-col gap-4">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="min-w-0">
                 <p className="text-xs text-text-secondary">Trilha de Aprovacao</p>
-                <h3 className="text-lg font-semibold text-white">{phaseInfo.label}</h3>
+                <h3 className="break-words text-lg font-semibold text-white">{phaseInfo.label}</h3>
                 <p className="text-xs text-text-muted">
                   Alternancia inteligente de areas + revisao espacada para melhor retencao.
                 </p>
@@ -593,7 +593,7 @@ export default function PlannerPage() {
                   IA: <span className="text-white font-medium">{aiModeLabel}</span>
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="px-3 py-1 rounded-full bg-neon-purple/10 border border-neon-purple/30 text-neon-purple text-xs">
                   Roadmap ativo
                 </div>
@@ -609,8 +609,8 @@ export default function PlannerPage() {
               </div>
             </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-white/5 bg-white/5 p-3">
-            <div>
+          <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-white/5 bg-white/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <p className="text-xs text-text-secondary">Primeiro ciclo completo</p>
               <p className="text-sm text-text-muted">
                 Garante 1 aula de cada materia antes de repetir.
@@ -633,21 +633,21 @@ export default function PlannerPage() {
             </button>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid min-w-0 gap-3 md:grid-cols-2">
             {roadmapSummary.map((item) => (
               <div
                 key={item.subject.id}
                 className="rounded-xl border border-white/5 bg-slate-900/50 p-3"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
                     <span
                       className="inline-flex h-2 w-2 rounded-full"
                       style={{ backgroundColor: item.subject.color }}
                     />
-                    <p className="text-sm font-medium text-white">{item.subject.name}</p>
+                    <p className="truncate text-sm font-medium text-white">{item.subject.name}</p>
                   </div>
-                  <span className="text-xs text-text-muted">
+                  <span className="shrink-0 text-xs text-text-muted">
                     Proximo: {item.nextBlock?.type ?? 'AULA'}
                   </span>
                 </div>

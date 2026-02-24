@@ -94,17 +94,17 @@ export default function SubjectDistribution({ data }: SubjectDistributionProps) 
       </div>
 
       {/* Legenda */}
-      <div className="grid grid-cols-2 gap-2 max-[479px]:gap-1.5 mt-4 max-[479px]:mt-3">
+      <div className="mt-4 grid grid-cols-1 gap-2 max-[479px]:mt-3 max-[479px]:gap-1.5 sm:grid-cols-2">
         {dataWithPercentage.map((subject) => (
-          <div key={subject.name} className="flex items-center gap-2 max-[479px]:gap-1.5">
+          <div key={subject.name} className="flex min-w-0 items-center gap-2 max-[479px]:gap-1.5">
             <div
               className="w-3 h-3 max-[479px]:w-2.5 max-[479px]:h-2.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: subject.color }}
             />
-            <span className="text-sm max-[479px]:text-xs text-text-secondary truncate">
+            <span className="min-w-0 flex-1 truncate text-sm text-text-secondary max-[479px]:text-xs">
               {subject.name}
             </span>
-            <span className="text-sm max-[479px]:text-xs font-medium text-white ml-auto">
+            <span className="shrink-0 text-sm font-medium text-white max-[479px]:text-xs">
               {subject.hours.toFixed(1)}h
             </span>
           </div>

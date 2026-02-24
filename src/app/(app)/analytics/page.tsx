@@ -144,7 +144,7 @@ export default function AnalyticsPage() {
       className="app-page max-[479px]:[&>*+*]:mt-3"
     >
       {/* Cabeçalho */}
-      <motion.div variants={itemVariants}>
+      <motion.div variants={itemVariants} className="min-w-0">
         <h1 className="text-2xl max-[479px]:text-xl font-heading font-bold text-white">Análises</h1>
         <p className="text-sm max-[479px]:text-xs text-text-secondary mt-1">
           Acompanhe seu desempenho e progresso nos estudos
@@ -198,22 +198,22 @@ export default function AnalyticsPage() {
       </motion.div>
 
       {/* Linha de Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-[479px]:gap-3 sm:gap-6">
-        <motion.div variants={itemVariants}>
+      <div className="grid grid-cols-1 gap-4 max-[479px]:gap-3 sm:gap-6 lg:grid-cols-2">
+        <motion.div variants={itemVariants} className="min-w-0">
           <ProductivityChart data={productivityData} />
         </motion.div>
-        <motion.div variants={itemVariants}>
+        <motion.div variants={itemVariants} className="min-w-0">
           <SubjectDistribution data={subjectDistribution} />
         </motion.div>
       </div>
 
       {/* Mapa de Calor de Atividades */}
-      <motion.div variants={itemVariants}>
+      <motion.div variants={itemVariants} className="min-w-0">
         <ActivityHeatmap data={heatmapData} weeks={12} />
       </motion.div>
 
       {/* Seção de Insights */}
-      <motion.div variants={itemVariants}>
+      <motion.div variants={itemVariants} className="min-w-0">
         <Card>
           <h2 className="text-xl max-[479px]:text-lg font-heading font-bold text-white mb-4 max-[479px]:mb-3">
             Insights da IA

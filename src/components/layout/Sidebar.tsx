@@ -69,7 +69,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               data-tutorial={`nav-${item.id}`}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'nav-item group relative overflow-hidden transition-transform duration-200',
+                'nav-item group relative min-w-0 overflow-hidden transition-transform duration-200',
                 'hover:translate-x-1',
                 isActive && 'active'
               )}
@@ -88,7 +88,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               {!isCollapsed && (
                 <span
                   className={cn(
-                    'relative z-10 font-medium',
+                    'relative z-10 min-w-0 truncate font-medium',
                     isActive ? 'text-white' : 'text-text-secondary'
                   )}
                 >

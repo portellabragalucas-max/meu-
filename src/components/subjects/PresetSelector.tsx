@@ -204,9 +204,9 @@ export default function PresetSelector({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       {/* Header */}
-      <div className="text-center">
+      <div className="min-w-0 text-center">
         <h2 className="text-2xl font-heading font-bold text-white mb-2">
           Qual é seu objetivo de estudo?
         </h2>
@@ -217,7 +217,7 @@ export default function PresetSelector({
       </div>
 
       {/* Preset Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
         {presets.map((preset) => {
           const Icon = presetIcons[preset.name] || Sparkles;
           const isSelected = selectedPreset === preset.id;
@@ -242,7 +242,7 @@ export default function PresetSelector({
                   setShowWizard(false);
                 }}
               >
-                <div className="flex items-start gap-4">
+                <div className="flex min-w-0 items-start gap-4">
                   {/* Icon */}
                   <div
                     className={cn(
@@ -254,9 +254,9 @@ export default function PresetSelector({
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-lg font-heading font-bold text-white">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex min-w-0 items-center justify-between gap-2">
+                      <h3 className="min-w-0 truncate text-lg font-heading font-bold text-white">
                         {preset.name}
                       </h3>
                       {isSelected && (
@@ -269,10 +269,10 @@ export default function PresetSelector({
                         </motion.div>
                       )}
                     </div>
-                    <p className="text-sm text-text-secondary mb-2">
+                    <p className="mb-2 break-words text-sm text-text-secondary">
                       {preset.description}
                     </p>
-                    <div className="flex items-center gap-4 text-xs text-text-muted">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
                       <span>{preset.subjects.length} disciplinas</span>
                       <span>
                         {preset.subjects.reduce(
@@ -297,16 +297,16 @@ export default function PresetSelector({
                       <p className="text-xs font-medium text-text-secondary mb-3">
                         Disciplinas incluídas:
                       </p>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {preset.subjects.map((subject) => (
                           <div
                             key={subject.id}
-                            className="flex items-center justify-between p-2 rounded-lg bg-card-bg/50"
+                            className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-card-bg/50 p-2"
                           >
-                            <span className="text-xs text-white">
+                            <span className="min-w-0 truncate text-xs text-white">
                               {subject.name}
                             </span>
-                            <div className="flex items-center gap-2">
+                            <div className="flex shrink-0 items-center gap-2">
                               <span className="text-xs text-text-muted">
                                 P{subject.priority}
                               </span>
@@ -340,13 +340,13 @@ export default function PresetSelector({
               setShowWizard(false);
             }}
           >
-            <div className="flex items-start gap-4">
+            <div className="flex min-w-0 items-start gap-4">
               <div className="w-16 h-16 rounded-xl flex items-center justify-center bg-gradient-to-br from-neon-cyan/20 to-neon-blue/20">
                 <Sparkles className="w-8 h-8 text-neon-cyan" />
               </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-lg font-heading font-bold text-white">
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex min-w-0 items-center justify-between gap-2">
+                  <h3 className="min-w-0 truncate text-lg font-heading font-bold text-white">
                     Personalizado
                   </h3>
                   {selectedPreset === 'custom' && (
@@ -397,7 +397,7 @@ export default function PresetSelector({
       </Card>
 
       {/* Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <Button variant="secondary" onClick={handleSkip} className="w-full sm:w-auto">
           Pular esta etapa
         </Button>

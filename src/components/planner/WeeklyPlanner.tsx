@@ -751,10 +751,10 @@ export default function WeeklyPlanner({
   const isViewingToday = isMobile && mobileDay ? isSameDay(mobileDay, new Date()) : false;
 
   return (
-    <div className="h-full flex flex-col min-w-0">
+    <div className="flex h-full min-w-0 flex-col">
       {/* Cabeçalho */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-5 sm:mb-6">
-        <div>
+      <div className="mb-5 flex min-w-0 flex-col gap-4 sm:mb-6 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-heading font-bold text-white">
             Agenda Inteligente
           </h1>
@@ -763,7 +763,7 @@ export default function WeeklyPlanner({
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex w-full min-w-0 flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
           {/* Botão de Gerar Agenda */}
           <Button
             variant="primary"
@@ -789,17 +789,25 @@ export default function WeeklyPlanner({
 
       {/* Navegação da Semana */}
       <Card className="mb-6" padding="sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center justify-between md:justify-start gap-2">
+        <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={isMobile ? goToPreviousDay : goToPreviousWeek}
+              className="shrink-0"
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
 
-            <span className="text-base md:text-lg font-heading font-bold text-white px-2 md:px-4">
+            <span
+              className="min-w-0 flex-1 px-1 text-center text-sm font-heading font-bold leading-tight text-white sm:px-2 md:flex-none md:px-4 md:text-lg"
+              title={
+                isMobile
+                  ? formatDatePt(mobileDay)
+                  : `${formatDate(weekDates[0])} - ${formatDate(weekDates[6])}`
+              }
+            >
               {isMobile
                 ? formatDatePt(mobileDay)
                 : `${formatDate(weekDates[0])} - ${formatDate(weekDates[6])}`}
@@ -809,6 +817,7 @@ export default function WeeklyPlanner({
               variant="ghost"
               size="sm"
               onClick={isMobile ? goToNextDay : goToNextWeek}
+              className="shrink-0"
             >
               <ChevronRight className="w-4 h-4" />
             </Button>
@@ -840,7 +849,7 @@ export default function WeeklyPlanner({
 
           {/* Estatisticas da Semana */}
           {!isMobile && (
-            <div className="flex items-center justify-between md:justify-end gap-6 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4 text-sm md:justify-end md:gap-6">
               <div>
                 <span className="text-text-secondary">Total de Horas: </span>
                 <span className="font-bold text-white">
@@ -857,7 +866,7 @@ export default function WeeklyPlanner({
           )}
         </div>
         {isMobile && (
-          <div className="flex items-center justify-between text-xs text-text-secondary">
+          <div className="flex min-w-0 items-center justify-between gap-3 text-xs text-text-secondary">
             <span>
               Total: {(mobileStudyMinutes / 60).toFixed(1)}h
             </span>
@@ -867,14 +876,14 @@ export default function WeeklyPlanner({
       </Card>
 
       {/* Grade do Planner */}
-      <div className="flex-1 overflow-x-hidden md:overflow-x-auto">
+      <div className="flex-1 min-w-0 overflow-x-hidden md:overflow-x-auto">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex flex-col md:flex-row gap-3 sm:gap-4 min-h-[500px] pb-4">
+          <div className="flex min-w-0 flex-col gap-3 pb-4 sm:gap-4 md:flex-row md:items-start md:pr-1 min-h-[500px]">
             {visibleDates.map((date) => {
               const dateKey = date.toISOString().split('T')[0];
       const dayBlocks = blocksByDay.get(dateKey) || [];
@@ -970,7 +979,7 @@ export default function WeeklyPlanner({
                 )}
               </div>
 
-              <div className="flex gap-3 pt-6">
+              <div className="flex flex-col gap-3 pt-6 sm:flex-row">
                 <Button
                   variant="secondary"
                   className="flex-1"
@@ -1056,7 +1065,7 @@ export default function WeeklyPlanner({
                 )}
               </div>
 
-              <div className="flex gap-3 pt-6">
+              <div className="flex flex-col gap-3 pt-6 sm:flex-row">
                 <Button
                   variant="secondary"
                   className="flex-1"

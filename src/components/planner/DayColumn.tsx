@@ -67,7 +67,7 @@ export default function DayColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex flex-col w-full min-w-0 md:min-w-[280px] h-full',
+        'flex h-full w-full min-w-0 flex-col md:min-w-[280px]',
         'rounded-xl border bg-card-bg/50',
         isToday ? 'border-neon-blue/50' : 'border-card-border',
         isOver && 'ring-2 ring-neon-blue/30 bg-neon-blue/5'
@@ -106,7 +106,7 @@ export default function DayColumn({
         </div>
 
         {/* Estatísticas do Dia */}
-        <div className="mt-3 flex items-center justify-between gap-2 text-xs sm:text-sm">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
           <span className="text-text-secondary">
             {blocks.filter((b) => !b.isBreak).length} blocos
           </span>
@@ -117,7 +117,7 @@ export default function DayColumn({
             Capacidade: {limitHours ? `${limitHours}h` : 'livre'}
           </span>
           {onAdjustDailyLimit && (
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => onAdjustDailyLimit(date, -30)}
@@ -146,7 +146,7 @@ export default function DayColumn({
       </div>
 
       {/* Container de Blocos */}
-      <div className="flex-1 p-3 space-y-2 overflow-visible md:overflow-y-auto">
+      <div className="flex-1 space-y-2 overflow-visible p-3 md:overflow-y-auto">
         <SortableContext
           items={blocks.map((b) => b.id)}
           strategy={verticalListSortingStrategy}

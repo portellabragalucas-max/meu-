@@ -53,8 +53,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const contentStyle = isMobile
     ? undefined
     : {
-        marginLeft: contentOffset,
-        width: `calc(100% - ${contentOffset}px)`,
+        paddingLeft: contentOffset,
       };
 
   return (
@@ -70,7 +69,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Area de conteudo principal */}
       <div
         style={contentStyle}
-        className="relative flex min-h-screen w-full max-w-full min-w-0 flex-col overflow-x-hidden transition-[margin-left] duration-300 ease-in-out"
+        className="relative flex min-h-screen w-full max-w-full min-w-0 flex-col overflow-x-hidden transition-[padding-left] duration-300 ease-in-out"
       >
         {/* Barra superior */}
         <TopBar
@@ -85,7 +84,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         />
 
         {/* Conteudo da pagina */}
-        <main className="app-main-content flex-1 min-w-0 w-full max-w-full overflow-y-visible overflow-x-hidden lg:overflow-y-auto">
+        <main className="app-main-content flex-1 min-w-0 w-full max-w-full overflow-y-visible lg:overflow-y-auto">
           <AppContainer>
             <div key={pathname} className="w-full min-w-0 max-w-full">
               {children}

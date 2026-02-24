@@ -54,14 +54,14 @@ export default function WeeklyChart({ data, className }: WeeklyChartProps) {
 
   return (
     <Card className={cn('h-full', className)}>
-      <div className="flex flex-col gap-3 max-[479px]:gap-2 sm:flex-row sm:items-center sm:justify-between mb-5 max-[479px]:mb-3 sm:mb-6">
-        <div>
+      <div className="mb-5 flex min-w-0 flex-col gap-3 max-[479px]:gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h2 className="text-xl max-[479px]:text-lg font-heading font-bold text-white">Progresso Semanal</h2>
           <p className="text-sm max-[479px]:text-xs text-text-secondary mt-1">
             Horas de estudo esta semana
           </p>
         </div>
-        <div className="flex items-center gap-3 max-[479px]:gap-2 sm:gap-4">
+        <div className="flex flex-wrap items-center gap-3 max-[479px]:gap-2 sm:gap-4">
           <div className="flex items-center gap-2 max-[479px]:gap-1">
             <div className="w-3 h-3 max-[479px]:w-2.5 max-[479px]:h-2.5 rounded-full bg-gradient-to-r from-neon-blue to-neon-purple" />
             <span className="text-xs text-text-secondary">Realizado</span>
@@ -116,14 +116,14 @@ export default function WeeklyChart({ data, className }: WeeklyChartProps) {
       </div>
 
       {/* Estatísticas Rápidas */}
-      <div className="flex items-center justify-between mt-4 max-[479px]:mt-3 pt-4 max-[479px]:pt-3 border-t border-card-border">
-        <div>
+      <div className="mt-4 flex flex-wrap items-start justify-between gap-3 border-t border-card-border pt-4 max-[479px]:mt-3 max-[479px]:pt-3">
+        <div className="min-w-0">
           <p className="text-2xl max-[479px]:text-[22px] font-heading font-bold text-white">
             {data.reduce((sum, d) => sum + d.hours, 0).toFixed(1)}h
           </p>
           <p className="text-xs text-text-secondary">Total esta semana</p>
         </div>
-        <div className="text-right">
+        <div className="min-w-0 text-left sm:text-right">
           <p className="text-2xl max-[479px]:text-[22px] font-heading font-bold text-neon-cyan">
             {data.filter((d) => d.target > 0 && d.hours >= d.target).length}/7
           </p>

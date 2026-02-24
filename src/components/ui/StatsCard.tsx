@@ -75,7 +75,7 @@ export default function StatsCard({
       )}
       glow={styles.glow as 'blue' | 'purple' | 'cyan' | 'none'}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex min-w-0 items-start justify-between gap-2">
         {/* Icon */}
         <motion.div
           whileHover={{ scale: 1.1, rotate: 5 }}
@@ -117,7 +117,7 @@ export default function StatsCard({
       </div>
 
       {/* Value */}
-      <div className={cn(isMobile ? 'mt-2 max-[479px]:mt-1.5' : 'mt-3')}>
+      <div className={cn(isMobile ? 'mt-2 max-[479px]:mt-1.5' : 'mt-3', 'min-w-0')}>
         <motion.h3
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -131,13 +131,13 @@ export default function StatsCard({
         <p
           className={cn(
             isMobile ? 'text-xs max-[479px]:text-[12px]' : 'text-sm',
-            'text-text-secondary mt-1 max-[479px]:mt-0.5'
+            'mt-1 truncate text-text-secondary max-[479px]:mt-0.5'
           )}
         >
           {displayTitle}
         </p>
         {subtitle && (
-          <p className={cn(isMobile ? 'hidden sm:block text-xs text-text-muted mt-1' : 'text-xs text-text-muted mt-1')}>
+          <p className={cn(isMobile ? 'mt-1 hidden truncate text-xs text-text-muted sm:block' : 'mt-1 truncate text-xs text-text-muted')}>
             {subtitle}
           </p>
         )}

@@ -184,8 +184,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
+    <div className="flex min-h-screen w-full min-w-0 overflow-x-hidden bg-background">
+      <div className="relative hidden overflow-hidden lg:flex lg:w-1/2">
         <div className="absolute inset-0 bg-gradient-to-br from-neon-blue/20 via-background to-neon-purple/20" />
         <div
           className="absolute inset-0 opacity-30"
@@ -237,21 +237,21 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center px-4 py-6 sm:px-6 sm:py-8">
+      <div className="flex w-full min-w-0 items-center justify-center px-4 py-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-8 lg:w-1/2">
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6 }}
-          className="w-full max-w-md"
+          className="w-full min-w-0 max-w-md"
         >
-          <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
+          <div className="mb-8 flex items-center justify-center gap-3 lg:hidden">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-heading font-bold gradient-text">Nexora</span>
           </div>
 
-          <div className="glass-card p-6 sm:p-8">
+          <div className="glass-card min-w-0 p-6 sm:p-8">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-heading font-bold text-white mb-2">Bem-vindo de volta!</h2>
               <p className="text-text-secondary">Entre para continuar seus estudos</p>

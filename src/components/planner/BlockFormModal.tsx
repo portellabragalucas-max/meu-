@@ -189,9 +189,9 @@ export default function BlockFormModal({
                 <label className="block text-sm font-medium text-text-secondary mb-2">
                   Tipo
                 </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
                     onClick={() => setIsBreak(false)}
                     className={cn(
                       'flex-1 px-3 py-2 rounded-lg border text-sm transition-colors',
@@ -241,7 +241,7 @@ export default function BlockFormModal({
                 <p className="text-sm text-red-400">{error}</p>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row">
                 <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
                   Cancelar
                 </Button>

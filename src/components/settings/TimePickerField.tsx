@@ -148,7 +148,7 @@ export default function TimePickerField({
                 <h2 className="text-lg font-heading font-bold text-white mb-1">{label}</h2>
                 <p className="text-xs text-text-muted mb-5">Selecione um horario</p>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="min-w-0">
                     <label className="block text-sm font-medium text-text-secondary mb-2">Hora</label>
                     <select
@@ -181,7 +181,7 @@ export default function TimePickerField({
                   </div>
                 </div>
 
-                <div className="mt-5 grid grid-cols-2 gap-2">
+                <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <Button variant="ghost" onClick={close} className="w-full">
                     Cancelar
                   </Button>
@@ -197,4 +197,3 @@ export default function TimePickerField({
     </>
   );
 }
-

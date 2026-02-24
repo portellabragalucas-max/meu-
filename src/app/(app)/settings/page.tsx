@@ -881,10 +881,10 @@ export default function SettingsPage() {
       className="app-page w-full min-w-0 max-w-[980px] mx-auto overflow-x-hidden pb-[calc(var(--bottom-nav-height)+4.5rem+env(safe-area-inset-bottom))] md:pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
     >
       {/* Cabeçalho */}
-            <div className="md:hidden space-y-3">
+            <div className="space-y-3 md:hidden">
         {!activeSection ? (
-          <div className="flex items-start justify-between gap-3">
-            <div>
+          <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="min-w-0">
               <h1 className="text-2xl font-heading font-bold text-white">Configuracoes</h1>
               <p className="text-sm text-text-secondary mt-1">Personalize sua experiencia de estudos</p>
             </div>
@@ -895,7 +895,7 @@ export default function SettingsPage() {
             )}
           </div>
         ) : (
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center justify-between gap-2">
             <button
               type="button"
               onClick={closeSection}
@@ -904,21 +904,23 @@ export default function SettingsPage() {
               <ChevronLeft className="w-4 h-4" />
               Voltar
             </button>
-            <p className="text-sm font-semibold text-white text-center">{sectionMeta[activeSection].title}</p>
+            <p className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-white">
+              {sectionMeta[activeSection].title}
+            </p>
             {showActionButtons ? (
               <Button variant="primary" size="sm" onClick={handleSave} loading={saving} className="shrink-0">
                 Salvar
               </Button>
             ) : (
-              <span className="w-[68px]" aria-hidden />
+              <span className="w-[68px] shrink-0" aria-hidden />
             )}
           </div>
         )}
         {saveFeedback && <p className={cn('text-xs', saveFeedback.className)}>{saveFeedback.text}</p>}
       </div>
 
-      <div className="hidden md:flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="hidden min-w-0 flex-col gap-3 md:flex sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-heading font-bold text-white">Configurações</h1>
           <p className="text-sm text-text-secondary mt-1">
             Personalize sua experiência de estudos
@@ -956,7 +958,7 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      <div className="relative overflow-x-hidden">
+      <div className="relative min-w-0 overflow-x-hidden">
         <AnimatePresence initial={false} custom={transitionDirection} mode="popLayout">
         {!activeSection && (
           <motion.div
@@ -966,7 +968,7 @@ export default function SettingsPage() {
             animate="center"
             exit="exit"
             transition={mobileStackTransition}
-            className="md:hidden space-y-3 relative z-0"
+            className="relative z-0 space-y-3 md:hidden"
           >
             {!hasRemotePrefs && !hasLocalPrefs && (
               <Card className="border-neon-cyan/40 bg-neon-cyan/5">
@@ -998,13 +1000,13 @@ export default function SettingsPage() {
                     type="button"
                     onClick={() => openSection(section)}
                     className={cn(
-                      'flex w-full min-h-[56px] items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/5 touch-manipulation active:scale-[0.995]',
+                      'flex w-full min-h-[56px] min-w-0 items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/5 touch-manipulation active:scale-[0.995]',
                       index !== group.sections.length - 1 && 'border-b border-card-border/70'
                     )}
                   >
-                    <div>
-                      <p className="text-sm font-medium text-white">{sectionMeta[section].title}</p>
-                      <p className="text-xs text-text-secondary">{sectionMeta[section].description}</p>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-white">{sectionMeta[section].title}</p>
+                      <p className="truncate text-xs text-text-secondary">{sectionMeta[section].description}</p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-text-muted shrink-0" />
                   </button>
@@ -1027,11 +1029,11 @@ export default function SettingsPage() {
           className="relative z-10 md:!transform-none md:!opacity-100"
         >
       <Card className={cn(activeSection === 'profile' ? 'block' : 'hidden', 'md:block')}>
-        <div className="flex items-center gap-3 mb-6">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-neon-blue/20 flex items-center justify-center">
             <User className="w-5 h-5 text-neon-blue" />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-lg font-heading font-bold text-white">Perfil</h2>
             <p className="text-sm text-text-secondary">Suas informações pessoais</p>
           </div>

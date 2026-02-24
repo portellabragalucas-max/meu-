@@ -6,5 +6,5 @@ interface AppContainerProps {
 }
 
 export default function AppContainer({ children, className }: AppContainerProps) {
-  return <div className={cn('app-container w-full min-w-0', className)}>{children}</div>;
+  return <div className={cn('app-container w-full min-w-0 max-w-full', className)}>{children}</div>;
 }

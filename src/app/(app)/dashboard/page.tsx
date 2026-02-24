@@ -369,10 +369,10 @@ export default function DashboardPage() {
         {/* Cabeçalho da página */}
         <motion.div
           variants={itemVariants}
-          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
           data-tutorial="dashboard-header"
         >
-          <div>
+          <div className="min-w-0">
             <h1 className="text-2xl max-[479px]:text-xl sm:text-3xl font-heading font-bold text-white leading-tight">
               Olá, {userSettings.name || 'Estudante'}! 👋
             </h1>
@@ -501,7 +501,7 @@ export default function DashboardPage() {
             </motion.div>
 
             {/* Grid de conteúdo principal */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-[479px]:gap-3 sm:gap-6">
+            <div className="grid grid-cols-1 gap-4 max-[479px]:gap-3 sm:gap-6 lg:grid-cols-3">
               {/* Gráfico semanal - 2 colunas */}
               <motion.div
                 variants={itemVariants}
@@ -524,7 +524,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Seção inferior */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-[479px]:gap-3 sm:gap-6">
+            <div className="grid grid-cols-1 gap-4 max-[479px]:gap-3 sm:gap-6 lg:grid-cols-3">
               {/* Plano do dia - 2 colunas */}
               <motion.div
                 variants={itemVariants}
@@ -560,17 +560,17 @@ export default function DashboardPage() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 }}
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
+                        <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-2">
                             <div
                               className="w-3 h-3 rounded-full"
                               style={{ backgroundColor: subject.color }}
                             />
-                            <span className="text-sm font-medium text-white">
+                            <span className="truncate text-sm font-medium text-white">
                               {subject.name}
                             </span>
                           </div>
-                          <span className="text-xs text-text-secondary">
+                          <span className="shrink-0 text-xs text-text-secondary">
                             {subject.completedHours}h / {subject.targetHours}h
                           </span>
                         </div>
