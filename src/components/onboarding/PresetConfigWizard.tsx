@@ -357,17 +357,17 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
           exit="hidden"
           className="w-full min-h-0 max-w-4xl max-h-[calc(100dvh-1.5rem-max(env(safe-area-inset-top),0px)-max(env(safe-area-inset-bottom),0px))]"
         >
-          <Card className="flex min-h-0 max-h-full flex-col overflow-hidden rounded-2xl border-slate-800 bg-gradient-to-br from-slate-900/95 via-slate-950/95 to-slate-900/95 p-3 sm:p-5 md:p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
+          <Card className="flex min-h-0 max-h-full flex-col overflow-hidden rounded-2xl border-slate-800 bg-gradient-to-br from-slate-900/95 via-slate-950/95 to-slate-900/95 p-2.5 sm:p-5 md:p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-neon-cyan">Configuracao do cronograma</p>
-                <h2 className="text-2xl font-heading font-bold text-white">{presetName}</h2>
-                <p className="mt-1 text-sm text-text-secondary">Fluxo curto: cada resposta altera a geracao do cronograma.</p>
+                <p className="text-xs text-neon-cyan sm:text-sm">Configuracao do cronograma</p>
+                <h2 className="text-xl font-heading font-bold text-white sm:text-2xl">{presetName}</h2>
+                <p className="mt-1 text-xs text-text-secondary sm:text-sm">Fluxo curto: cada resposta altera a geracao do cronograma.</p>
               </div>
-              <Button variant="ghost" onClick={resetAndClose}>Fechar</Button>
+              <Button variant="ghost" className="h-9 min-h-0 px-3 text-xs sm:h-10 sm:text-sm" onClick={resetAndClose}>Fechar</Button>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-3 sm:mt-4">
               <ProgressBar value={progress} label={`${progress}%`} />
               <div className="mt-2 grid gap-2 text-center text-[11px] text-text-muted" style={{ gridTemplateColumns: `repeat(${STEP_TITLES.length}, minmax(0, 1fr))` }}>
                 {STEP_TITLES.map((title, idx) => (
@@ -379,81 +379,81 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
               </div>
             </div>
 
-            <div className="mt-5 flex-1 min-h-0 overflow-y-auto scroll-touch px-0.5 sm:px-1.5 pb-4 sm:pb-6 space-y-5 sm:space-y-6">
+            <div className="mt-4 flex-1 min-h-0 overflow-y-auto scroll-touch px-0.5 sm:px-1.5 pb-3 sm:pb-6 space-y-4 sm:space-y-6">
               {step === 0 && (
                 <>
-                  <Card className="border-slate-800 bg-slate-900/40 p-4 space-y-4">
+                  <Card className="border-slate-800 bg-slate-900/40 p-3 sm:p-4 space-y-3 sm:space-y-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-white">Aplicar em massa</p>
+                        <p className="text-xs font-semibold text-white sm:text-sm">Aplicar em massa</p>
                         <p className="text-xs text-text-muted">
                           Selecione os dias alvo do lote (isso sozinho nao altera o cronograma).
                         </p>
                       </div>
-                      <div className="text-sm text-white">Padrao: {fmtHours(massHours)}</div>
+                      <div className="text-xs text-white sm:text-sm">Padrao: {fmtHours(massHours)}</div>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-xs text-text-muted">Dias selecionados para o lote: {massDays.length}</div>
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-text-secondary"
+                          className="rounded-lg border border-slate-700 px-2 py-1 text-[11px] text-text-secondary"
                           onClick={() => setMassDays(DAY_OPTIONS.map((d) => d.value))}
                         >
                           Selecionar todos
                         </button>
                         <button
                           type="button"
-                          className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-text-secondary"
+                          className="rounded-lg border border-slate-700 px-2 py-1 text-[11px] text-text-secondary"
                           onClick={() => setMassDays([])}
                         >
                           Limpar selecao
                         </button>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">{DAY_OPTIONS.map((d) => <button key={d.key} type="button" className={cn('px-3 py-2 rounded-lg border text-sm', massDays.includes(d.value) ? 'border-neon-purple bg-neon-purple/20 text-white' : 'border-slate-800 text-text-secondary')} onClick={() => toggleMassDay(d.value)}>{d.label}</button>)}</div>
-                    <div className="grid grid-cols-1 md:grid-cols-[1fr_120px_auto] gap-3 md:items-end">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">{DAY_OPTIONS.map((d) => <button key={d.key} type="button" className={cn('rounded-lg border px-2.5 py-1.5 text-xs sm:px-3 sm:py-2 sm:text-sm', massDays.includes(d.value) ? 'border-neon-purple bg-neon-purple/20 text-white' : 'border-slate-800 text-text-secondary')} onClick={() => toggleMassDay(d.value)}>{d.label}</button>)}</div>
+                    <div className="grid grid-cols-1 gap-2.5 md:grid-cols-[1fr_120px_auto] md:items-end md:gap-3">
                       <input type="range" min={0} max={12} step={0.5} value={massHours} onChange={(e) => setMassHours(clampHours(Number(e.target.value)))} className="w-full accent-neon-cyan" />
-                      <input type="number" min={0} max={12} step={0.5} value={massHours} onChange={(e) => setMassHours(clampHours(Number(e.target.value)))} className="input-field" />
-                      <Button variant="secondary" onClick={applyMassHours} disabled={massDays.length === 0}>Aplicar horas</Button>
+                      <input type="number" min={0} max={12} step={0.5} value={massHours} onChange={(e) => setMassHours(clampHours(Number(e.target.value)))} className="input-field h-9 min-h-0 text-sm sm:h-10" />
+                      <Button variant="secondary" className="h-9 min-h-0 rounded-lg px-3 text-xs sm:h-10 sm:text-sm" onClick={applyMassHours} disabled={massDays.length === 0}>Aplicar horas</Button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 md:items-end">
-                      <input type="time" value={massStart} onChange={(e) => setMassStart(e.target.value)} className="input-field" />
-                      <input type="time" value={massEnd} onChange={(e) => setMassEnd(e.target.value)} className="input-field" />
-                      <Button variant="ghost" onClick={applyMassWindow} disabled={massDays.length === 0}>Aplicar horario</Button>
+                    <div className="grid grid-cols-1 gap-2.5 md:grid-cols-[1fr_1fr_auto] md:items-end md:gap-3">
+                      <input type="time" value={massStart} onChange={(e) => setMassStart(e.target.value)} className="input-field h-9 min-h-0 text-sm sm:h-10" />
+                      <input type="time" value={massEnd} onChange={(e) => setMassEnd(e.target.value)} className="input-field h-9 min-h-0 text-sm sm:h-10" />
+                      <Button variant="ghost" className="h-9 min-h-0 rounded-lg px-3 text-xs sm:h-10 sm:text-sm" onClick={applyMassWindow} disabled={massDays.length === 0}>Aplicar horario</Button>
                     </div>
-                    <div className="flex flex-wrap gap-2">{QUICK_HOURS.map((h) => <button key={h} type="button" className={cn('px-3 py-2 rounded-lg border text-sm', massHours === h ? 'border-neon-cyan bg-neon-cyan/10 text-white' : 'border-slate-800 text-text-secondary')} onClick={() => setMassHours(h)}>{h}h</button>)}</div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button variant="secondary" onClick={copyMondayToSelected}>Copiar segunda para selecionados</Button>
-                      <Button variant="secondary" onClick={applyMonToFri}>Aplicar lote seg-sex</Button>
-                      <Button variant="secondary" onClick={applyToAll}>Aplicar lote para todos</Button>
-                      <Button variant="ghost" onClick={clearMassSelectionValues}>Limpar selecionados</Button>
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">{QUICK_HOURS.map((h) => <button key={h} type="button" className={cn('rounded-lg border px-2.5 py-1.5 text-xs sm:px-3 sm:py-2 sm:text-sm', massHours === h ? 'border-neon-cyan bg-neon-cyan/10 text-white' : 'border-slate-800 text-text-secondary')} onClick={() => setMassHours(h)}>{h}h</button>)}</div>
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                      <Button variant="secondary" className="h-9 min-h-0 rounded-lg px-3 text-xs sm:h-10 sm:text-sm" onClick={copyMondayToSelected}>Copiar segunda para selecionados</Button>
+                      <Button variant="secondary" className="h-9 min-h-0 rounded-lg px-3 text-xs sm:h-10 sm:text-sm" onClick={applyMonToFri}>Aplicar lote seg-sex</Button>
+                      <Button variant="secondary" className="h-9 min-h-0 rounded-lg px-3 text-xs sm:h-10 sm:text-sm" onClick={applyToAll}>Aplicar lote para todos</Button>
+                      <Button variant="ghost" className="h-9 min-h-0 rounded-lg px-3 text-xs sm:h-10 sm:text-sm" onClick={clearMassSelectionValues}>Limpar selecionados</Button>
                     </div>
                   </Card>
 
-                  <Card className="border-slate-800 bg-slate-900/30 p-4 space-y-3">
-                    <div className="flex items-center justify-between gap-3"><p className="text-white font-semibold text-sm">Disponibilidade por dia</p><p className="text-xs text-text-muted">0h = sem estudo | horario opcional</p></div>
+                  <Card className="border-slate-800 bg-slate-900/30 p-3 sm:p-4 space-y-2.5 sm:space-y-3">
+                    <div className="flex items-center justify-between gap-3"><p className="text-white font-semibold text-xs sm:text-sm">Disponibilidade por dia</p><p className="text-[11px] text-text-muted sm:text-xs">0h = sem estudo | horario opcional</p></div>
                     {DAY_OPTIONS.map((d) => {
                       const hours = answers.dailyHoursByWeekday[d.key] || 0;
                       const active = hours > 0;
                       const w = answers.dailyAvailabilityByWeekday[d.key];
                       return (
-                        <div key={d.key} className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
-                          <div className="grid grid-cols-1 lg:grid-cols-[auto_90px_1fr_1fr] gap-3 lg:items-end">
-                            <button type="button" onClick={() => toggleDayActive(d.value)} className={cn('h-10 rounded-lg border px-3 text-sm', active ? 'border-neon-cyan/60 text-white' : 'border-slate-800 text-text-muted')}>
+                        <div key={d.key} className="rounded-xl border border-slate-800 bg-slate-900/40 p-2.5 sm:p-3">
+                          <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-[auto_90px_1fr_1fr] lg:items-end lg:gap-3">
+                            <button type="button" onClick={() => toggleDayActive(d.value)} className={cn('h-9 rounded-lg border px-2.5 text-xs sm:h-10 sm:px-3 sm:text-sm', active ? 'border-neon-cyan/60 text-white' : 'border-slate-800 text-text-muted')}>
                               {d.label} {active ? '· Estudo' : '· Sem estudo'}
                             </button>
-                            <input type="number" min={0} max={12} step={0.5} disabled={!active} value={hours} onChange={(e) => updateDayHours(d.key, Number(e.target.value))} className={cn('input-field h-10', !active && 'opacity-60')} />
-                            <input type="time" disabled={!active} value={w.start} onChange={(e) => updateDayWindow(d.key, 'start', e.target.value)} className={cn('input-field h-10', !active && 'opacity-60')} />
-                            <input type="time" disabled={!active} value={w.end} onChange={(e) => updateDayWindow(d.key, 'end', e.target.value)} className={cn('input-field h-10', !active && 'opacity-60')} />
+                            <input type="number" min={0} max={12} step={0.5} disabled={!active} value={hours} onChange={(e) => updateDayHours(d.key, Number(e.target.value))} className={cn('input-field h-9 min-h-0 text-sm sm:h-10', !active && 'opacity-60')} />
+                            <input type="time" disabled={!active} value={w.start} onChange={(e) => updateDayWindow(d.key, 'start', e.target.value)} className={cn('input-field h-9 min-h-0 text-sm sm:h-10', !active && 'opacity-60')} />
+                            <input type="time" disabled={!active} value={w.end} onChange={(e) => updateDayWindow(d.key, 'end', e.target.value)} className={cn('input-field h-9 min-h-0 text-sm sm:h-10', !active && 'opacity-60')} />
                           </div>
-                          <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                          <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] sm:mt-2 sm:text-xs">
                             <span className={cn(active ? 'text-text-secondary' : 'text-text-muted')}>
                               {active ? `Horas liquidas: ${fmtHours(hours)}` : 'Sem estudo neste dia'}
                             </span>
                             <button
                               type="button"
-                              className="rounded-md border border-slate-700 px-2 py-1 text-text-secondary hover:text-white"
+                              className="rounded-md border border-slate-700 px-2 py-1 text-[11px] text-text-secondary hover:text-white sm:text-xs"
                               onClick={() => {
                                 updateDayHours(d.key, 0);
                                 updateDayWindow(d.key, 'start', '');
@@ -691,12 +691,13 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
               </div>
             )}
 
-            <div className="mt-4 flex flex-col-reverse gap-2 border-t border-slate-800/70 pt-3 pb-[max(0px,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-xs text-text-muted">Todas as respostas desta tela alteram a geracao do cronograma.</div>
+            <div className="mt-3 flex flex-col-reverse gap-2 border-t border-slate-800/70 pt-2.5 pb-[max(0px,env(safe-area-inset-bottom))] sm:mt-4 sm:flex-row sm:items-center sm:justify-between sm:pt-3">
+              <div className="text-[11px] text-text-muted sm:text-xs">Todas as respostas desta tela alteram a geracao do cronograma.</div>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Button variant="ghost" onClick={resetAndClose}>Cancelar</Button>
+                <Button variant="ghost" className="h-9 min-h-0 px-3 text-xs sm:h-10 sm:text-sm" onClick={resetAndClose}>Cancelar</Button>
                 <Button
                   variant="secondary"
+                  className="h-9 min-h-0 px-3 text-xs sm:h-10 sm:text-sm"
                   onClick={() => {
                     setError(null);
                     setStep((s) => Math.max(0, s - 1));
@@ -706,9 +707,9 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                   Voltar
                 </Button>
                 {step < STEP_TITLES.length - 1 ? (
-                  <Button variant="primary" onClick={next}>Proximo</Button>
+                  <Button variant="primary" className="h-9 min-h-0 px-3 text-xs sm:h-10 sm:text-sm" onClick={next}>Proximo</Button>
                 ) : (
-                  <Button variant="primary" onClick={apply}>Salvar e regenerar cronograma</Button>
+                  <Button variant="primary" className="h-9 min-h-0 px-3 text-xs sm:h-10 sm:text-sm" onClick={apply}>Salvar e regenerar cronograma</Button>
                 )}
               </div>
             </div>

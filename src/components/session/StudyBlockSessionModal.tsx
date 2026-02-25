@@ -212,46 +212,46 @@ export default function StudyBlockSessionModal({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className="app-modal-panel max-w-md"
+          className="app-modal-panel max-w-[340px] sm:max-w-md"
         >
-          <Card className="relative overflow-hidden" padding="md">
+          <Card className="relative overflow-hidden p-3.5 sm:p-4" padding="none">
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/5 text-text-muted hover:text-white transition-colors"
+              className="absolute right-3 top-3 rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/5 hover:text-white sm:right-4 sm:top-4 sm:p-2"
               aria-label="Fechar"
             >
-              <X className="w-5 h-5" />
+              <X className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
 
-            <div className="space-y-4 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-neon-blue/20 flex items-center justify-center mx-auto">
+            <div className="space-y-3 text-center">
+              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-neon-blue/20 sm:h-14 sm:w-14 sm:rounded-2xl">
                 {block.isBreak ? (
-                  <Coffee className="w-6 h-6 text-neon-cyan" />
+                  <Coffee className="h-5 w-5 text-neon-cyan sm:h-6 sm:w-6" />
                 ) : (
-                  <Play className="w-6 h-6 text-neon-blue" />
+                  <Play className="h-5 w-5 text-neon-blue sm:h-6 sm:w-6" />
                 )}
               </div>
               <div>
-                <h2 className="break-words text-2xl font-heading font-bold text-white">
+                <h2 className="break-words text-xl font-heading font-bold text-white sm:text-2xl">
                   {subjectName}
                 </h2>
-                <p className="text-sm text-text-secondary">
+                <p className="text-xs text-text-secondary sm:text-sm">
                   Duração planejada: {formatDuration(block.durationMinutes)}
                 </p>
               </div>
 
-              <div className="text-4xl font-heading font-bold text-white">
+              <div className="text-[2.5rem] font-heading font-bold leading-none text-white sm:text-4xl">
                 {formatTimer(timeRemaining)}
               </div>
 
               {sessionState === 'ready' && (
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button variant="secondary" className="flex-1" onClick={onClose}>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button variant="secondary" className="h-10 min-h-0 flex-1 text-sm" onClick={onClose}>
                     Fechar
                   </Button>
                   <Button
                     variant="primary"
-                    className="flex-1"
+                    className="h-10 min-h-0 flex-1 text-sm"
                     onClick={() => {
                       ensureAudioContext();
                       setSessionState('running');
@@ -263,17 +263,17 @@ export default function StudyBlockSessionModal({
               )}
 
               {(sessionState === 'running' || sessionState === 'paused') && (
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Button
                     variant="secondary"
-                    className="flex-1"
+                    className="h-10 min-h-0 flex-1 text-sm"
                     onClick={() => finishSession(initialTotalRef.current - timeRemaining, 'manual')}
                   >
                     Concluir agora
                   </Button>
                   <Button
                     variant="primary"
-                    className="flex-1"
+                    className="h-10 min-h-0 flex-1 text-sm"
                     onClick={() =>
                       setSessionState((prev) => (prev === 'running' ? 'paused' : 'running'))
                     }
@@ -291,7 +291,7 @@ export default function StudyBlockSessionModal({
                   </div>
                   <Button
                     variant="primary"
-                    className="w-full"
+                    className="h-10 min-h-0 w-full text-sm"
                     onClick={onClose}
                   >
                     Fechar

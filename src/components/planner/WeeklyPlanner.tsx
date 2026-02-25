@@ -1253,56 +1253,54 @@ export default function WeeklyPlanner({
         isScheduleModalOpen &&
         createPortal(
           <div className="app-modal-overlay">
-            <div className="app-modal-panel">
-              <Card className="relative" padding="lg">
-              <h2 className="text-xl font-heading font-bold text-white mb-2">
+            <div className="app-modal-panel max-w-[340px] sm:max-w-md">
+              <Card className="relative" padding="sm">
+              <h2 className="mb-1.5 text-lg font-heading font-bold text-white sm:mb-2 sm:text-xl">
                 Definir período do cronograma
               </h2>
-              <p className="text-sm text-text-secondary mb-4">
+              <p className="mb-3 text-xs text-text-secondary sm:mb-4 sm:text-sm">
                 Informe até quando a agenda deve ir.
               </p>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">
+                  <label className="mb-1.5 block text-xs font-medium text-text-secondary sm:mb-2 sm:text-sm">
                     Início
                   </label>
                   <input
                     type="date"
-                    className="input-field"
+                    className="input-field h-10 min-h-0 py-2 text-sm"
                     min={scheduleStartDate || toLocalKey(new Date())}
                     value={scheduleStartDate}
                     onChange={(e) => setScheduleStartDate(e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">
+                  <label className="mb-1.5 block text-xs font-medium text-text-secondary sm:mb-2 sm:text-sm">
                     Data final
                   </label>
                   <input
                     type="date"
-                    className="input-field"
+                    className="input-field h-10 min-h-0 py-2 text-sm"
                     min={toLocalKey(new Date())}
                     value={scheduleEndDate}
                     onChange={(e) => setScheduleEndDate(e.target.value)}
                   />
                 </div>
-                {scheduleError && (
-                  <p className="text-sm text-red-400">{scheduleError}</p>
-                )}
+                {scheduleError && <p className="text-xs text-red-400 sm:text-sm">{scheduleError}</p>}
               </div>
 
-              <div className="flex flex-col gap-3 pt-6 sm:flex-row">
+              <div className="flex flex-col gap-2 pt-4 sm:flex-row">
                 <Button
                   variant="secondary"
-                  className="flex-1"
+                  className="h-10 min-h-0 flex-1 text-sm"
                   onClick={() => setIsScheduleModalOpen(false)}
                 >
                   Cancelar
                 </Button>
                 <Button
                   variant="primary"
-                  className="flex-1"
+                  className="h-10 min-h-0 flex-1 text-sm"
                   onClick={() => {
                     if (!scheduleStartDate) {
                       setScheduleError('Selecione a data de inicio.');
