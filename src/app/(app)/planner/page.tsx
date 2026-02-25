@@ -73,6 +73,32 @@ const buildDailyLimitByDate = (
   return limits;
 };
 
+const buildDailyTimeWindowByDate = (
+  startDate: Date,
+  endDate: Date,
+  dailyAvailabilityByWeekday: UserSettings['dailyAvailabilityByWeekday']
+) => {
+  const windows: Record<string, { start: string; end: string }> = {};
+  if (!dailyAvailabilityByWeekday) return windows;
+  const cursor = new Date(startDate);
+  cursor.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+  while (cursor <= end) {
+    const key = weekDayKeys[cursor.getDay()];
+    const dayWindow = dailyAvailabilityByWeekday[key];
+    if (
+      dayWindow?.start &&
+      dayWindow?.end &&
+      timeToMinutes(dayWindow.end) > timeToMinutes(dayWindow.start)
+    ) {
+      windows[toLocalKey(cursor)] = { start: dayWindow.start, end: dayWindow.end };
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return windows;
+};
+
 export default function PlannerPage() {
   const [subjects, setSubjects] = useLocalStorage<Subject[]>('nexora_subjects', []);
   const [studyPrefs] = useLocalStorage<StudyPreferences>('nexora_study_prefs', {
@@ -151,9 +177,14 @@ export default function PlannerPage() {
     : studyPrefs.hoursPerDay;
 
   const aiProfile = useMemo(() => {
-    const baseBlock = userSettings.maxBlockMinutes || 90;
-    const baseBreak = userSettings.breakMinutes || 15;
+    const baseBlock =
+      studyPrefs.focusBlockMinutes || studyPrefs.blockDurationMinutes || userSettings.maxBlockMinutes || 90;
+    const baseBreak = studyPrefs.breakDurationMinutes || userSettings.breakMinutes || 15;
     const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+    const lockBlockAndBreak =
+      (typeof studyPrefs.focusBlockMinutes === 'number' ||
+        typeof studyPrefs.blockDurationMinutes === 'number') &&
+      typeof studyPrefs.breakDurationMinutes === 'number';
 
     let difficulty = userSettings.aiDifficulty;
     if (difficulty === 'adaptive') {
@@ -175,6 +206,14 @@ export default function PlannerPage() {
 
     let blockMinutes = baseBlock;
     let breakMinutes = baseBreak;
+
+    if (lockBlockAndBreak) {
+      return {
+        blockMinutes: clamp(baseBlock, 25, 150),
+        breakMinutes: clamp(baseBreak, 5, 25),
+        difficulty,
+      };
+    }
 
     if (difficulty === 'easy') {
       blockMinutes = clamp(baseBlock * 0.8, 25, 60);
@@ -201,6 +240,9 @@ export default function PlannerPage() {
     analytics.daily,
     averageDailyHours,
     activeDaysFromSettings.length,
+    studyPrefs.focusBlockMinutes,
+    studyPrefs.blockDurationMinutes,
+    studyPrefs.breakDurationMinutes,
     userSettings.aiDifficulty,
     userSettings.breakMinutes,
     userSettings.focusMode,
@@ -441,6 +483,11 @@ export default function PlannerPage() {
       studyPrefs.hoursPerDay
     );
     const mergedLimits = { ...baseLimits, ...dailyLimits };
+    const dailyTimeWindowByDate = buildDailyTimeWindowByDate(
+      startDate,
+      endDate,
+      userSettings.dailyAvailabilityByWeekday
+    );
 
     const schedule = generateChronologicalSchedule({
       subjects,
@@ -456,6 +503,7 @@ export default function PlannerPage() {
       breakMinutes: aiProfile.breakMinutes,
       restDays: userSettings.excludeDays || excludeDays,
       dailyLimitByDate: mergedLimits,
+      dailyTimeWindowByDate,
       firstCycleAllSubjects,
       performanceMetricsBySubject: performanceProfilesBySubject,
       userLevel: inferredUserLevel,
@@ -500,45 +548,54 @@ export default function PlannerPage() {
             ? Math.ceil((examDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
             : null;
         const adaptiveFrequencyDays = daysToExam !== null && daysToExam <= 90 ? 7 : 14;
+        const intensity = studyPrefs.intensity || 'normal';
+        const frequencyDays =
+          intensity === 'intensa'
+            ? Math.max(5, adaptiveFrequencyDays - 3)
+            : intensity === 'leve'
+            ? adaptiveFrequencyDays + 7
+            : adaptiveFrequencyDays;
+        const lessonDelta = intensity === 'intensa' ? -2 : intensity === 'leve' ? 2 : 0;
+        const practiceDelta = intensity === 'intensa' ? -1 : intensity === 'leve' ? 2 : 0;
         if (studyPrefs.goal === 'medicina') {
           return {
-            minLessonsBeforeSimulated: 20,
-            minPracticeBeforeSimulated: 12,
+            minLessonsBeforeSimulated: Math.max(8, 20 + lessonDelta),
+            minPracticeBeforeSimulated: Math.max(4, 12 + practiceDelta),
             minLessonsPerSubject: 3,
             minDaysBeforeSimulated: 14,
-            frequencyDays: adaptiveFrequencyDays,
+            frequencyDays,
             minLessonsBeforeAreaSimulated: 8,
             minDaysBeforeAreaSimulated: 7,
           };
         }
         if (studyPrefs.goal === 'concurso') {
           return {
-            minLessonsBeforeSimulated: 16,
-            minPracticeBeforeSimulated: 10,
+            minLessonsBeforeSimulated: Math.max(8, 16 + lessonDelta),
+            minPracticeBeforeSimulated: Math.max(4, 10 + practiceDelta),
             minLessonsPerSubject: 2,
             minDaysBeforeSimulated: 14,
-            frequencyDays: adaptiveFrequencyDays,
+            frequencyDays,
             minLessonsBeforeAreaSimulated: 6,
             minDaysBeforeAreaSimulated: 7,
           };
         }
         if (studyPrefs.goal === 'enem') {
           return {
-            minLessonsBeforeSimulated: 20,
-            minPracticeBeforeSimulated: 12,
+            minLessonsBeforeSimulated: Math.max(8, 20 + lessonDelta),
+            minPracticeBeforeSimulated: Math.max(4, 12 + practiceDelta),
             minLessonsPerSubject: 2,
             minDaysBeforeSimulated: 14,
-            frequencyDays: adaptiveFrequencyDays,
+            frequencyDays,
             minLessonsBeforeAreaSimulated: 8,
             minDaysBeforeAreaSimulated: 7,
           };
         }
         return {
-          minLessonsBeforeSimulated: 20,
-          minPracticeBeforeSimulated: 8,
+          minLessonsBeforeSimulated: Math.max(8, 20 + lessonDelta),
+          minPracticeBeforeSimulated: Math.max(4, 8 + practiceDelta),
           minLessonsPerSubject: 2,
           minDaysBeforeSimulated: 14,
-          frequencyDays: adaptiveFrequencyDays,
+          frequencyDays,
           minLessonsBeforeAreaSimulated: 6,
           minDaysBeforeAreaSimulated: 7,
         };
@@ -574,6 +631,7 @@ export default function PlannerPage() {
     subjects,
     userSettings.autoSchedule,
     userSettings.dailyHoursByWeekday,
+    userSettings.dailyAvailabilityByWeekday,
     userSettings.preferredStart,
     userSettings.preferredEnd,
     userSettings.excludeDays,

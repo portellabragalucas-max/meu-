@@ -11,14 +11,14 @@ import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '@/lib/auth';
 import { subjectColors } from '@/lib/utils';
-import { getEnemPresetSubjects } from '@/lib/enemCatalog';
+import { getEnemDisciplineByName, getEnemPresetSubjects } from '@/lib/enemCatalog';
 import {
   dedupePresetSubjectsByCanonical,
   getCanonicalSubjectName,
   getCuratedPresetByName,
 } from '@/lib/presetCatalog';
 import { buildConcursosPresetSubjectsFromAnswers } from '@/services/concursosPresetIntelligence';
-import type { PresetWizardAnswers } from '@/types';
+import type { EnemAreaPriorities, PresetWizardAnswers } from '@/types';
 
 type ImportPresetSubject = {
   name: string;
@@ -26,6 +26,36 @@ type ImportPresetSubject = {
   difficulty: number;
   recommendedWeeklyHours: number;
 };
+
+function clampPresetScale(value: number) {
+  return Math.min(5, Math.max(1, Math.round(value)));
+}
+
+function clampWeeklyHours(value: number) {
+  return Math.max(0.5, Math.round(value * 2) / 2);
+}
+
+function adjustImportSubject(
+  subject: ImportPresetSubject,
+  patch: Partial<ImportPresetSubject>
+): ImportPresetSubject {
+  return {
+    ...subject,
+    ...patch,
+    priority:
+      typeof patch.priority === 'number'
+        ? clampPresetScale(patch.priority)
+        : clampPresetScale(subject.priority),
+    difficulty:
+      typeof patch.difficulty === 'number'
+        ? clampPresetScale(patch.difficulty)
+        : clampPresetScale(subject.difficulty),
+    recommendedWeeklyHours:
+      typeof patch.recommendedWeeklyHours === 'number'
+        ? clampWeeklyHours(patch.recommendedWeeklyHours)
+        : clampWeeklyHours(subject.recommendedWeeklyHours),
+  };
+}
 
 function mapPriority(presetPriority: number): number {
   return Math.min(10, Math.max(1, presetPriority * 2));
@@ -64,18 +94,102 @@ function getSubjectIcon(name: string): string {
   return 'book';
 }
 
+function getPriorityFactor(level: EnemAreaPriorities[keyof EnemAreaPriorities] | undefined) {
+  if (level === 'alta') return 1.25;
+  if (level === 'baixa') return 0.8;
+  return 1;
+}
+
+function applyEnemWizardAdjustments(
+  subjects: ImportPresetSubject[],
+  answers?: PresetWizardAnswers
+) {
+  if (!answers) return subjects;
+  const priorities = answers.enemAreaPriorities;
+  if (!priorities) return subjects;
+
+  return subjects.map((subject) => {
+    const discipline = getEnemDisciplineByName(subject.name);
+    if (!discipline) return subject;
+    const factor = getPriorityFactor(priorities[discipline.area]);
+    const priorityDelta = factor > 1 ? 1 : factor < 1 ? -1 : 0;
+    return adjustImportSubject(subject, {
+      recommendedWeeklyHours: subject.recommendedWeeklyHours * factor,
+      priority: subject.priority + priorityDelta,
+    });
+  });
+}
+
+function applyMedicinaWizardAdjustments(
+  subjects: ImportPresetSubject[],
+  answers?: PresetWizardAnswers
+) {
+  if (!answers) return subjects;
+
+  const weights = answers.medicinaCoreWeights;
+  const targetExams = new Set(answers.medicinaTargetExams || []);
+  if (!weights && targetExams.size === 0) return subjects;
+
+  const hasEnem = targetExams.has('enem');
+  const hasLeituraHeavy = targetExams.has('fuvest') || targetExams.has('unicamp') || targetExams.has('unesp');
+
+  return subjects.map((subject) => {
+    const canonical = getCanonicalSubjectName(subject.name);
+    let factor = 1;
+
+    if (weights) {
+      if (canonical === 'biologia') factor *= (weights.biologia || 3) / 3;
+      if (canonical === 'quimica') factor *= (weights.quimica || 3) / 3;
+      if (canonical === 'fisica') factor *= (weights.fisica || 3) / 3;
+      if (canonical === 'matematica') factor *= (weights.matematica || 3) / 3;
+      if (canonical === 'redacao') factor *= (weights.redacao || 3) / 3;
+    }
+
+    if (hasEnem) {
+      if (
+        canonical === 'redacao' ||
+        canonical === 'lingua portuguesa' ||
+        canonical === 'interpretacao de texto'
+      ) {
+        factor *= 1.1;
+      }
+      if (canonical === 'historia' || canonical === 'geografia' || canonical === 'filosofia' || canonical === 'sociologia') {
+        factor *= 1.05;
+      }
+    }
+
+    if (hasLeituraHeavy) {
+      if (
+        canonical === 'lingua portuguesa' ||
+        canonical === 'interpretacao de texto' ||
+        canonical === 'literatura' ||
+        canonical === 'redacao'
+      ) {
+        factor *= 1.12;
+      }
+    }
+
+    const priorityDelta = factor >= 1.15 ? 1 : factor <= 0.9 ? -1 : 0;
+    return adjustImportSubject(subject, {
+      recommendedWeeklyHours: subject.recommendedWeeklyHours * factor,
+      priority: subject.priority + priorityDelta,
+    });
+  });
+}
+
 function toImportSubjects(
   dbPresetSubjects: ImportPresetSubject[],
   dbPresetName: string,
   wizardAnswers?: PresetWizardAnswers
 ): ImportPresetSubject[] {
   if (dbPresetName.toLowerCase() === 'enem') {
-    return dedupePresetSubjectsByCanonical(getEnemPresetSubjects()).map((subject) => ({
+    const base = dedupePresetSubjectsByCanonical(getEnemPresetSubjects()).map((subject) => ({
       name: subject.name,
       priority: subject.priority,
       difficulty: subject.difficulty,
       recommendedWeeklyHours: subject.recommendedWeeklyHours,
     }));
+    return applyEnemWizardAdjustments(base, wizardAnswers);
   }
 
   if (dbPresetName.toLowerCase().includes('concurso')) {
@@ -84,12 +198,16 @@ function toImportSubjects(
 
   const curated = getCuratedPresetByName(dbPresetName);
   if (curated) {
-    return dedupePresetSubjectsByCanonical(curated.subjects).map((subject) => ({
+    const base = dedupePresetSubjectsByCanonical(curated.subjects).map((subject) => ({
       name: subject.name,
       priority: subject.priority,
       difficulty: subject.difficulty,
       recommendedWeeklyHours: subject.recommendedWeeklyHours,
     }));
+    if (curated.id === 'medicina') {
+      return applyMedicinaWizardAdjustments(base, wizardAnswers);
+    }
+    return base;
   }
 
   return dedupePresetSubjectsByCanonical(dbPresetSubjects).map((subject) => ({

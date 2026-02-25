@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, BookOpen, Search } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
@@ -19,8 +20,9 @@ import {
   upgradeSubjectsToOfficialEnemStructure,
 } from '@/lib/enemCatalog';
 import { getCanonicalSubjectName, getCuratedPresetById } from '@/lib/presetCatalog';
-import type { PresetWizardAnswers, Subject, StudyPreferences, UserSettings } from '@/types';
+import type { PresetWizardAnswers, StudyBlock, Subject, StudyPreferences, UserSettings } from '@/types';
 import { defaultSettings } from '@/lib/defaultSettings';
+import { computeStudyPreferences } from '@/services/presetConfigurator';
 
 // Dados mockados das disciplinas
 const initialSubjects: Subject[] = [];
@@ -45,6 +47,7 @@ const toLocalDateKey = (date: Date) =>
   ).padStart(2, '0')}`;
 
 export default function SubjectsPage() {
+  const router = useRouter();
   const { markFirstSubjectAdded, hasAddedFirstSubject } = useOnboarding();
   const [subjects, setSubjects] = useLocalStorage<Subject[]>('nexora_subjects', initialSubjects);
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,10 +63,13 @@ export default function SubjectsPage() {
     examDate: '',
   });
   const [userSettings, setUserSettings] = useLocalStorage<UserSettings>('nexora_user_settings', defaultSettings);
+  const [, setPlannerBlocks] = useLocalStorage<StudyBlock[]>('nexora_planner_blocks', []);
   const [, setScheduleRange] = useLocalStorage<{ startDate: string; endDate: string } | null>(
     'nexora_schedule_range',
     null
   );
+  const [firstCycleAllSubjects] = useLocalStorage<boolean>('nexora_first_cycle_all_subjects', true);
+  const [dailyLimits] = useLocalStorage<Record<string, number>>('nexora_daily_limits', {});
 
   // Mostrar preset selector automaticamente quando não há disciplinas
   useEffect(() => {
@@ -176,6 +182,77 @@ export default function SubjectsPage() {
     return Array.from(merged.values());
   };
 
+  const deserializeBlock = (raw: any): StudyBlock => ({
+    ...raw,
+    date: new Date(raw.date),
+    createdAt: new Date(raw.createdAt),
+    updatedAt: new Date(raw.updatedAt),
+    subject: raw.subject
+      ? {
+          ...raw.subject,
+          createdAt: new Date(raw.subject.createdAt),
+          updatedAt: new Date(raw.subject.updatedAt),
+        }
+      : raw.subject,
+  });
+
+  const regenerateScheduleFromWizard = async (
+    mergedSubjects: Subject[],
+    wizardAnswers: PresetWizardAnswers
+  ) => {
+    if (mergedSubjects.length === 0) return;
+
+    const computed = computeStudyPreferences(userSettings, wizardAnswers);
+    const startKey = wizardAnswers.startDate || toLocalDateKey(new Date());
+    const startDate = new Date(`${startKey}T00:00:00`);
+    const safeStart = Number.isNaN(startDate.getTime()) ? new Date() : startDate;
+    safeStart.setHours(0, 0, 0, 0);
+    const endDate = new Date(safeStart);
+    endDate.setDate(endDate.getDate() + 6);
+
+    const requestedRange = {
+      startDate: toLocalDateKey(safeStart),
+      endDate: toLocalDateKey(endDate),
+    };
+
+    try {
+      const response = await fetch('/api/planner/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subjects: mergedSubjects,
+          studyPrefs: computed.studyPrefs,
+          userSettings: computed.settings,
+          scheduleRange: requestedRange,
+          firstCycleAllSubjects,
+          dailyLimits,
+        }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'Falha ao regenerar cronograma');
+      }
+
+      const data = await response.json();
+      if (!data.success || !Array.isArray(data.data?.blocks)) {
+        throw new Error(data.error || 'Resposta invalida da regeneracao');
+      }
+
+      setPlannerBlocks(data.data.blocks.map(deserializeBlock));
+      if (data.data.scheduleRange?.startDate && data.data.scheduleRange?.endDate) {
+        setScheduleRange(data.data.scheduleRange);
+      } else {
+        setScheduleRange(requestedRange);
+      }
+    } catch (error) {
+      console.warn('Falha ao regenerar cronograma imediatamente:', error);
+      setScheduleRange(requestedRange);
+    } finally {
+      router.refresh();
+    }
+  };
+
   // Handler para importar preset
   const handleImportPreset = async (
     presetId: string,
@@ -222,10 +299,15 @@ export default function SubjectsPage() {
                   ? upgradeSubjectsToOfficialEnemStructure(importedSubjects)
                   : importedSubjects;
 
-              setSubjects((prev) => mergeImportedSubjects(prev, normalizedImported));
-              
+              const mergedSubjects = mergeImportedSubjects(subjects, normalizedImported);
+              setSubjects(mergedSubjects);
               setShowPresetSelector(false);
               markFirstSubjectAdded();
+              if (options?.wizardAnswers) {
+                await regenerateScheduleFromWizard(mergedSubjects, options.wizardAnswers);
+              } else {
+                router.refresh();
+              }
               return;
             }
           }
@@ -261,10 +343,15 @@ export default function SubjectsPage() {
               updatedAt: new Date(),
             }));
 
-      setSubjects((prev) => mergeImportedSubjects(prev, importedSubjects));
-      
+      const mergedSubjects = mergeImportedSubjects(subjects, importedSubjects);
+      setSubjects(mergedSubjects);
       setShowPresetSelector(false);
       markFirstSubjectAdded();
+      if (options?.wizardAnswers) {
+        await regenerateScheduleFromWizard(mergedSubjects, options.wizardAnswers);
+      } else {
+        router.refresh();
+      }
 
     } catch (error) {
       console.error('Error importing preset:', error);
@@ -296,7 +383,7 @@ export default function SubjectsPage() {
       await fetch('/api/preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings }),
+        body: JSON.stringify({ settings, studyPrefs: prefs }),
       });
     } catch (error) {
       console.warn('Falha ao salvar preferências no servidor:', error);

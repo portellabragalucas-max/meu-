@@ -50,6 +50,7 @@ export interface ChronologicalScheduleConfig {
   breakMinutes: number;
   restDays?: number[];
   dailyLimitByDate?: Record<string, number>;
+  dailyTimeWindowByDate?: Record<string, { start: string; end: string }>;
   firstCycleAllSubjects?: boolean;
   completedLessonsTotal?: number;
   completedLessonsBySubject?: Record<string, number>;
@@ -231,17 +232,23 @@ function resolveEnemWeight(subject: Subject, fallback?: number) {
 function getCycleRepeatTarget(
   level: SubjectLevel,
   stage: CycleStage,
-  userLevel: UserLearningLevel = 'intermediario'
+  userLevel: UserLearningLevel = 'intermediario',
+  contentPreference: StudyPreferences['studyContentPreference'] = 'misto'
 ) {
-  if (stage === 'simulado' || stage === 'revisao') return 1;
+  if (stage === 'simulado') return 1;
+  if (stage === 'revisao') return contentPreference === 'revisao' ? 2 : 1;
   if (stage === 'teoria') {
     let base = level === 'basico' ? 2 : 1;
     if (userLevel === 'iniciante') base += 1;
+    if (contentPreference === 'aulas') base += 1;
+    if (contentPreference === 'exercicios') base = Math.max(1, base - 1);
     return base;
   }
   let practice = level === 'avancado' ? 3 : level === 'intermediario' ? 2 : 1;
   if (userLevel === 'avancado') practice += 1;
   if (userLevel === 'iniciante') practice = Math.max(1, practice - 1);
+  if (contentPreference === 'exercicios') practice += 1;
+  if (contentPreference === 'aulas') practice = Math.max(1, practice - 1);
   return practice;
 }
 
@@ -256,11 +263,12 @@ function getExpectedCycleStage(state: SubjectCycleState | undefined): CycleStage
 function advanceCycleState(
   state: SubjectCycleState | undefined,
   level: SubjectLevel,
-  userLevel: UserLearningLevel = 'intermediario'
+  userLevel: UserLearningLevel = 'intermediario',
+  contentPreference: StudyPreferences['studyContentPreference'] = 'misto'
 ): SubjectCycleState {
   const current = state ? { ...state } : getInitialCycleState();
   const stage = getExpectedCycleStage(current);
-  const target = getCycleRepeatTarget(level, stage, userLevel);
+  const target = getCycleRepeatTarget(level, stage, userLevel, contentPreference);
   const nextProgress = current.stageProgress + 1;
   if (nextProgress < target) {
     return { stageIndex: current.stageIndex, stageProgress: nextProgress };
@@ -333,6 +341,22 @@ function getDailyMinutes(preferredStart: string, preferredEnd: string, hoursPerD
   return Math.min(windowMinutes, desiredMinutes);
 }
 
+function getEffectiveDayWindow(
+  config: ChronologicalScheduleConfig,
+  date: Date
+): { start: string; end: string } {
+  const key = date.toISOString().split('T')[0];
+  const override = config.dailyTimeWindowByDate?.[key];
+  if (
+    override?.start &&
+    override?.end &&
+    timeToMinutes(override.end) > timeToMinutes(override.start)
+  ) {
+    return { start: override.start, end: override.end };
+  }
+  return { start: config.preferredStart, end: config.preferredEnd };
+}
+
 function computeBlockMinutes(
   subject: Subject,
   meta: SubjectMeta,
@@ -340,19 +364,50 @@ function computeBlockMinutes(
   sessionType: SessionType,
   adaptivePriorityScore?: number
 ) {
-  const difficulty = subject.difficulty ?? 5;
-  const difficultyFactor = 0.6 + (1 - difficulty / 12); // 0.6 - 1.2
-  const levelFactor = meta.nivel === 'avancado' ? 0.8 : meta.nivel === 'intermediario' ? 0.9 : 1;
-  const weightFactor = 0.8 + meta.enemWeight * 0.35 + (meta.pesoNoExame - 3) * 0.03;
-  const adaptiveFactor =
-    typeof adaptivePriorityScore === 'number'
-      ? Math.min(1.35, Math.max(0.85, 0.85 + adaptivePriorityScore * 0.12))
-      : 1;
-  let duration = Math.round(baseMax * difficultyFactor * levelFactor * weightFactor);
-  duration = Math.round(duration * adaptiveFactor);
-  if (sessionType === 'revisao') duration = Math.round(duration * 0.7);
-  if (sessionType === 'simulado') duration = Math.round(duration * 1.1);
-  return Math.min(baseMax, Math.max(25, duration));
+  void subject;
+  void meta;
+  void adaptivePriorityScore;
+  let duration = Math.max(25, baseMax);
+  if (sessionType === 'revisao') {
+    duration = Math.max(25, Math.round(baseMax * 0.8));
+  }
+  if (sessionType === 'simulado') {
+    duration = Math.max(baseMax, 90);
+  }
+  return Math.max(25, duration);
+}
+
+function mapStudyStyleToContentPreference(
+  studyStyle: StudyPreferences['studyStyle'],
+  fallback: StudyPreferences['studyContentPreference']
+): NonNullable<StudyPreferences['studyContentPreference']> {
+  if (studyStyle === 'theory') return 'aulas';
+  if (studyStyle === 'practice') return 'exercicios';
+  if (studyStyle === 'balanced') return 'misto';
+  return fallback || 'misto';
+}
+
+function getHardSubjectPeriodScore(
+  periodPreference: StudyPreferences['hardSubjectsPeriodPreference'],
+  subject: Subject,
+  meta: SubjectMeta,
+  bucket: 'manha' | 'tarde' | 'noite',
+  isFirstBlock: boolean
+) {
+  if (!periodPreference || periodPreference === 'any') return 0;
+  const preferredBucket =
+    periodPreference === 'morning'
+      ? 'manha'
+      : periodPreference === 'afternoon'
+      ? 'tarde'
+      : 'noite';
+  const isHard = (subject.difficulty ?? 5) >= 7 || meta.pesoNoExame >= 4 || meta.enemWeight >= 0.75;
+  if (isHard) {
+    if (bucket === preferredBucket) return isFirstBlock ? 18 : 10;
+    return bucket === 'noite' && preferredBucket !== 'noite' ? -8 : -5;
+  }
+  if (bucket === preferredBucket) return -2;
+  return 1;
 }
 
 function pickTaskType(
@@ -452,6 +507,7 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
         breakMinutes: config.breakMinutes,
         restDays: config.restDays,
         dailyLimitByDate: config.dailyLimitByDate,
+        dailyTimeWindowByDate: config.dailyTimeWindowByDate,
         firstCycleAllSubjects: config.firstCycleAllSubjects,
         completedLessonsTotal: config.completedLessonsTotal,
         completedLessonsBySubject: config.completedLessonsBySubject,
@@ -562,17 +618,30 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
     return true;
   };
 
-  const dailyMinutes = getDailyMinutes(
-    config.preferredStart,
-    config.preferredEnd,
-    config.preferences.hoursPerDay || 2
+  const contentPreference = mapStudyStyleToContentPreference(
+    config.preferences.studyStyle,
+    config.preferences.studyContentPreference
   );
-  const windowMinutes = Math.max(
-    0,
-    timeToMinutes(config.preferredEnd) - timeToMinutes(config.preferredStart)
-  );
+  const reviewGapThreshold = contentPreference === 'revisao' ? 2 : 3;
+  const reviewOffsets =
+    contentPreference === 'revisao'
+      ? [1, 3, 7, 14, 30]
+      : config.preferences.intensity === 'intensa'
+      ? [1, 5, 12, 30]
+      : [1, 7, 30];
+  const hardSubjectsPeriodPreference = config.preferences.hardSubjectsPeriodPreference ?? 'any';
   const getDailyLimit = (date: Date) => {
     const dayKey = date.toISOString().split('T')[0];
+    const dayWindow = getEffectiveDayWindow(config, date);
+    const windowMinutes = Math.max(
+      0,
+      timeToMinutes(dayWindow.end) - timeToMinutes(dayWindow.start)
+    );
+    const dailyMinutes = getDailyMinutes(
+      dayWindow.start,
+      dayWindow.end,
+      config.preferences.hoursPerDay || 2
+    );
     const override = config.dailyLimitByDate?.[dayKey];
     if (typeof override === 'number') {
       return Math.min(windowMinutes, Math.max(0, override));
@@ -592,24 +661,32 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
       const meta = subjectMeta.get(s.id);
       const adaptive = adaptiveScoreBySubject.get(s.id) || 1;
       const examWeight = meta?.enemWeight || 0.5;
-      return sum + Math.max(0.1, examWeight * 2 + (meta?.pesoNoExame || 1) * 0.4 + adaptive);
+      const targetHoursWeight = Math.max(0.5, s.targetHours || 1);
+      return (
+        sum +
+        Math.max(
+          0.1,
+          targetHoursWeight * 1.4 + examWeight * 2 + (meta?.pesoNoExame || 1) * 0.4 + adaptive
+        )
+      );
     },
     0
   );
   const remainingSlots = new Map(
     config.subjects.map((s) => [
       s.id,
-      Math.max(
-        1,
-        Math.round(
-          (((subjectMeta.get(s.id)?.enemWeight || 0.5) * 2 +
+        Math.max(
+          1,
+          Math.round(
+          (((Math.max(0.5, s.targetHours || 1) * 1.4) +
+            (subjectMeta.get(s.id)?.enemWeight || 0.5) * 2 +
             (subjectMeta.get(s.id)?.pesoNoExame || 1) * 0.4 +
             (adaptiveScoreBySubject.get(s.id) || 1)) /
             Math.max(weightSum, 0.1)) *
             totalSlots
-        )
-      ),
-    ])
+          )
+        ),
+      ])
   );
 
   const phaseByDate: Record<string, string> = {};
@@ -645,8 +722,10 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
       reviewIndex.set(subjectId, (reviewIndex.get(subjectId) || 0) + 1);
     }
 
-    let currentTime = timeToMinutes(config.preferredStart);
-    const endTime = timeToMinutes(config.preferredEnd);
+    const dayWindow = getEffectiveDayWindow(config, date);
+    let currentTime = timeToMinutes(dayWindow.start);
+    const endTime = timeToMinutes(dayWindow.end);
+    if (endTime <= currentTime) continue;
     let plannedMinutes = 0;
 
     while (
@@ -701,6 +780,13 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
           const timeMinutes = currentTime;
           const bucket = timeMinutes < 12 * 60 ? 'manha' : timeMinutes < 18 * 60 ? 'tarde' : 'noite';
           const usagePenalty = (globalUsage.get(subject.id) || 0) * 3;
+          const periodPreferenceScore = getHardSubjectPeriodScore(
+            hardSubjectsPeriodPreference,
+            subject,
+            meta,
+            bucket,
+            isFirstBlock
+          );
           let score =
             weight * 7 +
             enemWeight * 16 +
@@ -716,6 +802,7 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
           if ((profile?.daysWithoutStudy ?? 0) >= 4) score += 8;
           if (bucket === 'manha' && meta.nivel === 'avancado') score += 6;
           if (bucket === 'noite' && meta.nivel === 'basico') score += 4;
+          score += periodPreferenceScore;
           return { subject, score, adaptivePriority };
         })
         .sort((a, b) => b.score - a.score);
@@ -744,7 +831,7 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
         blocksSinceReview = 0;
         queuedReviewOverride = expectedCycleStage !== 'revisao';
         cycleStageMatched = expectedCycleStage === 'revisao';
-      } else if (blocksSinceReview >= 3 && recentSubjects.length >= 2 && alreadyHasLesson) {
+      } else if (blocksSinceReview >= reviewGapThreshold && recentSubjects.length >= 2 && alreadyHasLesson) {
         sessionType = 'revisao';
         blocksSinceReview = 0;
         queuedReviewOverride = expectedCycleStage !== 'revisao';
@@ -880,7 +967,12 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
       ) {
         cycleStateBySubject.set(
           chosen.subject.id,
-          advanceCycleState(cycleStateBySubject.get(chosen.subject.id), meta.nivel, userLevel)
+          advanceCycleState(
+            cycleStateBySubject.get(chosen.subject.id),
+            meta.nivel,
+            userLevel,
+            contentPreference
+          )
         );
         if (expectedCycleStage === 'simulado' && topicCandidates.length > 0) {
           topicIndexBySubject.set(chosen.subject.id, (topicIndex + 1) % topicCandidates.length);
@@ -892,8 +984,7 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
           chosen.subject.id,
           (plannedLessonsBySubject.get(chosen.subject.id) || 0) + 1
         );
-        const offsets = [1, 7, 30];
-        offsets.forEach((offset) => {
+        reviewOffsets.forEach((offset) => {
           const reviewDate = new Date(date);
           reviewDate.setDate(reviewDate.getDate() + offset);
           if (reviewDate < config.startDate || reviewDate > config.endDate) return;

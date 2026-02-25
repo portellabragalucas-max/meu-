@@ -55,6 +55,26 @@ function adjustSubject(
   };
 }
 
+function parseConcursoEditalSubjects(raw?: string): ConcursoImportSubject[] {
+  if (!raw) return [];
+  const names = raw
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const deduped = new Map<string, string>();
+  for (const name of names) {
+    const canonical = getCanonicalSubjectName(name);
+    if (!canonical || deduped.has(canonical)) continue;
+    deduped.set(canonical, name);
+  }
+  return Array.from(deduped.values()).map((name) => ({
+    name,
+    priority: 4,
+    difficulty: 3,
+    recommendedWeeklyHours: 4,
+  }));
+}
+
 function getAreaConfig(area: ConcursoAreaFocus | undefined): AreaConfig {
   switch (area) {
     case 'policial':
@@ -247,7 +267,11 @@ function applyConcursoPriorityMode(
 export function buildConcursosPresetSubjectsFromAnswers(
   answers?: Pick<
     PresetWizardAnswers,
-    'concursoArea' | 'concursoLevel' | 'concursoExperience' | 'concursoPriorityMode'
+    | 'concursoArea'
+    | 'concursoLevel'
+    | 'concursoExperience'
+    | 'concursoPriorityMode'
+    | 'concursoSubjectsRaw'
   >
 ): ConcursoImportSubject[] {
   if (!concursosBasePreset) {
@@ -271,16 +295,31 @@ export function buildConcursosPresetSubjectsFromAnswers(
     difficulty: subject.difficulty,
     recommendedWeeklyHours: subject.recommendedWeeklyHours,
   }));
+  const editalSubjects = parseConcursoEditalSubjects(answers?.concursoSubjectsRaw);
+  const editalCanonicalSet = new Set(
+    editalSubjects.map((subject) => getCanonicalSubjectName(subject.name))
+  );
 
   const areaSpecificSet = new Set(
-    [...moduleSubjects, ...areaConfig.extraSubjects].map((subject) => getCanonicalSubjectName(subject.name))
+    [...moduleSubjects, ...areaConfig.extraSubjects, ...editalSubjects].map((subject) =>
+      getCanonicalSubjectName(subject.name)
+    )
   );
 
   const adapted = dedupePresetSubjectsByCanonical<ConcursoImportSubject>([
     ...baseSubjects,
     ...moduleSubjects,
     ...areaConfig.extraSubjects,
+    ...editalSubjects,
   ])
+    .map((subject) => {
+      const canonical = getCanonicalSubjectName(subject.name);
+      if (!editalCanonicalSet.has(canonical)) return subject;
+      return adjustSubject(subject, {
+        priority: subject.priority + 1,
+        recommendedWeeklyHours: subject.recommendedWeeklyHours + 1,
+      });
+    })
     .map((subject) => applyConcursoLevel(subject, answers?.concursoLevel))
     .map((subject) => applyConcursoExperience(subject, answers?.concursoExperience, areaSpecificSet))
     .map((subject) => applyConcursoPriorityMode(subject, answers?.concursoPriorityMode))

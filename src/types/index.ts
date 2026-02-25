@@ -76,12 +76,22 @@ export interface Subject {
 
 export interface StudyPreferences {
   hoursPerDay: number;
+  weeklyHours?: number;
+  dailyHoursByWeekday?: DailyHoursByWeekday;
   daysOfWeek: number[];
   mode: 'random' | 'exam';
   examDate?: string;
   startDate?: string;
   goal?: 'enem' | 'medicina' | 'concurso' | 'outros';
   userLevel?: UserLearningLevel;
+  blockDurationMinutes?: number;
+  focusBlockMinutes?: number;
+  breakDurationMinutes?: number;
+  hardSubjectsPeriodPreference?: HardSubjectsPeriodPreference;
+  studyStyle?: StudyStylePreference;
+  studyContentPreference?: StudyContentPreference;
+  intensity?: StudyIntensityLevel;
+  dailyAvailabilityByWeekday?: DailyAvailabilityByWeekday;
 }
 
 // ============================================
@@ -394,10 +404,34 @@ export interface OnboardingResult {
 // ============================================
 
 export type BestTimeWindow = 'manha' | 'tarde' | 'noite' | 'misto';
-export type FocusDuration = 25 | 50 | 90 | 120;
+export type FocusDuration = 25 | 30 | 45 | 50 | 60 | 90 | 120;
 export type BreakDuration = 5 | 10 | 15 | 20;
 export type WeekdayKey = 'dom' | 'seg' | 'ter' | 'qua' | 'qui' | 'sex' | 'sab';
 export type DailyHoursByWeekday = Record<WeekdayKey, number>;
+export type StudyContentPreference = 'aulas' | 'exercicios' | 'revisao' | 'misto';
+export type StudyIntensityLevel = 'leve' | 'normal' | 'intensa';
+export type HardSubjectsPeriodPreference = 'morning' | 'afternoon' | 'night' | 'any';
+export type StudyStylePreference = 'theory' | 'practice' | 'balanced';
+export interface DailyAvailabilityWindow {
+  start: string;
+  end: string;
+}
+export type DailyAvailabilityByWeekday = Record<WeekdayKey, DailyAvailabilityWindow>;
+export type PriorityLevel = 'baixa' | 'media' | 'alta';
+export type EnemAreaPriorityKey = 'linguagens' | 'matematica' | 'natureza' | 'humanas';
+export type EnemAreaPriorities = Record<EnemAreaPriorityKey, PriorityLevel>;
+export type MedicinaTargetExam =
+  | 'enem'
+  | 'fuvest'
+  | 'unicamp'
+  | 'unesp'
+  | 'famerp'
+  | 'famema'
+  | 'outros';
+export type MedicinaCoreWeights = Record<
+  'biologia' | 'quimica' | 'fisica' | 'matematica' | 'redacao',
+  number
+>;
 export type ConcursoAreaFocus =
   | 'policial'
   | 'tribunais'
@@ -413,19 +447,27 @@ export type ConcursoStudyPriority = 'teoria' | 'exercicios' | 'equilibrado';
 
 export interface PresetWizardAnswers {
   dailyHoursByWeekday: DailyHoursByWeekday;
-  bestTime: BestTimeWindow;
-  availableStart: string;
-  availableEnd: string;
+  dailyAvailabilityByWeekday: DailyAvailabilityByWeekday;
   focusMinutes: FocusDuration;
+  focusBlockMinutes?: number;
   breakMinutes: BreakDuration;
-  targetDailyHours: number;
+  hardSubjectsPeriodPreference?: HardSubjectsPeriodPreference;
+  studyStyle?: StudyStylePreference;
+  studyContentPreference?: StudyContentPreference; // compat legado
+  intensity?: StudyIntensityLevel; // compat legado
   goal: 'enem' | 'medicina' | 'concurso' | 'outros';
   examDate?: string;
   startDate?: string;
+  enemAreaPriorities?: EnemAreaPriorities;
+  medicinaTargetExams?: MedicinaTargetExam[];
+  medicinaTargetExamsOther?: string;
+  medicinaCoreWeights?: MedicinaCoreWeights;
   concursoArea?: ConcursoAreaFocus;
-  concursoLevel?: ConcursoLevel;
-  concursoExperience?: ConcursoExperienceLevel;
-  concursoPriorityMode?: ConcursoStudyPriority;
+  concursoLevel?: ConcursoLevel; // legado (compat)
+  concursoExperience?: ConcursoExperienceLevel; // legado (compat)
+  concursoPriorityMode?: ConcursoStudyPriority; // legado (compat)
+  concursoSubjectsRaw?: string;
+  concursoPredictedDate?: string;
 }
 
 export interface UserSettings {
@@ -434,6 +476,7 @@ export interface UserSettings {
   avatar?: string;
   dailyGoalHours: number;
   dailyHoursByWeekday?: DailyHoursByWeekday;
+  dailyAvailabilityByWeekday?: DailyAvailabilityByWeekday;
   preferredStart: string;
   preferredEnd: string;
   maxBlockMinutes: number;

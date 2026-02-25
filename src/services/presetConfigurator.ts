@@ -1,16 +1,21 @@
 import type {
+  DailyAvailabilityByWeekday,
   DailyHoursByWeekday,
   PresetWizardAnswers,
-  UserSettings,
   StudyPreferences,
+  UserSettings,
   WeekdayKey,
 } from '@/types';
-import { timeToMinutes, minutesToTime } from '@/lib/utils';
+import { minutesToTime, timeToMinutes } from '@/lib/utils';
 
 const WEEKDAY_KEYS: WeekdayKey[] = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function roundHalf(value: number) {
+  return Math.round(value * 2) / 2;
 }
 
 function normalizeDailyHours(
@@ -32,9 +37,37 @@ function normalizeDailyHours(
   return WEEKDAY_KEYS.reduce((acc, key) => {
     const raw = dailyHoursByWeekday[key];
     const next = typeof raw === 'number' ? clamp(raw, 0, 12) : base[key];
-    acc[key] = Math.round(next * 2) / 2;
+    acc[key] = roundHalf(next);
     return acc;
   }, { ...base });
+}
+
+function buildEmptyDailyAvailability(): DailyAvailabilityByWeekday {
+  return WEEKDAY_KEYS.reduce((acc, key) => {
+    acc[key] = { start: '', end: '' };
+    return acc;
+  }, {} as DailyAvailabilityByWeekday);
+}
+
+function normalizeDailyAvailability(
+  dailyAvailabilityByWeekday: DailyAvailabilityByWeekday | undefined
+): DailyAvailabilityByWeekday {
+  const base = buildEmptyDailyAvailability();
+  if (!dailyAvailabilityByWeekday) return base;
+
+  return WEEKDAY_KEYS.reduce((acc, key) => {
+    const raw = dailyAvailabilityByWeekday[key];
+    acc[key] = {
+      start: typeof raw?.start === 'string' ? raw.start : '',
+      end: typeof raw?.end === 'string' ? raw.end : '',
+    };
+    return acc;
+  }, base);
+}
+
+function isValidWindow(start: string, end: string) {
+  if (!start || !end) return false;
+  return timeToMinutes(end) > timeToMinutes(start);
 }
 
 function getActiveDays(dailyHoursByWeekday: DailyHoursByWeekday) {
@@ -45,83 +78,171 @@ function getActiveDays(dailyHoursByWeekday: DailyHoursByWeekday) {
   })).filter((entry) => entry.hours > 0);
 }
 
-function resolveStartTime(bestTime: PresetWizardAnswers['bestTime']) {
-  if (bestTime === 'manha') return '08:00';
-  if (bestTime === 'tarde') return '13:00';
-  if (bestTime === 'noite') return '18:00';
-  return '09:00';
+function derivePreferredWindowFromDailyAvailability(
+  dailyAvailabilityByWeekday: DailyAvailabilityByWeekday,
+  activeDayKeys: WeekdayKey[],
+  fallbackStart: string,
+  fallbackEnd: string,
+  fallbackDailyHours: number
+) {
+  const validWindows = activeDayKeys
+    .map((key) => dailyAvailabilityByWeekday[key])
+    .filter((window) => isValidWindow(window.start, window.end));
+
+  if (validWindows.length === 0) {
+    const start = fallbackStart || '08:00';
+    const startMinutes = timeToMinutes(start);
+    const endCandidate =
+      fallbackEnd && isValidWindow(start, fallbackEnd)
+        ? fallbackEnd
+        : minutesToTime(startMinutes + Math.max(60, Math.round(fallbackDailyHours * 60)));
+    return { preferredStart: start, preferredEnd: endCandidate };
+  }
+
+  const earliestStartMinutes = Math.min(...validWindows.map((window) => timeToMinutes(window.start)));
+  const latestEndMinutes = Math.max(...validWindows.map((window) => timeToMinutes(window.end)));
+
+  return {
+    preferredStart: minutesToTime(earliestStartMinutes),
+    preferredEnd: minutesToTime(latestEndMinutes),
+  };
+}
+
+function clampHoursToAvailableWindows(
+  dailyHoursByWeekday: DailyHoursByWeekday,
+  dailyAvailabilityByWeekday: DailyAvailabilityByWeekday
+) {
+  const next = { ...dailyHoursByWeekday };
+  for (const key of WEEKDAY_KEYS) {
+    const hours = next[key] ?? 0;
+    if (hours <= 0) continue;
+    const window = dailyAvailabilityByWeekday[key];
+    if (!isValidWindow(window.start, window.end)) continue;
+    const windowHours = Math.max(0, (timeToMinutes(window.end) - timeToMinutes(window.start)) / 60);
+    next[key] = roundHalf(Math.min(hours, windowHours));
+  }
+  return next;
+}
+
+function resolveEffectiveExamDate(baseSettings: UserSettings, answers: PresetWizardAnswers) {
+  return answers.examDate || answers.concursoPredictedDate || baseSettings.examDate || '';
+}
+
+function resolveStudyStyle(answers: PresetWizardAnswers): NonNullable<StudyPreferences['studyStyle']> {
+  if (answers.studyStyle) return answers.studyStyle;
+  if (answers.studyContentPreference === 'aulas') return 'theory';
+  if (answers.studyContentPreference === 'exercicios') return 'practice';
+  return 'balanced';
+}
+
+function mapStudyStyleToContentPreference(
+  studyStyle: NonNullable<StudyPreferences['studyStyle']>
+): NonNullable<StudyPreferences['studyContentPreference']> {
+  if (studyStyle === 'theory') return 'aulas';
+  if (studyStyle === 'practice') return 'exercicios';
+  return 'misto';
+}
+
+function resolveHardSubjectsPeriodPreference(
+  answers: PresetWizardAnswers
+): NonNullable<StudyPreferences['hardSubjectsPeriodPreference']> {
+  return answers.hardSubjectsPeriodPreference || 'any';
+}
+
+function deriveExamIntensity(
+  examDate: string
+): StudyPreferences['intensity'] {
+  if (!examDate) return undefined;
+  const target = new Date(`${examDate}T00:00:00`);
+  if (Number.isNaN(target.getTime())) return undefined;
+  const daysToExam = Math.ceil((target.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  if (daysToExam <= 30) return 'intensa';
+  if (daysToExam <= 120) return 'normal';
+  return 'leve';
 }
 
 export function computeStudyPreferences(
   baseSettings: UserSettings,
   answers: PresetWizardAnswers
 ): { settings: UserSettings; studyPrefs: StudyPreferences } {
-  const normalizedHours = normalizeDailyHours(answers.dailyHoursByWeekday, 3);
+  const normalizedAvailability = normalizeDailyAvailability(answers.dailyAvailabilityByWeekday);
+  const normalizedHours = clampHoursToAvailableWindows(
+    normalizeDailyHours(answers.dailyHoursByWeekday, 3),
+    normalizedAvailability
+  );
   const activeDayEntries = getActiveDays(normalizedHours);
+  const activeDayKeys = activeDayEntries.map((entry) => entry.key);
+  const weeklyHours = roundHalf(
+    activeDayEntries.reduce((sum, entry) => sum + entry.hours, 0)
+  );
   const averageHours =
-    activeDayEntries.length > 0
-      ? activeDayEntries.reduce((sum, entry) => sum + entry.hours, 0) / activeDayEntries.length
-      : 0;
-  let dailyGoalHours = averageHours;
+    activeDayEntries.length > 0 ? weeklyHours / activeDayEntries.length : 0;
+  const dailyGoalHours = averageHours > 0 ? roundHalf(averageHours) : 0;
 
-  if (answers.targetDailyHours) {
-    dailyGoalHours = clamp(answers.targetDailyHours, 0, 12);
-  }
+  const focusBlockMinutes = clamp(
+    typeof answers.focusBlockMinutes === 'number' ? answers.focusBlockMinutes : answers.focusMinutes,
+    25,
+    120
+  );
+  const blockMinutes = focusBlockMinutes;
+  const breakMinutes = clamp(answers.breakMinutes, 5, 20);
+  const studyStyle = resolveStudyStyle(answers);
+  const hardSubjectsPeriodPreference = resolveHardSubjectsPeriodPreference(answers);
 
-  if (dailyGoalHours <= 0) {
-    dailyGoalHours = clamp(averageHours || 2, 0.5, 12);
-  }
+  const inferredWindow = derivePreferredWindowFromDailyAvailability(
+    normalizedAvailability,
+    activeDayKeys,
+    baseSettings.preferredStart || '08:00',
+    baseSettings.preferredEnd || '',
+    dailyGoalHours || 2
+  );
 
-  // Respeitar a escolha do usuario; heuristicas so influenciam o default.
-  let blockMinutes = clamp(answers.focusMinutes, 25, 120);
-  let breakMinutes = clamp(answers.breakMinutes, 5, 20);
-
-  const preferredStart = answers.availableStart || resolveStartTime(answers.bestTime);
-  const startMinutes = timeToMinutes(preferredStart);
-  let preferredEnd = answers.availableEnd || minutesToTime(startMinutes + dailyGoalHours * 60);
-
-  const endMinutes = timeToMinutes(preferredEnd);
-  if (endMinutes <= startMinutes) {
-    preferredEnd = minutesToTime(startMinutes + dailyGoalHours * 60);
-  }
-
-  const windowHours = Math.max(0, (timeToMinutes(preferredEnd) - startMinutes) / 60);
-  if (windowHours > 0 && dailyGoalHours > windowHours) {
-    dailyGoalHours = Math.max(0.5, Math.floor(windowHours * 2) / 2);
-  }
-
-  const windowMinutes = Math.max(0, timeToMinutes(preferredEnd) - startMinutes);
-  if (windowMinutes > 0 && blockMinutes + breakMinutes > windowMinutes) {
-    blockMinutes = Math.max(25, Math.min(blockMinutes, windowMinutes - breakMinutes));
+  const startMinutes = timeToMinutes(inferredWindow.preferredStart);
+  let preferredEnd = inferredWindow.preferredEnd;
+  if (!isValidWindow(inferredWindow.preferredStart, preferredEnd)) {
+    preferredEnd = minutesToTime(startMinutes + Math.max(60, Math.round((dailyGoalHours || 2) * 60)));
   }
 
   const allDays = [0, 1, 2, 3, 4, 5, 6];
   const activeDays = activeDayEntries.map((entry) => entry.index);
   const excludeDays = allDays.filter((day) => !activeDays.includes(day));
+  const effectiveExamDate = resolveEffectiveExamDate(baseSettings, answers);
 
   const settings: UserSettings = {
     ...baseSettings,
-    dailyGoalHours,
+    dailyGoalHours: dailyGoalHours || baseSettings.dailyGoalHours || 2,
     dailyHoursByWeekday: normalizedHours,
-    preferredStart,
+    dailyAvailabilityByWeekday: normalizedAvailability,
+    preferredStart: inferredWindow.preferredStart,
     preferredEnd,
     maxBlockMinutes: blockMinutes,
     breakMinutes,
     excludeDays,
-    examDate: answers.examDate || baseSettings.examDate,
+    examDate: effectiveExamDate,
+    aiDifficulty: baseSettings.aiDifficulty,
   };
 
   const studyPrefs: StudyPreferences = {
-    hoursPerDay: dailyGoalHours,
+    hoursPerDay: dailyGoalHours || 0,
+    weeklyHours,
+    dailyHoursByWeekday: normalizedHours,
     daysOfWeek: activeDays,
-    mode: answers.examDate ? 'exam' : 'random',
-    examDate: answers.examDate || '',
+    mode: effectiveExamDate ? 'exam' : 'random',
+    examDate: effectiveExamDate || '',
     startDate: answers.startDate || undefined,
     goal: answers.goal,
+    blockDurationMinutes: blockMinutes,
+    focusBlockMinutes,
+    breakDurationMinutes: breakMinutes,
+    hardSubjectsPeriodPreference,
+    studyStyle,
+    studyContentPreference: mapStudyStyleToContentPreference(studyStyle),
+    intensity: deriveExamIntensity(effectiveExamDate),
+    dailyAvailabilityByWeekday: normalizedAvailability,
     userLevel:
-      dailyGoalHours <= 1.5
+      weeklyHours <= 8
         ? 'iniciante'
-        : dailyGoalHours >= 4 && answers.focusMinutes >= 90
+        : weeklyHours >= 25 && answers.focusMinutes >= 90
         ? 'avancado'
         : 'intermediario',
   };

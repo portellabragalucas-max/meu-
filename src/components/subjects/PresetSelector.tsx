@@ -60,7 +60,7 @@ interface PresetSelectorProps {
     settings: UserSettings,
     studyPrefs: StudyPreferences,
     answers: PresetWizardAnswers
-  ) => void;
+  ) => Promise<void> | void;
 }
 
 const GROUP_ORDER = ['Natureza', 'Exatas', 'Linguagens', 'Humanas', 'Base comum', 'Modulo especifico'];
@@ -510,8 +510,10 @@ export default function PresetSelector({
         baseSettings={baseSettings}
         onClose={() => setShowWizard(false)}
         onApply={(settings, studyPrefs, answers) => {
-          onApplyPreferences(settings, studyPrefs, answers);
-          void handleImport(answers);
+          void (async () => {
+            await onApplyPreferences(settings, studyPrefs, answers);
+            await handleImport(answers);
+          })();
         }}
       />
     </div>
