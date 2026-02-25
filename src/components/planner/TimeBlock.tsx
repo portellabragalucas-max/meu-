@@ -192,13 +192,13 @@ export default function TimeBlock({
               <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           )}
-          {!block.isBreak && onSkipToday && block.status !== 'completed' && (
+          {onSkipToday && block.status !== 'completed' && (
             <button
               type="button"
               onClick={() => onSkipToday(block)}
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg sm:h-9 sm:w-9 hover:bg-red-500/10 text-red-300 hover:text-red-200 transition-colors"
-              aria-label="Pular hoje"
-              title="Pular hoje"
+              aria-label={block.isBreak ? 'Pular intervalo' : 'Pular hoje'}
+              title={block.isBreak ? 'Pular intervalo' : 'Pular hoje'}
             >
               <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
