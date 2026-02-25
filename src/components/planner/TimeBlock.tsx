@@ -85,6 +85,10 @@ export default function TimeBlock({
         ANALISE: { label: 'Correcao', icon: Repeat, className: 'bg-slate-400/15 text-slate-200 border-slate-400/30' },
       }[block.type]
     : null;
+  const displayTitle =
+    !block.isBreak && block.subject?.name
+      ? block.subject.name
+      : getStudyBlockDisplayTitle(block);
 
   return (
     <motion.div
@@ -93,7 +97,7 @@ export default function TimeBlock({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
-        'group relative rounded-2xl border p-2.5 sm:p-3',
+        'group relative overflow-hidden rounded-2xl border p-2.5 sm:p-3',
         'transition-all duration-200',
         statusColors[block.status],
         isDragging && 'shadow-lg shadow-neon-blue/20 z-50'
@@ -102,7 +106,7 @@ export default function TimeBlock({
       {/* Indicador de cor */}
       {!block.isBreak && block.subject && (
         <div
-          className="absolute bottom-0 left-0 top-0 w-1 rounded-l-2xl"
+          className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full"
           style={{ backgroundColor: block.subject.color }}
         />
       )}
@@ -131,7 +135,7 @@ export default function TimeBlock({
               />
             )}
             <h4 className="font-medium text-[15px] text-white truncate sm:text-base">
-              {getStudyBlockDisplayTitle(block)}
+              {displayTitle}
             </h4>
           </div>
 
