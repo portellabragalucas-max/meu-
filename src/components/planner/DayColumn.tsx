@@ -73,7 +73,7 @@ export default function DayColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex h-full w-full min-w-0 flex-col md:min-w-[280px]',
+        'flex w-full min-w-0 flex-col md:min-w-[280px]',
         'rounded-xl border bg-card-bg/50',
         isToday ? 'border-neon-blue/50' : 'border-card-border',
         isOver && 'ring-2 ring-neon-blue/30 bg-neon-blue/5'
@@ -152,7 +152,7 @@ export default function DayColumn({
       </div>
 
       {/* Container de Blocos */}
-      <div className="flex-1 space-y-2 overflow-visible p-3 md:overflow-y-auto">
+      <div className="space-y-2 overflow-visible p-3">
         <SortableContext
           items={blocks.map((b) => b.id)}
           strategy={verticalListSortingStrategy}

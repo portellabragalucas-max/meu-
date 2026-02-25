@@ -148,7 +148,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center px-4 py-10">
+    <div className="min-h-[100dvh] bg-slate-950 text-white flex flex-col items-center px-4 py-10">
       <div className="max-w-3xl w-full">
         <div className="mb-8 flex items-center gap-3">
           <Sparkles className="text-cyan-400" />

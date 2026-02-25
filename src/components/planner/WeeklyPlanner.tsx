@@ -995,7 +995,7 @@ export default function WeeklyPlanner({
   const isViewingToday = isMobile && mobileDay ? isSameDay(mobileDay, new Date()) : false;
 
   return (
-    <div className="flex h-full min-w-0 flex-col">
+    <div className="flex min-h-0 min-w-0 flex-col">
       {/* Cabeçalho */}
       <div className="mb-5 flex min-w-0 flex-col gap-4 sm:mb-6 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
@@ -1187,7 +1187,7 @@ export default function WeeklyPlanner({
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex min-w-0 flex-col gap-3 pb-4 sm:gap-4 md:flex-row md:items-start md:pr-1 min-h-[500px]">
+          <div className="flex min-w-0 flex-col gap-3 pb-6 sm:gap-4 sm:pb-8 md:min-h-[500px] md:flex-row md:items-start md:pr-1">
             {visibleDates.map((date) => {
               const dateKey = date.toISOString().split('T')[0];
       const dayBlocks = blocksByDay.get(dateKey) || [];

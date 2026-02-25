@@ -343,9 +343,21 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
 
   return createPortal(
     <AnimatePresence>
-      <motion.div className="fixed inset-0 z-[10000] flex items-start justify-center overflow-y-auto bg-black/70 px-2 py-4 backdrop-blur-sm sm:px-4 md:items-center" variants={overlayVariants} initial="hidden" animate="visible" exit="hidden">
-        <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="hidden" className="w-full md:max-w-4xl md:max-h-[88vh] max-h-[calc(100dvh-2rem)]">
-          <Card className="flex h-[calc(100dvh-2rem)] md:h-auto md:max-h-[88vh] min-h-0 flex-col overflow-hidden rounded-none md:rounded-2xl border-slate-800 bg-gradient-to-br from-slate-900/95 via-slate-950/95 to-slate-900/95 p-4 sm:p-6 shadow-2xl">
+      <motion.div
+        className="fixed inset-0 z-[10000] grid place-items-start overflow-y-auto overscroll-contain bg-black/70 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] pt-[calc(0.75rem+max(env(safe-area-inset-top),0px))] pb-[calc(0.75rem+max(env(safe-area-inset-bottom),0px))] backdrop-blur-sm sm:place-items-center sm:pl-[max(1rem,env(safe-area-inset-left))] sm:pr-[max(1rem,env(safe-area-inset-right))]"
+        variants={overlayVariants}
+        initial="hidden"
+        animate="visible"
+        exit="hidden"
+      >
+        <motion.div
+          variants={modalVariants}
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          className="w-full min-h-0 max-w-4xl max-h-[calc(100dvh-1.5rem-max(env(safe-area-inset-top),0px)-max(env(safe-area-inset-bottom),0px))]"
+        >
+          <Card className="flex min-h-0 max-h-full flex-col overflow-hidden rounded-2xl border-slate-800 bg-gradient-to-br from-slate-900/95 via-slate-950/95 to-slate-900/95 p-3 sm:p-5 md:p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm text-neon-cyan">Configuracao do cronograma</p>
@@ -367,7 +379,7 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
               </div>
             </div>
 
-            <div className="mt-6 flex-1 min-h-0 overflow-y-auto px-1 sm:px-2 pb-6 space-y-6">
+            <div className="mt-5 flex-1 min-h-0 overflow-y-auto scroll-touch px-0.5 sm:px-1.5 pb-4 sm:pb-6 space-y-5 sm:space-y-6">
               {step === 0 && (
                 <>
                   <Card className="border-slate-800 bg-slate-900/40 p-4 space-y-4">
@@ -679,7 +691,7 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
               </div>
             )}
 
-            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-4 flex flex-col-reverse gap-2 border-t border-slate-800/70 pt-3 pb-[max(0px,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between">
               <div className="text-xs text-text-muted">Todas as respostas desta tela alteram a geracao do cronograma.</div>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button variant="ghost" onClick={resetAndClose}>Cancelar</Button>

@@ -57,7 +57,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       };
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-background">
+    <div className="h-[100dvh] min-h-[100dvh] w-full max-w-full overflow-x-hidden overflow-y-hidden bg-background">
       {/* Sidebar */}
       {!isMobile && (
         <Sidebar
@@ -69,10 +69,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Area de conteudo principal */}
       <div
         style={contentStyle}
-        className="relative flex min-h-screen w-full max-w-full min-w-0 flex-col overflow-x-hidden transition-[padding-left] duration-300 ease-in-out"
+        className="relative flex h-[100dvh] min-h-0 w-full max-w-full min-w-0 flex-col overflow-x-hidden overflow-y-hidden transition-[padding-left] duration-300 ease-in-out"
       >
         {/* Barra superior */}
-        <TopBar
+        <div className="shrink-0">
+          <TopBar
           user={{
             name: displayName,
             avatar: userSettings.avatar ?? session?.user?.image ?? undefined,
@@ -82,9 +83,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
             streak: 0,
           }}
         />
+        </div>
 
         {/* Conteudo da pagina */}
-        <main className="app-main-content flex-1 min-w-0 w-full max-w-full overflow-y-visible lg:overflow-y-auto">
+        <main className="app-main-content flex-1 min-h-0 min-w-0 w-full max-w-full overflow-y-auto">
           <AppContainer>
             <div key={pathname} className="w-full min-w-0 max-w-full">
               {children}

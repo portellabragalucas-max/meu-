@@ -185,7 +185,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen w-full min-w-0 overflow-x-hidden bg-background">
+    <div className="flex min-h-[100dvh] w-full min-w-0 overflow-x-hidden bg-background">
       <div className="relative hidden overflow-hidden lg:flex lg:w-1/2">
         <div className="absolute inset-0 bg-gradient-to-br from-neon-blue/20 via-background to-neon-purple/20" />
         <div
