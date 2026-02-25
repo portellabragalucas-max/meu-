@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { X, Play, Pause, Square, CheckCircle2, Coffee } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { formatDuration } from '@/lib/utils';
@@ -33,6 +34,7 @@ export default function StudyBlockSessionModal({
   const [timeRemaining, setTimeRemaining] = useState(totalSeconds);
   const [sessionState, setSessionState] = useState<SessionState>('ready');
   const [completedOnce, setCompletedOnce] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [timers, setTimers] = useLocalStorage<Record<string, { remaining: number; state: SessionState }>>(
     'nexora_session_timers',
     {}
@@ -45,6 +47,10 @@ export default function StudyBlockSessionModal({
   useEffect(() => {
     timersRef.current = timers;
   }, [timers]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!isOpen || !block) return;
@@ -194,11 +200,11 @@ export default function StudyBlockSessionModal({
     return () => clearInterval(interval);
   }, [sessionState, block, onComplete, completedOnce, onClose, finishSession]);
 
-  if (!isOpen || !block) return null;
+  if (!isOpen || !block || !mounted) return null;
 
   const subjectName = block.isBreak ? 'Intervalo' : block.subject?.name || 'Sessão de Estudo';
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -303,5 +309,7 @@ export default function StudyBlockSessionModal({
         </motion.div>
       </motion.div>
     </AnimatePresence>
+    ,
+    document.body
   );
 }
