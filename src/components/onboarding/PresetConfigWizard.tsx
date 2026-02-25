@@ -263,14 +263,14 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
   const applyMonToFri = () => {
     setMassDays([1, 2, 3, 4, 5]);
     setAnswers((prev) => {
-      const segHours = prev.dailyHoursByWeekday.seg;
-      const segWindow = prev.dailyAvailabilityByWeekday.seg;
       const hours = { ...prev.dailyHoursByWeekday };
       const windows = { ...prev.dailyAvailabilityByWeekday };
       ['seg', 'ter', 'qua', 'qui', 'sex'].forEach((key) => {
         const k = key as WeekdayKey;
-        hours[k] = segHours;
-        windows[k] = { ...segWindow };
+        hours[k] = clampHours(massHours);
+        if (massStart || massEnd) {
+          windows[k] = { start: massStart, end: massEnd };
+        }
       });
       return { ...prev, dailyHoursByWeekday: hours, dailyAvailabilityByWeekday: windows };
     });
@@ -278,13 +278,13 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
   const applyToAll = () => {
     setMassDays([0, 1, 2, 3, 4, 5, 6]);
     setAnswers((prev) => {
-      const segHours = prev.dailyHoursByWeekday.seg;
-      const segWindow = prev.dailyAvailabilityByWeekday.seg;
       const hours = { ...prev.dailyHoursByWeekday };
       const windows = { ...prev.dailyAvailabilityByWeekday };
       DAY_OPTIONS.forEach((d) => {
-        hours[d.key] = segHours;
-        windows[d.key] = { ...segWindow };
+        hours[d.key] = clampHours(massHours);
+        if (massStart || massEnd) {
+          windows[d.key] = { start: massStart, end: massEnd };
+        }
       });
       return { ...prev, dailyHoursByWeekday: hours, dailyAvailabilityByWeekday: windows };
     });
@@ -372,8 +372,32 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                 <>
                   <Card className="border-slate-800 bg-slate-900/40 p-4 space-y-4">
                     <div className="flex items-center justify-between gap-3">
-                      <div><p className="text-sm font-semibold text-white">Aplicar em massa</p><p className="text-xs text-text-muted">Horas liquidas e janela opcional por lote.</p></div>
+                      <div>
+                        <p className="text-sm font-semibold text-white">Aplicar em massa</p>
+                        <p className="text-xs text-text-muted">
+                          Selecione os dias alvo do lote (isso sozinho nao altera o cronograma).
+                        </p>
+                      </div>
                       <div className="text-sm text-white">Padrao: {fmtHours(massHours)}</div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs text-text-muted">Dias selecionados para o lote: {massDays.length}</div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-text-secondary"
+                          onClick={() => setMassDays(DAY_OPTIONS.map((d) => d.value))}
+                        >
+                          Selecionar todos
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-text-secondary"
+                          onClick={() => setMassDays([])}
+                        >
+                          Limpar selecao
+                        </button>
+                      </div>
                     </div>
                     <div className="flex flex-wrap gap-2">{DAY_OPTIONS.map((d) => <button key={d.key} type="button" className={cn('px-3 py-2 rounded-lg border text-sm', massDays.includes(d.value) ? 'border-neon-purple bg-neon-purple/20 text-white' : 'border-slate-800 text-text-secondary')} onClick={() => toggleMassDay(d.value)}>{d.label}</button>)}</div>
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_120px_auto] gap-3 md:items-end">
@@ -389,14 +413,14 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                     <div className="flex flex-wrap gap-2">{QUICK_HOURS.map((h) => <button key={h} type="button" className={cn('px-3 py-2 rounded-lg border text-sm', massHours === h ? 'border-neon-cyan bg-neon-cyan/10 text-white' : 'border-slate-800 text-text-secondary')} onClick={() => setMassHours(h)}>{h}h</button>)}</div>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="secondary" onClick={copyMondayToSelected}>Copiar segunda para selecionados</Button>
-                      <Button variant="secondary" onClick={applyMonToFri}>Aplicar seg-sex</Button>
-                      <Button variant="secondary" onClick={applyToAll}>Aplicar para todos</Button>
+                      <Button variant="secondary" onClick={applyMonToFri}>Aplicar lote seg-sex</Button>
+                      <Button variant="secondary" onClick={applyToAll}>Aplicar lote para todos</Button>
                       <Button variant="ghost" onClick={clearMassSelectionValues}>Limpar selecionados</Button>
                     </div>
                   </Card>
 
                   <Card className="border-slate-800 bg-slate-900/30 p-4 space-y-3">
-                    <div className="flex items-center justify-between gap-3"><p className="text-white font-semibold text-sm">Disponibilidade por dia</p><p className="text-xs text-text-muted">0h = descanso | horario opcional</p></div>
+                    <div className="flex items-center justify-between gap-3"><p className="text-white font-semibold text-sm">Disponibilidade por dia</p><p className="text-xs text-text-muted">0h = sem estudo | horario opcional</p></div>
                     {DAY_OPTIONS.map((d) => {
                       const hours = answers.dailyHoursByWeekday[d.key] || 0;
                       const active = hours > 0;
@@ -404,10 +428,28 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                       return (
                         <div key={d.key} className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
                           <div className="grid grid-cols-1 lg:grid-cols-[auto_90px_1fr_1fr] gap-3 lg:items-end">
-                            <button type="button" onClick={() => toggleDayActive(d.value)} className={cn('h-10 rounded-lg border px-3 text-sm', active ? 'border-neon-cyan/60 text-white' : 'border-slate-800 text-text-muted')}>{d.label} {active ? '' : '(0h)'}</button>
+                            <button type="button" onClick={() => toggleDayActive(d.value)} className={cn('h-10 rounded-lg border px-3 text-sm', active ? 'border-neon-cyan/60 text-white' : 'border-slate-800 text-text-muted')}>
+                              {d.label} {active ? '· Estudo' : '· Sem estudo'}
+                            </button>
                             <input type="number" min={0} max={12} step={0.5} disabled={!active} value={hours} onChange={(e) => updateDayHours(d.key, Number(e.target.value))} className={cn('input-field h-10', !active && 'opacity-60')} />
                             <input type="time" disabled={!active} value={w.start} onChange={(e) => updateDayWindow(d.key, 'start', e.target.value)} className={cn('input-field h-10', !active && 'opacity-60')} />
                             <input type="time" disabled={!active} value={w.end} onChange={(e) => updateDayWindow(d.key, 'end', e.target.value)} className={cn('input-field h-10', !active && 'opacity-60')} />
+                          </div>
+                          <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                            <span className={cn(active ? 'text-text-secondary' : 'text-text-muted')}>
+                              {active ? `Horas liquidas: ${fmtHours(hours)}` : 'Sem estudo neste dia'}
+                            </span>
+                            <button
+                              type="button"
+                              className="rounded-md border border-slate-700 px-2 py-1 text-text-secondary hover:text-white"
+                              onClick={() => {
+                                updateDayHours(d.key, 0);
+                                updateDayWindow(d.key, 'start', '');
+                                updateDayWindow(d.key, 'end', '');
+                              }}
+                            >
+                              Marcar sem estudo
+                            </button>
                           </div>
                         </div>
                       );
@@ -619,7 +661,9 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                           <div key={d.key} className="rounded-lg border border-slate-800 bg-slate-900/40 px-2 py-2 text-center">
                             <div className="text-[11px] text-text-muted">{d.label}</div>
                             <div className="text-sm font-medium text-white">{blocksPerDay[d.key] || 0}</div>
-                            <div className="text-[11px] text-text-secondary">{fmtHours(answers.dailyHoursByWeekday[d.key] || 0)}</div>
+                            <div className="text-[11px] text-text-secondary">
+                              {(answers.dailyHoursByWeekday[d.key] || 0) > 0 ? fmtHours(answers.dailyHoursByWeekday[d.key] || 0) : 'Sem estudo'}
+                            </div>
                           </div>
                         ))}
                       </div>
