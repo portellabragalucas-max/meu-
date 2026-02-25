@@ -160,9 +160,12 @@ export default function StudyBlockSessionModal({
   }, [ensureAudioContext, userSettings.alarmSound]);
 
   const finishSession = useCallback(
-    (spentSeconds: number) => {
+    (spentSeconds: number, mode: 'auto' | 'manual' = 'manual') => {
       if (completedOnce) return;
-      const minutesSpent = Math.max(0, spentSeconds / 60);
+      const minutesSpent =
+        mode === 'auto'
+          ? Math.max(1, block?.durationMinutes || 0)
+          : Math.max(1, Math.round(spentSeconds / 60));
       setCompletedOnce(true);
       setSessionState('completed');
       playAlarm();
@@ -182,7 +185,7 @@ export default function StudyBlockSessionModal({
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          finishSession(initialTotalRef.current);
+          finishSession(initialTotalRef.current, 'auto');
           return 0;
         }
         return prev - 1;
@@ -264,9 +267,9 @@ export default function StudyBlockSessionModal({
                   <Button
                     variant="secondary"
                     className="flex-1"
-                    onClick={() => finishSession(initialTotalRef.current - timeRemaining)}
+                    onClick={() => finishSession(initialTotalRef.current - timeRemaining, 'manual')}
                   >
-                    Finalizar
+                    Concluir agora
                   </Button>
                   <Button
                     variant="primary"

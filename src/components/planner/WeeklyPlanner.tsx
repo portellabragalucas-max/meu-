@@ -877,13 +877,19 @@ export default function WeeklyPlanner({
     setBlocks((prev) => {
       const next = prev.map((block) =>
         block.id === blockId
-          ? {
-              ...block,
-              status: 'completed' as const,
-              completedAt: new Date(),
-              updatedAt: new Date(),
-              durationMinutes: minutesSpent ? Math.round(minutesSpent) : block.durationMinutes,
-            }
+          ? (() => {
+              const hasExplicitMinutes =
+                typeof minutesSpent === 'number' && Number.isFinite(minutesSpent);
+              return {
+                ...block,
+                status: 'completed' as const,
+                completedAt: new Date(),
+                updatedAt: new Date(),
+                durationMinutes: hasExplicitMinutes
+                  ? Math.max(1, Math.round(minutesSpent))
+                  : block.durationMinutes,
+              };
+            })()
           : block
       );
       onBlocksChange(next);

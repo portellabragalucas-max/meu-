@@ -227,12 +227,26 @@ export default function DashboardPage() {
     if (!targetBlock) return;
     const targetSubject = subjects.find((s) => s.id === targetBlock.subjectId);
 
-    const effectiveMinutes = minutesSpent && minutesSpent > 0 ? minutesSpent : targetBlock.durationMinutes;
+    const hasExplicitMinutes =
+      typeof minutesSpent === 'number' && Number.isFinite(minutesSpent);
+    const effectiveMinutes = hasExplicitMinutes
+      ? Math.max(1, minutesSpent)
+      : targetBlock.durationMinutes;
     const hours = effectiveMinutes / 60;
 
     setPlannerBlocks((blocks) =>
       blocks.map((b) =>
-        b.id === blockId ? { ...b, status: 'completed' as const } : b
+        b.id === blockId
+          ? {
+              ...b,
+              status: 'completed' as const,
+              completedAt: new Date(),
+              updatedAt: new Date(),
+              durationMinutes: hasExplicitMinutes
+                ? Math.max(1, Math.round(effectiveMinutes))
+                : b.durationMinutes,
+            }
+          : b
       )
     );
 
