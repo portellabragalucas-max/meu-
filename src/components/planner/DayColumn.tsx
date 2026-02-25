@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/sortable';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
-import { cn, getDayName, formatDate, isSameDay } from '@/lib/utils';
+import { cn, isSameDay } from '@/lib/utils';
 import TimeBlock from './TimeBlock';
 import type { StudyBlock } from '@/types';
 
@@ -73,30 +73,31 @@ export default function DayColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex w-full min-w-0 flex-col md:min-w-[280px]',
-        'rounded-xl border bg-card-bg/50',
-        isToday ? 'border-neon-blue/50' : 'border-card-border',
+        'mx-auto flex w-full max-w-[34rem] min-w-0 flex-col md:max-w-none md:min-w-[280px]',
+        'rounded-[1.5rem] border bg-gradient-to-b from-[#191C27]/95 to-[#131620]/95 shadow-[0_18px_36px_rgba(0,0,0,0.35)]',
+        'md:rounded-2xl md:bg-card-bg/50 md:shadow-none',
+        isToday ? 'border-neon-blue/45' : 'border-white/10 md:border-card-border',
         isOver && 'ring-2 ring-neon-blue/30 bg-neon-blue/5'
       )}
     >
       {/* Cabeçalho do Dia */}
       <div
         className={cn(
-          'p-3 sm:p-4 border-b border-card-border',
-          isToday && 'bg-neon-blue/10'
+          'border-b border-white/10 p-3.5 sm:p-4 md:border-card-border',
+          isToday && 'bg-neon-blue/10 md:bg-neon-blue/10'
         )}
       >
         <div className="flex items-center justify-between">
           <div>
             <h3
               className={cn(
-                'font-heading font-bold',
+                'font-heading text-base font-bold sm:text-lg',
                 isToday ? 'text-neon-blue' : 'text-white'
               )}
             >
               {dayNamePt}
             </h3>
-            <p className="text-sm text-text-secondary">
+            <p className="text-xs text-text-secondary sm:text-sm">
               {date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}
             </p>
           </div>
@@ -112,39 +113,43 @@ export default function DayColumn({
         </div>
 
         {/* Estatísticas do Dia */}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
-          <span className="text-text-secondary">
-            {blocks.filter((b) => !b.isBreak).length} blocos
-          </span>
-          <span className="text-white font-medium">{totalHours}h planejadas</span>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-text-muted">Blocos</p>
+            <p className="mt-1 text-lg font-semibold text-white">{blocks.filter((b) => !b.isBreak).length}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-text-muted">Planejado</p>
+            <p className="mt-1 text-lg font-semibold text-white">{totalHours}h</p>
+          </div>
         </div>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-text-secondary">
-          <span>
-            Capacidade: {limitHours ? `${limitHours}h` : 'livre'}
-          </span>
-          {onAdjustDailyLimit && (
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => onAdjustDailyLimit(date, -30)}
-                className="min-h-[44px] min-w-[44px] rounded-md border border-card-border px-2 py-1 hover:border-neon-blue/50 hover:text-neon-blue transition-colors"
-                aria-label="Reduzir limite diario em 30 minutos"
-              >
-                -30m
-              </button>
-              <button
-                type="button"
-                onClick={() => onAdjustDailyLimit(date, 30)}
-                className="min-h-[44px] min-w-[44px] rounded-md border border-card-border px-2 py-1 hover:border-neon-blue/50 hover:text-neon-blue transition-colors"
-                aria-label="Aumentar limite diario em 30 minutos"
-              >
-                +30m
-              </button>
-            </div>
-          )}
+        <div className="mt-2 rounded-2xl border border-white/10 bg-white/[0.02] p-2.5">
+          <div className="flex items-center justify-between gap-3 text-xs text-text-secondary">
+            <span>Capacidade: {limitHours ? `${limitHours}h` : 'livre'}</span>
+            {onAdjustDailyLimit && (
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onAdjustDailyLimit(date, -30)}
+                  className="min-h-[40px] min-w-[72px] rounded-xl border border-white/15 bg-white/[0.02] px-2 py-1 text-sm text-text-secondary transition-colors hover:border-neon-blue/50 hover:text-neon-blue"
+                  aria-label="Reduzir limite diario em 30 minutos"
+                >
+                  -30m
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onAdjustDailyLimit(date, 30)}
+                  className="min-h-[40px] min-w-[72px] rounded-xl border border-white/15 bg-white/[0.02] px-2 py-1 text-sm text-text-secondary transition-colors hover:border-neon-blue/50 hover:text-neon-blue"
+                  aria-label="Aumentar limite diario em 30 minutos"
+                >
+                  +30m
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         {overMinutes > 0 && (
-          <p className="mt-1 text-xs text-red-400">
+          <p className="mt-2 text-xs text-red-400">
             Excedente: {(overMinutes / 60).toFixed(1)}h
           </p>
         )}
@@ -152,17 +157,15 @@ export default function DayColumn({
       </div>
 
       {/* Container de Blocos */}
-      <div className="space-y-2 overflow-visible p-3">
+      <div className="space-y-2.5 overflow-visible p-2.5 sm:p-3">
         <SortableContext
           items={blocks.map((b) => b.id)}
           strategy={verticalListSortingStrategy}
         >
           {blocks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 text-center">
+            <div className="flex h-32 flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-center">
               <p className="text-sm text-text-muted">Nenhum bloco agendado</p>
-              <p className="text-xs text-text-muted mt-1">
-                Clique em + para adicionar um bloco
-              </p>
+              <p className="mt-1 text-xs text-text-muted">Clique em + para adicionar um bloco</p>
             </div>
           ) : (
             blocks.map((block) => (
@@ -182,17 +185,14 @@ export default function DayColumn({
       </div>
 
       {/* Botão Adicionar Bloco */}
-      <div className="p-3 border-t border-card-border">
+      <div className="border-t border-white/10 p-3 md:border-card-border">
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onAddBlock(date)}
           className={cn(
-            'w-full flex items-center justify-center gap-2',
-            'p-3 rounded-xl border border-dashed min-h-[44px]',
-            'text-sm text-text-secondary',
-            'border-card-border hover:border-neon-blue/50',
-            'hover:bg-neon-blue/5 hover:text-neon-blue',
+            'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/[0.02] p-3 text-sm text-text-secondary',
+            'hover:border-neon-blue/50 hover:bg-neon-blue/5 hover:text-neon-blue',
             'transition-all duration-200'
           )}
         >

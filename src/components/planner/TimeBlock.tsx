@@ -61,11 +61,11 @@ export default function TimeBlock({
   };
 
   const statusColors = {
-    scheduled: 'border-card-border',
-    'in-progress': 'border-yellow-500/50 bg-yellow-500/5',
-    completed: 'border-neon-cyan/50 bg-neon-cyan/5',
-    skipped: 'border-red-500/30 bg-red-500/5 opacity-50',
-    rescheduled: 'border-amber-400/40 bg-amber-400/5',
+    scheduled: 'border-white/10 bg-[#171A24]/95',
+    'in-progress': 'border-yellow-500/45 bg-yellow-500/10',
+    completed: 'border-neon-cyan/45 bg-neon-cyan/10',
+    skipped: 'border-red-500/30 bg-red-500/10 opacity-60',
+    rescheduled: 'border-amber-400/40 bg-amber-400/10',
   };
   const statusLabelMap: Record<StudyBlock['status'], string> = {
     scheduled: 'Pendente',
@@ -93,7 +93,7 @@ export default function TimeBlock({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
-        'group relative p-3 sm:p-4 rounded-xl border bg-card-bg',
+        'group relative rounded-2xl border p-3 sm:p-4',
         'transition-all duration-200',
         statusColors[block.status],
         isDragging && 'shadow-lg shadow-neon-blue/20 z-50'
@@ -102,25 +102,25 @@ export default function TimeBlock({
       {/* Indicador de cor */}
       {!block.isBreak && block.subject && (
         <div
-          className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
+          className="absolute bottom-0 left-0 top-0 w-1 rounded-l-2xl"
           style={{ backgroundColor: block.subject.color }}
         />
       )}
 
-      <div className="flex items-center gap-2 sm:gap-3 ml-1.5 sm:ml-2">
+      <div className="ml-1.5 sm:ml-2 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         {/* Alça de Arrastar */}
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="h-11 w-11 sm:h-9 sm:w-9 cursor-grab active:cursor-grabbing rounded-lg hover:bg-white/5"
+          className="h-10 w-10 sm:h-9 sm:w-9 cursor-grab active:cursor-grabbing rounded-xl hover:bg-white/5"
           aria-label="Arrastar bloco"
         >
           <GripVertical className="w-4 h-4 text-text-muted" />
         </button>
 
         {/* Conteúdo do Bloco */}
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             {block.isBreak ? (
               <Coffee className="w-4 h-4 text-neon-cyan" />
@@ -135,7 +135,7 @@ export default function TimeBlock({
             </h4>
           </div>
 
-          <div className="flex items-center gap-3 mt-1 text-sm text-text-secondary">
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-text-secondary">
             <span className="text-text-muted">
               {formatDuration(block.durationMinutes)}
             </span>
@@ -176,12 +176,12 @@ export default function TimeBlock({
         </div>
 
         {/* Ações */}
-        <div className="flex items-center gap-1 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+        <div className="flex w-full flex-wrap items-center gap-1 border-t border-white/10 pt-2 pl-[3rem] sm:w-auto sm:flex-nowrap sm:border-t-0 sm:pt-0 sm:pl-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           {!block.isBreak && onMarkDone && block.status !== 'completed' && (
             <button
               type="button"
               onClick={() => onMarkDone(block)}
-              className="h-11 w-11 rounded-lg hover:bg-emerald-500/10 text-emerald-300 hover:text-emerald-200 transition-colors"
+              className="h-10 w-10 rounded-xl sm:h-9 sm:w-9 hover:bg-emerald-500/10 text-emerald-300 hover:text-emerald-200 transition-colors"
               aria-label="Concluir bloco"
               title="Concluir"
             >
@@ -192,7 +192,7 @@ export default function TimeBlock({
             <button
               type="button"
               onClick={() => onSkipToday(block)}
-              className="h-11 w-11 rounded-lg hover:bg-red-500/10 text-red-300 hover:text-red-200 transition-colors"
+              className="h-10 w-10 rounded-xl sm:h-9 sm:w-9 hover:bg-red-500/10 text-red-300 hover:text-red-200 transition-colors"
               aria-label="Pular hoje"
               title="Pular hoje"
             >
@@ -203,7 +203,7 @@ export default function TimeBlock({
             <button
               type="button"
               onClick={() => onQuickReschedule(block)}
-              className="h-11 w-11 rounded-lg hover:bg-amber-500/10 text-amber-300 hover:text-amber-200 transition-colors"
+              className="h-10 w-10 rounded-xl sm:h-9 sm:w-9 hover:bg-amber-500/10 text-amber-300 hover:text-amber-200 transition-colors"
               aria-label="Reagendar bloco"
               title="Reagendar"
             >
@@ -215,7 +215,7 @@ export default function TimeBlock({
               type="button"
               onClick={() => onStart(block)}
               className={cn(
-                'h-11 w-11 rounded-lg transition-colors',
+                'h-10 w-10 rounded-xl sm:h-9 sm:w-9 transition-colors',
                 block.isBreak
                   ? 'hover:bg-neon-cyan/10 text-neon-cyan hover:text-neon-cyan'
                   : 'hover:bg-neon-blue/10 text-neon-blue hover:text-neon-cyan'
@@ -229,7 +229,7 @@ export default function TimeBlock({
             <button
               type="button"
               onClick={() => onEdit(block)}
-              className="h-11 w-11 rounded-lg hover:bg-white/5 text-text-secondary hover:text-white transition-colors"
+              className="h-10 w-10 rounded-xl sm:h-9 sm:w-9 hover:bg-white/5 text-text-secondary hover:text-white transition-colors"
               aria-label="Editar bloco"
             >
               <Edit className="w-4 h-4" />
@@ -239,7 +239,7 @@ export default function TimeBlock({
             <button
               type="button"
               onClick={() => onDelete(block.id)}
-              className="h-11 w-11 rounded-lg hover:bg-red-500/10 text-text-secondary hover:text-red-400 transition-colors"
+              className="h-10 w-10 rounded-xl sm:h-9 sm:w-9 hover:bg-red-500/10 text-text-secondary hover:text-red-400 transition-colors"
               aria-label="Excluir bloco"
             >
               <Trash2 className="w-4 h-4" />

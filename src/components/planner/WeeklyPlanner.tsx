@@ -995,7 +995,7 @@ export default function WeeklyPlanner({
   const isViewingToday = isMobile && mobileDay ? isSameDay(mobileDay, new Date()) : false;
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-col">
+    <div className="mx-auto flex min-h-0 min-w-0 w-full max-w-[980px] flex-col">
       {/* Cabeçalho */}
       <div className="mb-5 flex min-w-0 flex-col gap-4 sm:mb-6 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
@@ -1034,7 +1034,7 @@ export default function WeeklyPlanner({
         </div>
       </div>
 
-      <Card className="mb-4 border-neon-cyan/20 bg-slate-900/50" padding="sm">
+      <Card className="mb-4 border-white/10 bg-[#161922]/95 sm:border-neon-cyan/20 sm:bg-slate-900/50" padding="sm">
         <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
@@ -1092,7 +1092,7 @@ export default function WeeklyPlanner({
       </Card>
 
       {/* Navegação da Semana */}
-      <Card className="mb-6" padding="sm">
+      <Card className="mb-6 border-white/10 bg-[#161922]/95 sm:border-card-border sm:bg-card-bg/50" padding="sm">
         <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex min-w-0 items-center gap-2">
             <Button

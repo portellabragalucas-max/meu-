@@ -599,7 +599,7 @@ export default function PlannerPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="app-page min-h-0 min-w-0 pb-2 sm:pb-4"
+      className="app-page w-full min-h-0 min-w-0 max-w-[980px] mx-auto overflow-x-hidden pb-[calc(var(--bottom-nav-safe-height)+1.25rem)] md:pb-3"
     >
       {isMobile && !showRoadmap && (
         <button
@@ -618,7 +618,7 @@ export default function PlannerPage() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-neon-cyan/20 bg-slate-900/60 p-3 sm:p-4 shadow-lg"
+          className="rounded-2xl border border-white/10 bg-[#161922]/95 p-3 shadow-lg sm:border-neon-cyan/20 sm:bg-slate-900/60 sm:p-4"
         >
           <div className="flex min-w-0 flex-col gap-4">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
