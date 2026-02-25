@@ -5,7 +5,7 @@
  * Grade principal do planner com funcionalidade de arrastar e soltar
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   DndContext,
@@ -20,7 +20,16 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Sparkles, RefreshCw, ArrowRightLeft } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  RefreshCw,
+  ArrowRightLeft,
+  ListTodo,
+  AlertTriangle,
+  Flame,
+} from 'lucide-react';
 import {
   getWeekStart,
   getWeekDates,
@@ -32,11 +41,13 @@ import {
 } from '@/lib/utils';
 import { Button, Card } from '@/components/ui';
 import { useLocalStorage } from '@/hooks';
+import { getStudyBlockDisplayTitle } from '@/lib/studyBlockLabels';
 import DayColumn from './DayColumn';
 import TimeBlock from './TimeBlock';
 import BlockFormModal, { type BlockFormData } from './BlockFormModal';
 import { StudyBlockSessionModal } from '@/components/session';
 import type { DailyHoursByWeekday, StudyBlock, Subject, WeekdayKey } from '@/types';
+import { autoRescheduleBacklog, getBacklogEntries } from '@/services/backlogRescheduler';
 
 const toLocalDateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
@@ -138,12 +149,30 @@ export default function WeeklyPlanner({
   const [rescheduleSourceDate, setRescheduleSourceDate] = useState('');
   const [rescheduleTargetDate, setRescheduleTargetDate] = useState('');
   const [rescheduleError, setRescheduleError] = useState('');
+  const [rescheduleSingleBlockId, setRescheduleSingleBlockId] = useState<string | null>(null);
+  const [isBacklogModalOpen, setIsBacklogModalOpen] = useState(false);
+  const [backlogNotice, setBacklogNotice] = useState('');
+  const [backlogAutoState, setBacklogAutoState] = useState<{
+    movedCount: number;
+    insertedTodayCount: number;
+    backlogBefore: number;
+    backlogAfter: number;
+    suggestedExtraMinutesPerDay: number;
+    shouldSuggestReplan: boolean;
+    shouldSuggestRecoveryMode: boolean;
+    suggestedReduceNewContent: boolean;
+  } | null>(null);
   const [dailyLimits, setDailyLimits] = useLocalStorage<Record<string, number>>(
     'nexora_daily_limits',
     {}
   );
+  const [lastBacklogAutoRunDay, setLastBacklogAutoRunDay] = useLocalStorage<string>(
+    'nexora_backlog_last_auto_run_day',
+    ''
+  );
   const [sessionBlock, setSessionBlock] = useState<StudyBlock | null>(null);
   const [isSessionOpen, setIsSessionOpen] = useState(false);
+  const autoBacklogRunRef = useRef<string>('');
   const weekDayKeys: WeekdayKey[] = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
   const weekIndexFromDate = (date: Date) => (date.getDay() + 6) % 7;
 
@@ -173,7 +202,7 @@ export default function WeeklyPlanner({
 
   useEffect(() => {
     if (!isMounted) return;
-    if (!isScheduleModalOpen && !isRescheduleModalOpen) return;
+    if (!isScheduleModalOpen && !isRescheduleModalOpen && !isBacklogModalOpen) return;
 
     const previousBodyOverflow = document.body.style.overflow;
     const previousHtmlOverflow = document.documentElement.style.overflow;
@@ -184,7 +213,7 @@ export default function WeeklyPlanner({
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
-  }, [isMounted, isScheduleModalOpen, isRescheduleModalOpen]);
+  }, [isMounted, isScheduleModalOpen, isRescheduleModalOpen, isBacklogModalOpen]);
 
   const formatDatePt = (date: Date) =>
     date.toLocaleDateString('pt-BR', {
@@ -228,6 +257,10 @@ export default function WeeklyPlanner({
 
   useEffect(() => {
     if (!isRescheduleModalOpen) return;
+    if (rescheduleSingleBlockId) {
+      setRescheduleError('');
+      return;
+    }
     const today = new Date();
     const tomorrow = new Date();
     tomorrow.setDate(today.getDate() + 1);
@@ -236,7 +269,7 @@ export default function WeeklyPlanner({
     setRescheduleSourceDate(defaultSource);
     setRescheduleTargetDate(defaultTarget);
     setRescheduleError('');
-  }, [isRescheduleModalOpen]);
+  }, [isRescheduleModalOpen, rescheduleSingleBlockId]);
 
   // Configurar sensores de arrastar
   const sensors = useSensors(
@@ -275,6 +308,58 @@ export default function WeeklyPlanner({
     .reduce((sum, block) => sum + block.durationMinutes, 0);
   const mobileSessions = mobileDayBlocks.filter((block) => !block.isBreak).length;
   const visibleDates = isMobile ? [mobileDay] : weekDates;
+  const todayKey = useMemo(() => toLocalDateKey(new Date()), []);
+
+  const backlogEntries = useMemo(() => getBacklogEntries(blocks, new Date()), [blocks]);
+  const overdueBacklogCount = backlogEntries.filter((entry) => entry.dateKey < todayKey).length;
+  const todaysSkippedBacklogCount = backlogEntries.filter((entry) => entry.dateKey === todayKey).length;
+  const backlogHigh = backlogEntries.length >= 6;
+  const backlogRecoveryCount = backlogEntries.filter(
+    (entry) => (entry.block.rescheduleCount || 0) >= 3
+  ).length;
+
+  const streakDays = useMemo(() => {
+    const completedKeys = new Set(
+      blocks
+        .filter((block) => !block.isBreak && block.status === 'completed')
+        .map((block) =>
+          block.completedAt ? toLocalDateKey(new Date(block.completedAt)) : toLocalDateKey(new Date(block.date))
+        )
+    );
+    if (completedKeys.size === 0) return 0;
+
+    let streak = 0;
+    const cursor = new Date();
+    cursor.setHours(0, 0, 0, 0);
+    const todayCompleted = completedKeys.has(toLocalDateKey(cursor));
+    if (!todayCompleted) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    while (completedKeys.has(toLocalDateKey(cursor))) {
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  }, [blocks]);
+
+  // run once per day after opening the planner, avoiding repeated auto-reschedules in the same session/day
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (overdueBacklogCount <= 0) return;
+    if (lastBacklogAutoRunDay === todayKey) return;
+    if (autoBacklogRunRef.current === todayKey) return;
+
+    autoBacklogRunRef.current = todayKey;
+    const result = runAutoBacklogReschedule('startup');
+    setLastBacklogAutoRunDay(todayKey);
+
+    if (result.changedBlockIds.length > 0) {
+      setBacklogNotice(
+        `Pendencias detectadas: ${result.backlogBefore}. Replanejamento automatico executado (${result.movedCount} movimentados).`
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overdueBacklogCount, lastBacklogAutoRunDay, todayKey]);
 
   useEffect(() => {
     if (blocks.length === 0) return;
@@ -360,7 +445,9 @@ export default function WeeklyPlanner({
             date: new Date(cursorDate),
             startTime: minutesToTime(startMinutes),
             endTime: minutesToTime(endMinutes),
-            status: block.isBreak ? block.status : 'scheduled',
+            status: block.isBreak ? block.status : 'rescheduled',
+            originalDate: block.originalDate ? new Date(block.originalDate) : new Date(block.date),
+            rescheduleCount: block.isBreak ? block.rescheduleCount : (block.rescheduleCount || 0) + 1,
             updatedAt: new Date(),
           };
           movedBlocks.push(moved);
@@ -441,7 +528,9 @@ export default function WeeklyPlanner({
         date: new Date(targetDate),
         startTime: minutesToTime(cursorMinutes),
         endTime: minutesToTime(nextEnd),
-        status: 'scheduled' as const,
+        status: 'rescheduled' as const,
+        originalDate: block.originalDate ? new Date(block.originalDate) : new Date(block.date),
+        rescheduleCount: (block.rescheduleCount || 0) + 1,
         updatedAt: new Date(),
       });
       movedIds.add(block.id);
@@ -512,6 +601,154 @@ export default function WeeklyPlanner({
       const availableStudyMinutes = Math.max(0, next - studyMinutes);
       pullBlocksToDay(date, availableStudyMinutes);
     }
+  };
+
+  const buildDailyLimitMapForBacklog = (start: Date, days = 14) => {
+    const map: Record<string, number> = {};
+    for (let i = 0; i <= days; i += 1) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+      date.setHours(0, 0, 0, 0);
+      map[toLocalKey(date)] = getDailyLimitMinutes(date);
+    }
+    return map;
+  };
+
+  const commitBlocksUpdate = (nextBlocks: StudyBlock[]) => {
+    const ordered = [...nextBlocks].sort((a, b) => {
+      const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      return a.startTime.localeCompare(b.startTime);
+    });
+    setBlocks(ordered);
+    onBlocksChange(ordered);
+  };
+
+  const runAutoBacklogReschedule = (reason: 'startup' | 'manual' | 'skip') => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const result = autoRescheduleBacklog({
+      blocks,
+      today: now,
+      dailyLimitByDate: buildDailyLimitMapForBacklog(now, 14),
+      allowedDays,
+      backlogQuotaRatio: 0.35,
+      lookaheadDays: 14,
+      maxBacklogSubjectsPerDay: 2,
+    });
+
+    if (result.changedBlockIds.length > 0) {
+      commitBlocksUpdate(result.blocks);
+    }
+
+    setBacklogAutoState({
+      movedCount: result.movedCount,
+      insertedTodayCount: result.insertedTodayCount,
+      backlogBefore: result.backlogBefore,
+      backlogAfter: result.backlogAfter,
+      suggestedExtraMinutesPerDay: result.suggestion.suggestedExtraMinutesPerDay,
+      shouldSuggestReplan: result.suggestion.shouldSuggestReplan,
+      shouldSuggestRecoveryMode: result.suggestion.shouldSuggestRecoveryMode,
+      suggestedReduceNewContent: result.suggestion.suggestedReduceNewContent,
+    });
+
+    if (reason !== 'startup') {
+      if (result.changedBlockIds.length > 0) {
+        setBacklogNotice(
+          `Replanejado: ${result.movedCount} bloco(s), ${result.insertedTodayCount} inserido(s) hoje.`
+        );
+      } else if (result.backlogBefore > 0) {
+        setBacklogNotice(
+          'Sem capacidade suficiente hoje para backlog. Mantido para próximos dias com sugestão de replanejamento.'
+        );
+      } else {
+        setBacklogNotice('Sem pendências acumuladas para replanejar.');
+      }
+    }
+
+    return result;
+  };
+
+  const handleMarkBlockDoneQuick = (block: StudyBlock) => {
+    handleCompleteBlock(block.id);
+  };
+
+  const handleSkipBlockToday = (block: StudyBlock) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const blockDate = new Date(block.date);
+    blockDate.setHours(0, 0, 0, 0);
+
+    const nextBlocks = blocks.map((item) => {
+      if (item.id !== block.id) return item;
+      return {
+        ...item,
+        status: 'skipped' as const,
+        originalDate: item.originalDate ? new Date(item.originalDate) : new Date(item.date),
+        updatedAt: new Date(),
+      };
+    });
+    commitBlocksUpdate(nextBlocks);
+
+    if (blockDate.getTime() <= today.getTime()) {
+      // Replaneja parte automaticamente para evitar "agenda perdida".
+      setTimeout(() => {
+        runAutoBacklogReschedule('skip');
+      }, 0);
+    }
+  };
+
+  const handleRequestQuickReschedule = (block: StudyBlock) => {
+    const sourceDate = new Date(block.date);
+    sourceDate.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(sourceDate);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setRescheduleSingleBlockId(block.id);
+    setRescheduleSourceDate(toLocalKey(sourceDate));
+    setRescheduleTargetDate(toLocalKey(tomorrow));
+    setRescheduleError('');
+    setIsRescheduleModalOpen(true);
+  };
+
+  const moveSingleBlockToDate = (blockId: string, targetDate: Date) => {
+    const block = blocks.find((item) => item.id === blockId);
+    if (!block) return false;
+    if (block.isBreak) return false;
+    if (!isAllowedDay(targetDate)) return false;
+
+    const targetKey = toLocalKey(targetDate);
+    const targetDayBlocks = blocks
+      .filter((item) => toLocalKey(new Date(item.date)) === targetKey && item.id !== blockId)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const targetStudyMinutes = targetDayBlocks
+      .filter((item) => !item.isBreak && item.status !== 'completed' && item.status !== 'skipped')
+      .reduce((sum, item) => sum + item.durationMinutes, 0);
+    const targetLimit = getDailyLimitMinutes(targetDate);
+    if (targetLimit > 0 && targetStudyMinutes + block.durationMinutes > targetLimit) return false;
+
+    const lastEndMinutes = targetDayBlocks.reduce(
+      (max, item) => Math.max(max, timeToMinutes(item.endTime)),
+      timeToMinutes('09:00')
+    );
+    const startMinutes = lastEndMinutes;
+    const endMinutes = startMinutes + block.durationMinutes;
+    if (endMinutes > 24 * 60) return false;
+
+    const nextBlocks = blocks.map((item) => {
+      if (item.id !== blockId) return item;
+      return {
+        ...item,
+        date: new Date(targetDate),
+        startTime: minutesToTime(startMinutes),
+        endTime: minutesToTime(endMinutes),
+        status: 'rescheduled' as const,
+        originalDate: item.originalDate ? new Date(item.originalDate) : new Date(item.date),
+        rescheduleCount: (item.rescheduleCount || 0) + 1,
+        updatedAt: new Date(),
+      };
+    });
+    commitBlocksUpdate(nextBlocks);
+    return true;
   };
 
   // Navegação
@@ -643,6 +880,7 @@ export default function WeeklyPlanner({
           ? {
               ...block,
               status: 'completed' as const,
+              completedAt: new Date(),
               updatedAt: new Date(),
               durationMinutes: minutesSpent ? Math.round(minutesSpent) : block.durationMinutes,
             }
@@ -714,6 +952,9 @@ export default function WeeklyPlanner({
         isBreak: data.isBreak,
         subjectId: data.isBreak ? 'break' : subject?.id || 'default',
         subject,
+        originalDate: editingBlock.originalDate ? new Date(editingBlock.originalDate) : editingBlock.originalDate,
+        completedAt: editingBlock.completedAt ? new Date(editingBlock.completedAt) : editingBlock.completedAt,
+        rescheduleCount: editingBlock.rescheduleCount || 0,
         updatedAt: new Date(),
       };
       const newBlocks = blocks.map((b) =>
@@ -734,6 +975,9 @@ export default function WeeklyPlanner({
         status: 'scheduled' as const,
         isBreak: data.isBreak,
         isAutoGenerated: false,
+        originalDate: data.isBreak ? undefined : new Date(data.date),
+        completedAt: undefined,
+        rescheduleCount: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -777,7 +1021,10 @@ export default function WeeklyPlanner({
           </Button>
           <Button
             variant="secondary"
-            onClick={() => setIsRescheduleModalOpen(true)}
+            onClick={() => {
+              setRescheduleSingleBlockId(null);
+              setIsRescheduleModalOpen(true);
+            }}
             leftIcon={<ArrowRightLeft className="w-4 h-4" />}
             className="w-full sm:w-auto"
            
@@ -786,6 +1033,63 @@ export default function WeeklyPlanner({
           </Button>
         </div>
       </div>
+
+      <Card className="mb-4 border-neon-cyan/20 bg-slate-900/50" padding="sm">
+        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
+              <ListTodo className="h-4 w-4" />
+              Pendências acumuladas: {backlogEntries.length}
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/30 bg-orange-400/10 px-3 py-1 text-xs text-orange-100">
+              <Flame className="h-4 w-4" />
+              Streak: {streakDays} dia(s)
+            </div>
+            <span className="text-xs text-text-secondary">
+              Vencidas: {overdueBacklogCount} | Puladas hoje: {todaysSkippedBacklogCount}
+            </span>
+          </div>
+
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsBacklogModalOpen(true)}
+              leftIcon={<ListTodo className="h-4 w-4" />}
+              className="w-full sm:w-auto"
+            >
+              Backlog
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => runAutoBacklogReschedule('manual')}
+              className="w-full sm:w-auto"
+            >
+              Replanejar automaticamente
+            </Button>
+          </div>
+        </div>
+
+        {(backlogHigh || backlogRecoveryCount > 0 || backlogAutoState?.shouldSuggestReplan) && (
+          <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-100">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+              <div>
+                <p>Backlog alto: o sistema distribui pendências sem passar de 30-40% da capacidade diária.</p>
+                {(backlogAutoState?.shouldSuggestRecoveryMode || backlogRecoveryCount > 0) && (
+                  <p className="mt-1">Plano de recuperação sugerido: reduzir conteúdo novo temporariamente e priorizar revisão/exercícios.</p>
+                )}
+                {!!backlogAutoState?.suggestedExtraMinutesPerDay && (
+                  <p className="mt-1">Sugestão: adicionar ~{backlogAutoState?.suggestedExtraMinutesPerDay} min/dia para limpar backlog.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {backlogNotice && <p className="mt-2 text-xs text-text-secondary">{backlogNotice}</p>}
+      </Card>
 
       {/* Navegação da Semana */}
       <Card className="mb-6" padding="sm">
@@ -899,6 +1203,9 @@ export default function WeeklyPlanner({
           onEditBlock={handleEditBlock}
           onDeleteBlock={handleDeleteBlock}
           onStartBlock={handleStartBlock}
+          onMarkBlockDone={handleMarkBlockDoneQuick}
+          onSkipBlockToday={handleSkipBlockToday}
+          onQuickRescheduleBlock={handleRequestQuickReschedule}
         />
       );
     })}
@@ -1031,13 +1338,42 @@ export default function WeeklyPlanner({
             <div className="app-modal-panel">
               <Card className="relative" padding="lg">
               <h2 className="text-xl font-heading font-bold text-white mb-2">
-                Reagendar pendências
+                {rescheduleSingleBlockId ? 'Reagendar bloco' : 'Reagendar pendências'}
               </h2>
               <p className="text-sm text-text-secondary mb-4">
-                Mova blocos não concluídos de um dia para outro.
+                {rescheduleSingleBlockId
+                  ? 'Escolha um novo dia para este bloco.'
+                  : 'Mova blocos não concluídos de um dia para outro.'}
               </p>
 
               <div className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-card-border px-3 py-2 text-xs text-text-secondary hover:border-neon-blue/40 hover:text-white"
+                    onClick={() => {
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      setRescheduleTargetDate(toLocalKey(tomorrow));
+                    }}
+                  >
+                    Amanhã
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-card-border px-3 py-2 text-xs text-text-secondary hover:border-neon-blue/40 hover:text-white"
+                    onClick={() => {
+                      const endOfWeek = new Date();
+                      const diff = 6 - endOfWeek.getDay();
+                      endOfWeek.setDate(endOfWeek.getDate() + Math.max(1, diff));
+                      setRescheduleTargetDate(toLocalKey(endOfWeek));
+                    }}
+                  >
+                    Ainda esta semana
+                  </button>
+                </div>
+
+                {!rescheduleSingleBlockId && (
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-2">
                     Dia de origem
@@ -1049,6 +1385,7 @@ export default function WeeklyPlanner({
                     onChange={(e) => setRescheduleSourceDate(e.target.value)}
                   />
                 </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-2">
                     Dia de destino
@@ -1069,7 +1406,10 @@ export default function WeeklyPlanner({
                 <Button
                   variant="secondary"
                   className="flex-1"
-                  onClick={() => setIsRescheduleModalOpen(false)}
+                  onClick={() => {
+                    setIsRescheduleModalOpen(false);
+                    setRescheduleSingleBlockId(null);
+                  }}
                 >
                   Cancelar
                 </Button>
@@ -1077,19 +1417,41 @@ export default function WeeklyPlanner({
                   variant="primary"
                   className="flex-1"
                   onClick={() => {
-                    if (!rescheduleSourceDate || !rescheduleTargetDate) {
-                      setRescheduleError('Selecione os dias para reagendar.');
+                    if (!rescheduleTargetDate) {
+                      setRescheduleError('Selecione o dia de destino.');
                       return;
                     }
-                    if (rescheduleSourceDate === rescheduleTargetDate) {
+
+                    if (!rescheduleSingleBlockId && !rescheduleSourceDate) {
+                      setRescheduleError('Selecione o dia de origem.');
+                      return;
+                    }
+
+                    if (!rescheduleSingleBlockId && rescheduleSourceDate === rescheduleTargetDate) {
                       setRescheduleError('Escolha dias diferentes.');
+                      return;
+                    }
+                    const targetDate = parseLocalKey(rescheduleTargetDate);
+                    targetDate.setHours(0, 0, 0, 0);
+                    if (Number.isNaN(targetDate.getTime())) {
+                      setRescheduleError('Escolha um destino válido.');
+                      return;
+                    }
+
+                    if (rescheduleSingleBlockId) {
+                      const ok = moveSingleBlockToDate(rescheduleSingleBlockId, targetDate);
+                      if (!ok) {
+                        setRescheduleError('Não foi possível reagendar este bloco para o dia escolhido.');
+                        return;
+                      }
+                      setIsRescheduleModalOpen(false);
+                      setRescheduleSingleBlockId(null);
+                      setBacklogNotice('Bloco reagendado com sucesso.');
                       return;
                     }
 
                     const sourceDate = parseLocalKey(rescheduleSourceDate);
-                    const targetDate = parseLocalKey(rescheduleTargetDate);
                     sourceDate.setHours(0, 0, 0, 0);
-                    targetDate.setHours(0, 0, 0, 0);
 
                     const sourceKey = toLocalKey(sourceDate);
                     const targetKey = toLocalKey(targetDate);
@@ -1132,7 +1494,9 @@ export default function WeeklyPlanner({
                         date: new Date(targetDate),
                         startTime: minutesToTime(cursorMinutes),
                         endTime: minutesToTime(nextEnd),
-                        status: block.isBreak ? block.status : 'scheduled',
+                        status: block.isBreak ? block.status : 'rescheduled',
+                        originalDate: block.originalDate ? new Date(block.originalDate) : new Date(block.date),
+                        rescheduleCount: block.isBreak ? block.rescheduleCount : (block.rescheduleCount || 0) + 1,
                         updatedAt: new Date(),
                       });
                       cursorMinutes = nextEnd;
@@ -1150,11 +1514,111 @@ export default function WeeklyPlanner({
                     setBlocks(updatedBlocks);
                     onBlocksChange(updatedBlocks);
                     setIsRescheduleModalOpen(false);
+                    setRescheduleSingleBlockId(null);
                   }}
                 >
                   Reagendar
                 </Button>
               </div>
+              </Card>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {isMounted &&
+        isBacklogModalOpen &&
+        createPortal(
+          <div className="app-modal-overlay">
+            <div className="app-modal-panel">
+              <Card className="relative" padding="lg">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-heading font-bold text-white">Backlog</h2>
+                    <p className="text-sm text-text-secondary">
+                      Pendências acumuladas (não concluídas) com prioridade de replanejamento.
+                    </p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setIsBacklogModalOpen(false)}>
+                    Fechar
+                  </Button>
+                </div>
+
+                <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    variant="primary"
+                    className="flex-1"
+                    onClick={() => {
+                      runAutoBacklogReschedule('manual');
+                    }}
+                  >
+                    Replanejar automaticamente
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => {
+                      setIsBacklogModalOpen(false);
+                      setIsRescheduleModalOpen(true);
+                      setRescheduleSingleBlockId(null);
+                    }}
+                  >
+                    Reagendar manualmente
+                  </Button>
+                </div>
+
+                <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
+                  {backlogEntries.length === 0 ? (
+                    <div className="rounded-xl border border-card-border bg-card-bg/40 p-4 text-sm text-text-secondary">
+                      Sem pendências acumuladas.
+                    </div>
+                  ) : (
+                    backlogEntries.map((entry) => {
+                      const block = entry.block;
+                      const blockDate = new Date(block.date);
+                      const isOverdue = entry.dateKey < todayKey;
+                      return (
+                        <div
+                          key={block.id}
+                          className="rounded-xl border border-card-border bg-card-bg/40 p-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-white">
+                                {getStudyBlockDisplayTitle(block)}
+                              </p>
+                              <p className="mt-1 text-xs text-text-secondary">
+                                {blockDate.toLocaleDateString('pt-BR')} · {block.startTime} · {block.durationMinutes} min
+                              </p>
+                              <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-text-muted">
+                                <span>Status: {block.status === 'completed' ? 'Concluído' : block.status === 'rescheduled' ? 'Reagendado' : block.status === 'skipped' ? 'Pulado' : 'Pendente'}</span>
+                                <span>Prioridade: {Math.round(entry.priorityScore)}</span>
+                                <span>Reagendamentos: {block.rescheduleCount || 0}</span>
+                                {isOverdue && <span className="text-red-300">Vencido há {entry.daysOverdue} dia(s)</span>}
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 flex-col gap-2">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleRequestQuickReschedule(block)}
+                              >
+                                Reagendar
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMarkBlockDoneQuick(block)}
+                              >
+                                Concluir
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </Card>
             </div>
           </div>,

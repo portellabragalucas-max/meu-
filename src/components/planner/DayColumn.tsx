@@ -25,6 +25,9 @@ interface DayColumnProps {
   onEditBlock: (block: StudyBlock) => void;
   onDeleteBlock: (blockId: string) => void;
   onStartBlock?: (block: StudyBlock) => void;
+  onMarkBlockDone?: (block: StudyBlock) => void;
+  onSkipBlockToday?: (block: StudyBlock) => void;
+  onQuickRescheduleBlock?: (block: StudyBlock) => void;
 }
 
 // Mapa de dias da semana em português
@@ -47,6 +50,9 @@ export default function DayColumn({
   onEditBlock,
   onDeleteBlock,
   onStartBlock,
+  onMarkBlockDone,
+  onSkipBlockToday,
+  onQuickRescheduleBlock,
 }: DayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: date.toISOString(),
@@ -164,6 +170,9 @@ export default function DayColumn({
                 key={block.id}
                 block={block}
                 onStart={onStartBlock}
+                onMarkDone={onMarkBlockDone}
+                onSkipToday={onSkipBlockToday}
+                onQuickReschedule={onQuickRescheduleBlock}
                 onEdit={onEditBlock}
                 onDelete={onDeleteBlock}
               />

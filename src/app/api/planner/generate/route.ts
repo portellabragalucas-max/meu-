@@ -152,6 +152,8 @@ function serializeBlock(block: StudyBlock) {
   return {
     ...block,
     date: block.date.toISOString(),
+    originalDate: block.originalDate ? block.originalDate.toISOString() : undefined,
+    completedAt: block.completedAt ? block.completedAt.toISOString() : undefined,
     createdAt: block.createdAt.toISOString(),
     updatedAt: block.updatedAt.toISOString(),
     subject: block.subject

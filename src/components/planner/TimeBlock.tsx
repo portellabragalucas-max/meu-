@@ -8,7 +8,20 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
-import { GripVertical, Coffee, Trash2, Edit, Play, BookOpen, PenTool, Repeat, Timer } from 'lucide-react';
+import {
+  GripVertical,
+  Coffee,
+  Trash2,
+  Edit,
+  Play,
+  BookOpen,
+  PenTool,
+  Repeat,
+  Timer,
+  CheckCircle2,
+  SkipForward,
+  CalendarClock,
+} from 'lucide-react';
 import { cn, formatDuration } from '@/lib/utils';
 import { getStudyBlockDisplayTitle } from '@/lib/studyBlockLabels';
 import type { StudyBlock } from '@/types';
@@ -18,6 +31,9 @@ interface TimeBlockProps {
   onEdit?: (block: StudyBlock) => void;
   onDelete?: (blockId: string) => void;
   onStart?: (block: StudyBlock) => void;
+  onMarkDone?: (block: StudyBlock) => void;
+  onSkipToday?: (block: StudyBlock) => void;
+  onQuickReschedule?: (block: StudyBlock) => void;
   isDragging?: boolean;
 }
 
@@ -26,6 +42,9 @@ export default function TimeBlock({
   onEdit,
   onDelete,
   onStart,
+  onMarkDone,
+  onSkipToday,
+  onQuickReschedule,
   isDragging = false,
 }: TimeBlockProps) {
   const {
@@ -46,6 +65,14 @@ export default function TimeBlock({
     'in-progress': 'border-yellow-500/50 bg-yellow-500/5',
     completed: 'border-neon-cyan/50 bg-neon-cyan/5',
     skipped: 'border-red-500/30 bg-red-500/5 opacity-50',
+    rescheduled: 'border-amber-400/40 bg-amber-400/5',
+  };
+  const statusLabelMap: Record<StudyBlock['status'], string> = {
+    scheduled: 'Pendente',
+    'in-progress': 'Em andamento',
+    completed: 'Concluido',
+    skipped: 'Pulado',
+    rescheduled: 'Reagendado',
   };
 
   const typeBadge = block.type
@@ -112,6 +139,11 @@ export default function TimeBlock({
             <span className="text-text-muted">
               {formatDuration(block.durationMinutes)}
             </span>
+            {!block.isBreak && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-text-secondary">
+                {statusLabelMap[block.status]}
+              </span>
+            )}
             {typeBadge && !block.isBreak && (
               <span
                 className={cn(
@@ -145,6 +177,39 @@ export default function TimeBlock({
 
         {/* Ações */}
         <div className="flex items-center gap-1 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+          {!block.isBreak && onMarkDone && block.status !== 'completed' && (
+            <button
+              type="button"
+              onClick={() => onMarkDone(block)}
+              className="h-11 w-11 rounded-lg hover:bg-emerald-500/10 text-emerald-300 hover:text-emerald-200 transition-colors"
+              aria-label="Concluir bloco"
+              title="Concluir"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+            </button>
+          )}
+          {!block.isBreak && onSkipToday && block.status !== 'completed' && (
+            <button
+              type="button"
+              onClick={() => onSkipToday(block)}
+              className="h-11 w-11 rounded-lg hover:bg-red-500/10 text-red-300 hover:text-red-200 transition-colors"
+              aria-label="Pular hoje"
+              title="Pular hoje"
+            >
+              <SkipForward className="w-4 h-4" />
+            </button>
+          )}
+          {!block.isBreak && onQuickReschedule && block.status !== 'completed' && (
+            <button
+              type="button"
+              onClick={() => onQuickReschedule(block)}
+              className="h-11 w-11 rounded-lg hover:bg-amber-500/10 text-amber-300 hover:text-amber-200 transition-colors"
+              aria-label="Reagendar bloco"
+              title="Reagendar"
+            >
+              <CalendarClock className="w-4 h-4" />
+            </button>
+          )}
           {onStart && (
             <button
               type="button"

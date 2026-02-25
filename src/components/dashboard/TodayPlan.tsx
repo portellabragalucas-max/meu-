@@ -26,6 +26,7 @@ interface TodayPlanProps {
 
 const statusConfig = {
   scheduled: { badge: 'default', icon: Clock, label: 'Agendado' },
+  rescheduled: { badge: 'warning', icon: Clock, label: 'Reagendado' },
   'in-progress': { badge: 'warning', icon: Play, label: 'Em Andamento' },
   completed: { badge: 'success', icon: CheckCircle2, label: 'Concluído' },
   skipped: { badge: 'danger', icon: SkipForward, label: 'Pulado' },
@@ -44,10 +45,13 @@ export default function TodayPlan({
   
   // Encontrar bloco atual ou próximo
   const currentBlockIndex = blocks.findIndex(
-    (block) => block.status === 'scheduled' && block.startTime <= currentTime && block.endTime > currentTime
+    (block) =>
+      (block.status === 'scheduled' || block.status === 'rescheduled') &&
+      block.startTime <= currentTime &&
+      block.endTime > currentTime
   );
   const nextBlockIndex = blocks.findIndex(
-    (block) => block.status === 'scheduled' && block.startTime > currentTime
+    (block) => (block.status === 'scheduled' || block.status === 'rescheduled') && block.startTime > currentTime
   );
 
   return (
@@ -153,7 +157,7 @@ export default function TodayPlan({
                           Iniciar
                         </Button>
                       )}
-                      {block.status === 'scheduled' && (
+                      {(block.status === 'scheduled' || block.status === 'rescheduled') && (
                         <Button
                           variant="ghost"
                           size="sm"

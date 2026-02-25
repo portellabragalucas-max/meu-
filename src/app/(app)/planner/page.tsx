@@ -272,99 +272,10 @@ export default function PlannerPage() {
   }, [aiProfile.difficulty, userSettings.aiDifficulty]);
 
   useEffect(() => {
-    if (blocks.length === 0) return;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const allowedDays = activeDaysFromSettings;
-    const isAllowedDay = (date: Date) =>
-      allowedDays.length === 0 || allowedDays.includes(date.getDay());
-
-    const missedBlocks = blocks
-      .filter((block) => {
-        const blockDate = new Date(block.date);
-        blockDate.setHours(0, 0, 0, 0);
-        return blockDate < today && block.status !== 'completed' && block.status !== 'skipped';
-      })
-      .sort((a, b) => {
-        const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
-        if (dateDiff !== 0) return dateDiff;
-        return a.startTime.localeCompare(b.startTime);
-      });
-
-    if (missedBlocks.length === 0) return;
-
-    const missedIds = new Set(missedBlocks.map((block) => block.id));
-    const baseBlocks = blocks.filter((block) => !missedIds.has(block.id));
-    const blocksByDay = new Map<string, StudyBlock[]>();
-
-    for (const block of baseBlocks) {
-      const key = toLocalKey(new Date(block.date));
-      const list = blocksByDay.get(key) ?? [];
-      list.push(block);
-      blocksByDay.set(key, list);
-    }
-
-    const DEFAULT_START = timeToMinutes('09:00');
-    const DEFAULT_END = timeToMinutes('18:00');
-
-    const movedBlocks: StudyBlock[] = [];
-    let cursorDate = new Date(today);
-
-    const findNextAvailableDay = (date: Date) => {
-      const next = new Date(date);
-      while (!isAllowedDay(next)) {
-        next.setDate(next.getDate() + 1);
-      }
-      return next;
-    };
-
-    cursorDate = findNextAvailableDay(cursorDate);
-
-    for (const block of missedBlocks) {
-      let placed = false;
-      while (!placed) {
-        cursorDate = findNextAvailableDay(cursorDate);
-        const dayKey = toLocalKey(cursorDate);
-        const dayBlocks = blocksByDay.get(dayKey) ?? [];
-        const lastEnd = dayBlocks.reduce(
-          (max, item) => Math.max(max, timeToMinutes(item.endTime)),
-          DEFAULT_START
-        );
-        const startMinutes = Math.max(lastEnd, DEFAULT_START);
-        const endMinutes = startMinutes + block.durationMinutes;
-
-        if (endMinutes <= DEFAULT_END) {
-          const moved: StudyBlock = {
-            ...block,
-            date: new Date(cursorDate),
-            startTime: minutesToTime(startMinutes),
-            endTime: minutesToTime(endMinutes),
-            status: block.isBreak ? block.status : 'scheduled',
-            updatedAt: new Date(),
-          };
-          movedBlocks.push(moved);
-          dayBlocks.push(moved);
-          blocksByDay.set(dayKey, dayBlocks);
-          placed = true;
-        } else {
-          cursorDate = new Date(cursorDate);
-          cursorDate.setDate(cursorDate.getDate() + 1);
-        }
-      }
-    }
-
-    if (movedBlocks.length === 0) return;
-
-    const updatedBlocks = [...baseBlocks, ...movedBlocks].sort((a, b) => {
-      const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (dateDiff !== 0) return dateDiff;
-      return a.startTime.localeCompare(b.startTime);
-    });
-
-    setBlocks(updatedBlocks);
-  }, [blocks, setBlocks, studyPrefs.daysOfWeek, activeDaysFromSettings]);
+    // O backlog/reagendamento automático agora é tratado no WeeklyPlanner
+    // (com quota diária e priorização). Mantemos este efeito desabilitado
+    // para evitar conflito com o fluxo legado que movia tudo para o dia seguinte.
+  }, []);
  
   useEffect(() => {
     if (subjects.length === 0 && blocks.length > 0) {

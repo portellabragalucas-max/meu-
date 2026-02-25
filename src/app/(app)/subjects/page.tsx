@@ -185,6 +185,8 @@ export default function SubjectsPage() {
   const deserializeBlock = (raw: any): StudyBlock => ({
     ...raw,
     date: new Date(raw.date),
+    originalDate: raw.originalDate ? new Date(raw.originalDate) : undefined,
+    completedAt: raw.completedAt ? new Date(raw.completedAt) : undefined,
     createdAt: new Date(raw.createdAt),
     updatedAt: new Date(raw.updatedAt),
     subject: raw.subject
