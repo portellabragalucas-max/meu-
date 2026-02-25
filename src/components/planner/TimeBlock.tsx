@@ -97,7 +97,7 @@ export default function TimeBlock({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
-        'group relative overflow-hidden rounded-2xl border p-2.5 sm:p-3',
+        'group relative overflow-hidden rounded-xl border p-2 sm:rounded-2xl sm:p-3',
         'transition-all duration-200',
         statusColors[block.status],
         isDragging && 'shadow-lg shadow-neon-blue/20 z-50'
@@ -106,56 +106,56 @@ export default function TimeBlock({
       {/* Indicador de cor */}
       {!block.isBreak && block.subject && (
         <div
-          className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full"
+          className="absolute bottom-1.5 left-0 top-1.5 w-1 rounded-r-full sm:bottom-2 sm:top-2"
           style={{ backgroundColor: block.subject.color }}
         />
       )}
 
-      <div className="ml-1.5 sm:ml-2 flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2.5">
+      <div className="ml-1 sm:ml-2 flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5">
         {/* Alça de Arrastar */}
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="h-8 w-8 sm:h-9 sm:w-9 cursor-grab active:cursor-grabbing rounded-lg hover:bg-white/5"
+          className="h-6 w-6 sm:h-9 sm:w-9 cursor-grab active:cursor-grabbing rounded-lg hover:bg-white/5"
           aria-label="Arrastar bloco"
         >
-          <GripVertical className="w-3.5 h-3.5 text-text-muted" />
+          <GripVertical className="w-3 h-3 text-text-muted sm:w-3.5 sm:h-3.5" />
         </button>
 
         {/* Conteúdo do Bloco */}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {block.isBreak ? (
-              <Coffee className="w-4 h-4 text-neon-cyan" />
+              <Coffee className="w-3.5 h-3.5 text-neon-cyan sm:w-4 sm:h-4" />
             ) : (
               <div
-                className="w-3 h-3 rounded-full flex-shrink-0"
+                className="h-2.5 w-2.5 rounded-full flex-shrink-0 sm:h-3 sm:w-3"
                 style={{ backgroundColor: block.subject?.color || '#00B4FF' }}
               />
             )}
-            <h4 className="font-medium text-[15px] text-white truncate sm:text-base">
+            <h4 className="font-medium text-sm text-white truncate sm:text-base">
               {displayTitle}
             </h4>
           </div>
 
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-text-secondary">
-            <span className="text-text-muted">
+          <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] text-text-secondary sm:mt-1 sm:gap-1.5 sm:text-xs">
+            <span className="text-text-muted text-[11px] sm:text-xs">
               {formatDuration(block.durationMinutes)}
             </span>
             {!block.isBreak && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-text-secondary">
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-1.5 py-0 text-[9px] text-text-secondary sm:px-2 sm:py-0.5 sm:text-[10px]">
                 {statusLabelMap[block.status]}
               </span>
             )}
             {typeBadge && !block.isBreak && (
               <span
                 className={cn(
-                  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                  'inline-flex items-center gap-1 rounded-full border px-1.5 py-0 text-[9px] font-medium sm:px-2 sm:py-0.5 sm:text-[10px]',
                   typeBadge.className
                 )}
               >
-                <typeBadge.icon className="w-3 h-3" />
+                <typeBadge.icon className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 {typeBadge.label}
               </span>
             )}
@@ -180,27 +180,27 @@ export default function TimeBlock({
         </div>
 
         {/* Ações */}
-        <div className="mt-1 flex w-full items-center gap-1 pl-9 sm:mt-0 sm:w-auto sm:pl-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+        <div className="mt-0.5 flex w-full items-center gap-0.5 pl-7 sm:mt-0 sm:w-auto sm:gap-1 sm:pl-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           {!block.isBreak && onMarkDone && block.status !== 'completed' && (
             <button
               type="button"
               onClick={() => onMarkDone(block)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg sm:h-9 sm:w-9 hover:bg-emerald-500/10 text-emerald-300 hover:text-emerald-200 transition-colors"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg sm:h-9 sm:w-9 hover:bg-emerald-500/10 text-emerald-300 hover:text-emerald-200 transition-colors"
               aria-label="Concluir bloco"
               title="Concluir"
             >
-              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4" />
             </button>
           )}
           {onSkipToday && block.status !== 'completed' && (
             <button
               type="button"
               onClick={() => onSkipToday(block)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg sm:h-9 sm:w-9 hover:bg-red-500/10 text-red-300 hover:text-red-200 transition-colors"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg sm:h-9 sm:w-9 hover:bg-red-500/10 text-red-300 hover:text-red-200 transition-colors"
               aria-label={block.isBreak ? 'Pular intervalo' : 'Pular hoje'}
               title={block.isBreak ? 'Pular intervalo' : 'Pular hoje'}
             >
-              <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <SkipForward className="w-3 h-3 sm:w-4 sm:h-4" />
             </button>
           )}
           {!block.isBreak && onQuickReschedule && block.status !== 'completed' && (
@@ -219,14 +219,14 @@ export default function TimeBlock({
               type="button"
               onClick={() => onStart(block)}
               className={cn(
-                'inline-flex h-8 w-8 items-center justify-center rounded-lg sm:h-9 sm:w-9 transition-colors',
+                'inline-flex h-7 w-7 items-center justify-center rounded-lg sm:h-9 sm:w-9 transition-colors',
                 block.isBreak
                   ? 'hover:bg-neon-cyan/10 text-neon-cyan hover:text-neon-cyan'
                   : 'hover:bg-neon-blue/10 text-neon-blue hover:text-neon-cyan'
               )}
               aria-label={block.isBreak ? 'Iniciar intervalo' : 'Iniciar bloco'}
             >
-              <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <Play className="w-3 h-3 sm:w-4 sm:h-4" />
             </button>
           )}
           {onEdit && !block.isBreak && (
@@ -243,10 +243,10 @@ export default function TimeBlock({
             <button
               type="button"
               onClick={() => onDelete(block.id)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg sm:h-9 sm:w-9 hover:bg-red-500/10 text-text-secondary hover:text-red-400 transition-colors"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg sm:h-9 sm:w-9 hover:bg-red-500/10 text-text-secondary hover:text-red-400 transition-colors"
               aria-label="Excluir bloco"
             >
-              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
             </button>
           )}
         </div>

@@ -149,7 +149,7 @@ export default function DayColumn({
       </div>
 
       {/* Container de Blocos */}
-      <div className="space-y-2 overflow-visible p-2 sm:p-2.5">
+      <div className="space-y-1.5 overflow-visible p-1.5 sm:space-y-2 sm:p-2.5">
         <SortableContext
           items={blocks.map((b) => b.id)}
           strategy={verticalListSortingStrategy}
