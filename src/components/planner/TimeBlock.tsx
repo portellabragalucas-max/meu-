@@ -93,7 +93,7 @@ export default function TimeBlock({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
-        'group relative rounded-2xl border p-3 sm:p-4',
+        'group relative rounded-2xl border p-2.5 sm:p-3',
         'transition-all duration-200',
         statusColors[block.status],
         isDragging && 'shadow-lg shadow-neon-blue/20 z-50'
@@ -107,16 +107,16 @@ export default function TimeBlock({
         />
       )}
 
-      <div className="ml-1.5 sm:ml-2 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+      <div className="ml-1.5 sm:ml-2 flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2.5">
         {/* Alça de Arrastar */}
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="h-10 w-10 sm:h-9 sm:w-9 cursor-grab active:cursor-grabbing rounded-xl hover:bg-white/5"
+          className="h-8 w-8 sm:h-9 sm:w-9 cursor-grab active:cursor-grabbing rounded-lg hover:bg-white/5"
           aria-label="Arrastar bloco"
         >
-          <GripVertical className="w-4 h-4 text-text-muted" />
+          <GripVertical className="w-3.5 h-3.5 text-text-muted" />
         </button>
 
         {/* Conteúdo do Bloco */}
@@ -130,24 +130,24 @@ export default function TimeBlock({
                 style={{ backgroundColor: block.subject?.color || '#00B4FF' }}
               />
             )}
-            <h4 className="font-medium text-white truncate">
+            <h4 className="font-medium text-[15px] text-white truncate sm:text-base">
               {getStudyBlockDisplayTitle(block)}
             </h4>
           </div>
 
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-text-secondary">
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-text-secondary">
             <span className="text-text-muted">
               {formatDuration(block.durationMinutes)}
             </span>
             {!block.isBreak && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-text-secondary">
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-text-secondary">
                 {statusLabelMap[block.status]}
               </span>
             )}
             {typeBadge && !block.isBreak && (
               <span
                 className={cn(
-                  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
                   typeBadge.className
                 )}
               >
@@ -156,58 +156,58 @@ export default function TimeBlock({
               </span>
             )}
             {!block.isBreak && block.pedagogicalStepIndex && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-text-secondary">
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-text-secondary">
                 Ciclo {block.pedagogicalStepIndex}/{block.pedagogicalStepTotal ?? 4}
               </span>
             )}
           </div>
 
           {!block.isBreak && block.topicName && (
-            <p className="mt-1 text-[11px] text-neon-cyan/90 truncate">
+            <p className="hidden sm:block mt-1 text-[11px] text-neon-cyan/90 truncate">
               Topico: {block.topicName}
             </p>
           )}
 
           {!block.isBreak && block.description && (
-            <p className="mt-2 text-xs text-text-muted line-clamp-2">
+            <p className="hidden sm:block mt-2 text-xs text-text-muted line-clamp-2">
               {block.description}
             </p>
           )}
         </div>
 
         {/* Ações */}
-        <div className="flex w-full flex-wrap items-center gap-1 border-t border-white/10 pt-2 pl-[3rem] sm:w-auto sm:flex-nowrap sm:border-t-0 sm:pt-0 sm:pl-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+        <div className="mt-1 flex w-full items-center gap-1 pl-9 sm:mt-0 sm:w-auto sm:pl-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           {!block.isBreak && onMarkDone && block.status !== 'completed' && (
             <button
               type="button"
               onClick={() => onMarkDone(block)}
-              className="h-10 w-10 rounded-xl sm:h-9 sm:w-9 hover:bg-emerald-500/10 text-emerald-300 hover:text-emerald-200 transition-colors"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg sm:h-9 sm:w-9 hover:bg-emerald-500/10 text-emerald-300 hover:text-emerald-200 transition-colors"
               aria-label="Concluir bloco"
               title="Concluir"
             >
-              <CheckCircle2 className="w-4 h-4" />
+              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           )}
           {!block.isBreak && onSkipToday && block.status !== 'completed' && (
             <button
               type="button"
               onClick={() => onSkipToday(block)}
-              className="h-10 w-10 rounded-xl sm:h-9 sm:w-9 hover:bg-red-500/10 text-red-300 hover:text-red-200 transition-colors"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg sm:h-9 sm:w-9 hover:bg-red-500/10 text-red-300 hover:text-red-200 transition-colors"
               aria-label="Pular hoje"
               title="Pular hoje"
             >
-              <SkipForward className="w-4 h-4" />
+              <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           )}
           {!block.isBreak && onQuickReschedule && block.status !== 'completed' && (
             <button
               type="button"
               onClick={() => onQuickReschedule(block)}
-              className="h-10 w-10 rounded-xl sm:h-9 sm:w-9 hover:bg-amber-500/10 text-amber-300 hover:text-amber-200 transition-colors"
+              className="hidden sm:inline-flex h-9 w-9 items-center justify-center rounded-lg hover:bg-amber-500/10 text-amber-300 hover:text-amber-200 transition-colors"
               aria-label="Reagendar bloco"
               title="Reagendar"
             >
-              <CalendarClock className="w-4 h-4" />
+              <CalendarClock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           )}
           {onStart && (
@@ -215,34 +215,34 @@ export default function TimeBlock({
               type="button"
               onClick={() => onStart(block)}
               className={cn(
-                'h-10 w-10 rounded-xl sm:h-9 sm:w-9 transition-colors',
+                'inline-flex h-8 w-8 items-center justify-center rounded-lg sm:h-9 sm:w-9 transition-colors',
                 block.isBreak
                   ? 'hover:bg-neon-cyan/10 text-neon-cyan hover:text-neon-cyan'
                   : 'hover:bg-neon-blue/10 text-neon-blue hover:text-neon-cyan'
               )}
               aria-label={block.isBreak ? 'Iniciar intervalo' : 'Iniciar bloco'}
             >
-              <Play className="w-4 h-4" />
+              <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           )}
           {onEdit && !block.isBreak && (
             <button
               type="button"
               onClick={() => onEdit(block)}
-              className="h-10 w-10 rounded-xl sm:h-9 sm:w-9 hover:bg-white/5 text-text-secondary hover:text-white transition-colors"
+              className="hidden sm:inline-flex h-9 w-9 items-center justify-center rounded-lg hover:bg-white/5 text-text-secondary hover:text-white transition-colors"
               aria-label="Editar bloco"
             >
-              <Edit className="w-4 h-4" />
+              <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           )}
           {onDelete && (
             <button
               type="button"
               onClick={() => onDelete(block.id)}
-              className="h-10 w-10 rounded-xl sm:h-9 sm:w-9 hover:bg-red-500/10 text-text-secondary hover:text-red-400 transition-colors"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg sm:h-9 sm:w-9 hover:bg-red-500/10 text-text-secondary hover:text-red-400 transition-colors"
               aria-label="Excluir bloco"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           )}
         </div>

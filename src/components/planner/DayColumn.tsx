@@ -83,7 +83,7 @@ export default function DayColumn({
       {/* Cabeçalho do Dia */}
       <div
         className={cn(
-          'border-b border-white/10 p-3.5 sm:p-4 md:border-card-border',
+          'border-b border-white/10 p-3 sm:p-3.5 md:border-card-border',
           isToday && 'bg-neon-blue/10 md:bg-neon-blue/10'
         )}
       >
@@ -113,40 +113,32 @@ export default function DayColumn({
         </div>
 
         {/* Estatísticas do Dia */}
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-text-muted">Blocos</p>
-            <p className="mt-1 text-lg font-semibold text-white">{blocks.filter((b) => !b.isBreak).length}</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-text-muted">Planejado</p>
-            <p className="mt-1 text-lg font-semibold text-white">{totalHours}h</p>
-          </div>
+        <div className="mt-2 flex items-center justify-between gap-2 text-xs text-text-secondary">
+          <span>{blocks.filter((b) => !b.isBreak).length} blocos</span>
+          <span className="font-semibold text-white">{totalHours}h</span>
         </div>
-        <div className="mt-2 rounded-2xl border border-white/10 bg-white/[0.02] p-2.5">
-          <div className="flex items-center justify-between gap-3 text-xs text-text-secondary">
-            <span>Capacidade: {limitHours ? `${limitHours}h` : 'livre'}</span>
-            {onAdjustDailyLimit && (
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onAdjustDailyLimit(date, -30)}
-                  className="min-h-[40px] min-w-[72px] rounded-xl border border-white/15 bg-white/[0.02] px-2 py-1 text-sm text-text-secondary transition-colors hover:border-neon-blue/50 hover:text-neon-blue"
-                  aria-label="Reduzir limite diario em 30 minutos"
-                >
-                  -30m
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onAdjustDailyLimit(date, 30)}
-                  className="min-h-[40px] min-w-[72px] rounded-xl border border-white/15 bg-white/[0.02] px-2 py-1 text-sm text-text-secondary transition-colors hover:border-neon-blue/50 hover:text-neon-blue"
-                  aria-label="Aumentar limite diario em 30 minutos"
-                >
-                  +30m
-                </button>
-              </div>
-            )}
-          </div>
+        <div className="mt-2 flex items-center justify-between gap-2 text-xs text-text-secondary">
+          <span>Capacidade: {limitHours ? `${limitHours}h` : 'livre'}</span>
+          {onAdjustDailyLimit && (
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => onAdjustDailyLimit(date, -30)}
+                className="min-h-[34px] min-w-[60px] rounded-lg border border-white/15 bg-white/[0.02] px-2 py-1 text-xs text-text-secondary transition-colors hover:border-neon-blue/50 hover:text-neon-blue"
+                aria-label="Reduzir limite diario em 30 minutos"
+              >
+                -30m
+              </button>
+              <button
+                type="button"
+                onClick={() => onAdjustDailyLimit(date, 30)}
+                className="min-h-[34px] min-w-[60px] rounded-lg border border-white/15 bg-white/[0.02] px-2 py-1 text-xs text-text-secondary transition-colors hover:border-neon-blue/50 hover:text-neon-blue"
+                aria-label="Aumentar limite diario em 30 minutos"
+              >
+                +30m
+              </button>
+            </div>
+          )}
         </div>
         {overMinutes > 0 && (
           <p className="mt-2 text-xs text-red-400">
@@ -157,7 +149,7 @@ export default function DayColumn({
       </div>
 
       {/* Container de Blocos */}
-      <div className="space-y-2.5 overflow-visible p-2.5 sm:p-3">
+      <div className="space-y-2 overflow-visible p-2 sm:p-2.5">
         <SortableContext
           items={blocks.map((b) => b.id)}
           strategy={verticalListSortingStrategy}
