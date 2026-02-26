@@ -81,6 +81,27 @@ const windowHours = (start: string, end: string) => {
   const diff = (timeToMinutes(end) - timeToMinutes(start)) / 60;
   return clampHoursPrecise(diff);
 };
+const minutesToClock = (totalMinutes: number) => {
+  const clamped = Math.max(0, Math.min((23 * 60) + 59, Math.round(totalMinutes)));
+  const hh = Math.floor(clamped / 60);
+  const mm = clamped % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+};
+const addMinutesToClock = (start: string, durationMinutes: number) => minutesToClock(timeToMinutes(start) + durationMinutes);
+const buildMassWindowSuggestions = (hours: number) => {
+  const durationMinutes = Math.max(60, Math.round(hours * 60));
+  const base = [
+    { id: 'morning', label: 'Manha', start: '08:00' },
+    { id: 'afternoon', label: 'Tarde', start: '13:30' },
+    { id: 'night', label: 'Noite', start: '19:00' },
+  ] as const;
+  return base.map((slot) => ({
+    id: slot.id,
+    label: slot.label,
+    start: slot.start,
+    end: addMinutesToClock(slot.start, durationMinutes),
+  }));
+};
 
 const emptyAvailability = (): DailyAvailabilityByWeekday => ({
   dom: { start: '', end: '' },
@@ -198,6 +219,8 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
     return res;
   }, [answers.breakMinutes, answers.dailyHoursByWeekday, answers.focusBlockMinutes, answers.focusMinutes]);
   const weeklyBlocks = useMemo(() => Object.values(blocksPerDay).reduce((sum, n) => sum + n, 0), [blocksPerDay]);
+  const massWindowSuggestions = useMemo(() => buildMassWindowSuggestions(massHours), [massHours]);
+  const primaryMassSuggestion = massWindowSuggestions[0];
 
   const resetAndClose = () => {
     setStep(0);
@@ -219,6 +242,16 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
     const hh = clampTimeValue(Number.parseInt(digits.slice(0, 2), 10), 23);
     const mm = clampTimeValue(Number.parseInt(digits.slice(2).padEnd(2, '0'), 10), 59);
     return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  };
+  const applySuggestedMassWindow = (start: string, end: string) => {
+    setMassStart(start);
+    setMassEnd(end);
+  };
+  const toggleMassAdvanced = () => {
+    if (!showMassAdvanced && !massStart && !massEnd) {
+      applySuggestedMassWindow(primaryMassSuggestion.start, primaryMassSuggestion.end);
+    }
+    setShowMassAdvanced((prev) => !prev);
   };
   const toggleMassDay = (value: number) => setMassDays((prev) => (prev.includes(value) ? prev.filter((d) => d !== value) : [...prev, value]));
   const toggleDayActive = (value: number) => {
@@ -367,7 +400,7 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                         <button
                           type="button"
                           className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-text-secondary hover:text-white"
-                          onClick={() => setShowMassAdvanced((prev) => !prev)}
+                          onClick={toggleMassAdvanced}
                         >
                           {showMassAdvanced ? 'Ocultar avancado' : 'Avancado'}
                         </button>
@@ -430,7 +463,7 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                               <input
                                 type="text"
                                 inputMode="numeric"
-                                placeholder="09:00"
+                                placeholder={primaryMassSuggestion.start}
                                 value={massStart}
                                 onChange={(e) => setMassStart(normalizeCompactTime(e.target.value))}
                                 onBlur={(e) => setMassStart(finalizeCompactTime(e.target.value))}
@@ -448,7 +481,7 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                               <input
                                 type="text"
                                 inputMode="numeric"
-                                placeholder="12:00"
+                                placeholder={primaryMassSuggestion.end}
                                 value={massEnd}
                                 onChange={(e) => setMassEnd(normalizeCompactTime(e.target.value))}
                                 onBlur={(e) => setMassEnd(finalizeCompactTime(e.target.value))}
@@ -462,6 +495,23 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                                 className="input-field h-9 min-h-0 text-sm sm:h-10"
                               />
                             )}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {massWindowSuggestions.map((slot) => (
+                              <button
+                                key={slot.id}
+                                type="button"
+                                className={cn(
+                                  'rounded-xl border px-2.5 py-1 text-[11px] transition-colors',
+                                  massStart === slot.start && massEnd === slot.end
+                                    ? 'border-neon-cyan/60 bg-neon-cyan/10 text-white'
+                                    : 'border-white/10 text-text-secondary hover:text-white'
+                                )}
+                                onClick={() => applySuggestedMassWindow(slot.start, slot.end)}
+                              >
+                                {slot.label} {slot.start}-{slot.end}
+                              </button>
+                            ))}
                           </div>
                         </div>
                       )}
