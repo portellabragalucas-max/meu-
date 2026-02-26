@@ -134,6 +134,8 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
   const [massStart, setMassStart] = useState('');
   const [massEnd, setMassEnd] = useState('');
   const [hasExamDate, setHasExamDate] = useState(false);
+  const [showMassAdvanced, setShowMassAdvanced] = useState(false);
+  const [showDayWindows, setShowDayWindows] = useState(false);
 
   const todayKey = useMemo(() => toDateKey(new Date()), []);
 
@@ -161,6 +163,8 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
     setMassStart('');
     setMassEnd('');
     setHasExamDate(Boolean(next.examDate));
+    setShowMassAdvanced(false);
+    setShowDayWindows(false);
   }, [isOpen, presetId, presetName]);
 
   const summary = useMemo(() => computeStudyPreferences(baseSettings, answers), [baseSettings, answers]);
@@ -386,120 +390,59 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
             <div className="mt-4 flex-1 min-h-0 overflow-y-auto scroll-touch px-0.5 sm:px-1.5 pb-3 sm:pb-6 space-y-4 sm:space-y-6">
               {step === 0 && (
                 <>
-                  <Card className={cn(SETTINGS_SECTION_CLASS, 'p-3 sm:p-4')}>
-                    <div className="space-y-3">
-                      <div>
+                  <Card className={cn(SETTINGS_SECTION_CLASS, 'overflow-hidden p-0')}>
+                    <div className="border-b border-white/10 px-3 py-2.5">
+                      <div className="flex items-center justify-between gap-3">
                         <p className="text-sm font-semibold text-white">Aplicar em massa</p>
-                        <p className="text-xs text-text-muted">
-                          Defina um lote rapido e aplique para os dias selecionados.
-                        </p>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-text-secondary hover:text-white"
+                          onClick={() => setShowMassAdvanced((prev) => !prev)}
+                        >
+                          {showMassAdvanced ? 'Ocultar avancado' : 'Avancado'}
+                        </button>
+                      </div>
+                      <p className="mt-1 text-xs text-text-muted">Escolha horas e dias, depois aplique.</p>
+                    </div>
+
+                    <div className="space-y-3 p-3">
+                      <div className="flex flex-wrap gap-2">
+                        {QUICK_HOURS.map((h) => (
+                          <button
+                            key={h}
+                            type="button"
+                            className={cn(
+                              'rounded-xl border px-3 py-1.5 text-xs transition-colors',
+                              massHours === h
+                                ? 'border-neon-cyan/60 bg-neon-cyan/10 text-white'
+                                : 'border-white/10 text-text-secondary hover:text-white'
+                            )}
+                            onClick={() => setMassHours(h)}
+                          >
+                            {h}h
+                          </button>
+                        ))}
                       </div>
 
-                      <div className="rounded-2xl border border-white/10 bg-[#171a25]/80 p-3">
-                        <div className="mb-2 flex items-center justify-between gap-2">
-                          <span className="text-xs text-text-secondary">Padrao do lote</span>
-                          <span className="text-xs font-medium text-white">{fmtHours(massHours)}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {QUICK_HOURS.map((h) => (
-                            <button
-                              key={h}
-                              type="button"
-                              className={cn(
-                                'rounded-xl border px-3 py-1.5 text-xs transition-colors',
-                                massHours === h
-                                  ? 'border-neon-cyan/60 bg-neon-cyan/10 text-white'
-                                  : 'border-white/10 text-text-secondary hover:text-white'
-                              )}
-                              onClick={() => setMassHours(h)}
-                            >
-                              {h}h
-                            </button>
-                          ))}
-                        </div>
-                        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_90px]">
-                          <input
-                            type="range"
-                            min={0}
-                            max={12}
-                            step={0.5}
-                            value={massHours}
-                            onChange={(e) => setMassHours(clampHours(Number(e.target.value)))}
-                            className="w-full accent-neon-cyan"
-                          />
-                          <input
-                            type="number"
-                            min={0}
-                            max={12}
-                            step={0.5}
-                            value={massHours}
-                            onChange={(e) => setMassHours(clampHours(Number(e.target.value)))}
-                            className="input-field h-9 min-h-0 text-sm sm:h-10"
-                          />
-                        </div>
+                      <div className="flex flex-wrap gap-2">
+                        {DAY_OPTIONS.map((d) => (
+                          <button
+                            key={d.key}
+                            type="button"
+                            className={cn(
+                              'rounded-xl border px-3 py-1.5 text-xs transition-colors',
+                              massDays.includes(d.value)
+                                ? 'border-neon-purple/60 bg-neon-purple/15 text-white'
+                                : 'border-white/10 text-text-secondary hover:text-white'
+                            )}
+                            onClick={() => toggleMassDay(d.value)}
+                          >
+                            {d.label}
+                          </button>
+                        ))}
                       </div>
 
-                      <div className="rounded-2xl border border-white/10 bg-[#171a25]/80 p-3">
-                        <div className="mb-2 flex items-center justify-between gap-2">
-                          <span className="text-xs text-text-secondary">Dias selecionados: {massDays.length}</span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-text-secondary hover:text-white"
-                              onClick={() => setMassDays(DAY_OPTIONS.map((d) => d.value))}
-                            >
-                              Todos
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-text-secondary hover:text-white"
-                              onClick={() => setMassDays([])}
-                            >
-                              Limpar
-                            </button>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {DAY_OPTIONS.map((d) => (
-                            <button
-                              key={d.key}
-                              type="button"
-                              className={cn(
-                                'rounded-xl border px-3 py-1.5 text-xs transition-colors',
-                                massDays.includes(d.value)
-                                  ? 'border-neon-purple/60 bg-neon-purple/15 text-white'
-                                  : 'border-white/10 text-text-secondary hover:text-white'
-                              )}
-                              onClick={() => toggleMassDay(d.value)}
-                            >
-                              {d.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <div className="rounded-2xl border border-white/10 bg-[#171a25]/80 p-2.5">
-                          <label className="mb-1 block text-[11px] text-text-muted">Inicio (opcional)</label>
-                          <input
-                            type="time"
-                            value={massStart}
-                            onChange={(e) => setMassStart(e.target.value)}
-                            className="input-field h-9 min-h-0 text-sm sm:h-10"
-                          />
-                        </div>
-                        <div className="rounded-2xl border border-white/10 bg-[#171a25]/80 p-2.5">
-                          <label className="mb-1 block text-[11px] text-text-muted">Fim (opcional)</label>
-                          <input
-                            type="time"
-                            value={massEnd}
-                            onChange={(e) => setMassEnd(e.target.value)}
-                            className="input-field h-9 min-h-0 text-sm sm:h-10"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="grid grid-cols-2 gap-2">
                         <Button
                           variant="secondary"
                           className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm"
@@ -511,55 +454,95 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                         <Button
                           variant="ghost"
                           className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm"
-                          onClick={applyMassWindow}
-                          disabled={massDays.length === 0}
+                          onClick={applyMonToFri}
                         >
-                          Aplicar horario
+                          Aplicar seg-sex
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm"
+                          onClick={applyToAll}
+                        >
+                          Aplicar em todos
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm"
+                          onClick={clearMassSelectionValues}
+                        >
+                          Limpar lote
                         </Button>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <Button variant="secondary" className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm" onClick={copyMondayToSelected}>
-                          Copiar segunda para selecionados
-                        </Button>
-                        <Button variant="secondary" className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm" onClick={applyMonToFri}>
-                          Aplicar lote seg-sex
-                        </Button>
-                        <Button variant="secondary" className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm" onClick={applyToAll}>
-                          Aplicar lote para todos
-                        </Button>
-                        <Button variant="ghost" className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm" onClick={clearMassSelectionValues}>
-                          Limpar selecionados
-                        </Button>
-                      </div>
+                      {showMassAdvanced && (
+                        <div className="space-y-2 rounded-xl border border-white/10 bg-[#171a25]/80 p-2.5">
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="time"
+                              value={massStart}
+                              onChange={(e) => setMassStart(e.target.value)}
+                              className="input-field h-9 min-h-0 text-sm sm:h-10"
+                            />
+                            <input
+                              type="time"
+                              value={massEnd}
+                              onChange={(e) => setMassEnd(e.target.value)}
+                              className="input-field h-9 min-h-0 text-sm sm:h-10"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              variant="ghost"
+                              className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm"
+                              onClick={applyMassWindow}
+                              disabled={massDays.length === 0}
+                            >
+                              Aplicar horario
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm"
+                              onClick={copyMondayToSelected}
+                            >
+                              Copiar segunda
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </Card>
 
-                  <Card className={cn(SETTINGS_SECTION_CLASS, 'p-3 sm:p-4')}>
-                    <div className="mb-2 flex items-center justify-between gap-3">
+                  <Card className={cn(SETTINGS_SECTION_CLASS, 'overflow-hidden p-0')}>
+                    <div className="flex items-center justify-between border-b border-white/10 px-3 py-2.5">
                       <p className="text-sm font-semibold text-white">Disponibilidade por dia</p>
-                      <p className="text-[11px] text-text-muted">0h = sem estudo</p>
+                      <button
+                        type="button"
+                        className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-text-secondary hover:text-white"
+                        onClick={() => setShowDayWindows((prev) => !prev)}
+                      >
+                        {showDayWindows ? 'Ocultar horarios' : 'Mostrar horarios'}
+                      </button>
                     </div>
 
-                    <div className="space-y-2.5">
+                    <div className="divide-y divide-white/10">
                       {DAY_OPTIONS.map((d) => {
                         const hours = answers.dailyHoursByWeekday[d.key] || 0;
                         const active = hours > 0;
                         const w = answers.dailyAvailabilityByWeekday[d.key];
                         return (
-                          <div key={d.key} className="rounded-2xl border border-white/10 bg-[#171a25]/80 p-3">
-                            <div className="flex items-center gap-2">
+                          <div key={d.key} className="px-3 py-2.5">
+                            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
                               <button
                                 type="button"
                                 onClick={() => toggleDayActive(d.value)}
                                 className={cn(
-                                  'h-9 rounded-xl border px-3 text-xs sm:h-10 sm:text-sm',
+                                  'h-8 rounded-lg border px-2.5 text-[11px] sm:h-9 sm:text-xs',
                                   active
                                     ? 'border-neon-cyan/60 text-white'
                                     : 'border-white/10 text-text-muted'
                                 )}
                               >
-                                {d.label} {active ? '· Estudo' : '· Sem estudo'}
+                                {d.label}
                               </button>
                               <input
                                 type="number"
@@ -569,31 +552,8 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                                 disabled={!active}
                                 value={hours}
                                 onChange={(e) => updateDayHours(d.key, Number(e.target.value))}
-                                className={cn('input-field h-9 min-h-0 text-sm sm:h-10', !active && 'opacity-60')}
+                                className={cn('input-field h-8 min-h-0 text-sm sm:h-9', !active && 'opacity-60')}
                               />
-                            </div>
-
-                            <div className="mt-2 grid grid-cols-2 gap-2">
-                              <input
-                                type="time"
-                                disabled={!active}
-                                value={w.start}
-                                onChange={(e) => updateDayWindow(d.key, 'start', e.target.value)}
-                                className={cn('input-field h-9 min-h-0 text-sm sm:h-10', !active && 'opacity-60')}
-                              />
-                              <input
-                                type="time"
-                                disabled={!active}
-                                value={w.end}
-                                onChange={(e) => updateDayWindow(d.key, 'end', e.target.value)}
-                                className={cn('input-field h-9 min-h-0 text-sm sm:h-10', !active && 'opacity-60')}
-                              />
-                            </div>
-
-                            <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
-                              <span className={cn(active ? 'text-text-secondary' : 'text-text-muted')}>
-                                {active ? `Horas liquidas: ${fmtHours(hours)}` : 'Sem estudo neste dia'}
-                              </span>
                               <button
                                 type="button"
                                 className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-text-secondary hover:text-white"
@@ -603,9 +563,26 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                                   updateDayWindow(d.key, 'end', '');
                                 }}
                               >
-                                Limpar dia
+                                Limpar
                               </button>
                             </div>
+
+                            {showDayWindows && active && (
+                              <div className="mt-2 grid grid-cols-2 gap-2">
+                                <input
+                                  type="time"
+                                  value={w.start}
+                                  onChange={(e) => updateDayWindow(d.key, 'start', e.target.value)}
+                                  className="input-field h-8 min-h-0 text-sm sm:h-9"
+                                />
+                                <input
+                                  type="time"
+                                  value={w.end}
+                                  onChange={(e) => updateDayWindow(d.key, 'end', e.target.value)}
+                                  className="input-field h-8 min-h-0 text-sm sm:h-9"
+                                />
+                              </div>
+                            )}
                           </div>
                         );
                       })}
