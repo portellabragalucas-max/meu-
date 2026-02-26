@@ -136,10 +136,20 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
   const [hasExamDate, setHasExamDate] = useState(false);
   const [showMassAdvanced, setShowMassAdvanced] = useState(false);
   const [showDayWindows, setShowDayWindows] = useState(false);
+  const [useCompactTimeInput, setUseCompactTimeInput] = useState(false);
 
   const todayKey = useMemo(() => toDateKey(new Date()), []);
 
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua);
+    const isTouchMac =
+      typeof navigator !== 'undefined' &&
+      navigator.platform === 'MacIntel' &&
+      navigator.maxTouchPoints > 1;
+    setUseCompactTimeInput(isIOS || isTouchMac);
+  }, []);
   useEffect(() => {
     if (!isOpen) return;
     const prevBody = document.body.style.overflow;
@@ -191,6 +201,19 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
   };
 
   const patchAnswers = (patch: Partial<PresetWizardAnswers>) => setAnswers((prev) => ({ ...prev, ...patch }));
+  const clampTimeValue = (value: number, max: number) => Math.max(0, Math.min(max, value));
+  const normalizeCompactTime = (raw: string) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 4);
+    if (digits.length <= 2) return digits;
+    return `${digits.slice(0, 2)}:${digits.slice(2, 4)}`;
+  };
+  const finalizeCompactTime = (raw: string) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 4);
+    if (digits.length < 3) return '';
+    const hh = clampTimeValue(Number.parseInt(digits.slice(0, 2), 10), 23);
+    const mm = clampTimeValue(Number.parseInt(digits.slice(2).padEnd(2, '0'), 10), 59);
+    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  };
   const toggleMassDay = (value: number) => setMassDays((prev) => (prev.includes(value) ? prev.filter((d) => d !== value) : [...prev, value]));
   const toggleDayActive = (value: number) => {
     const day = DAY_OPTIONS.find((d) => d.value === value);
@@ -477,18 +500,42 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                       {showMassAdvanced && (
                         <div className="space-y-2 rounded-xl border border-white/10 bg-[#171a25]/80 p-2.5">
                           <div className="grid grid-cols-2 gap-2">
-                            <input
-                              type="time"
-                              value={massStart}
-                              onChange={(e) => setMassStart(e.target.value)}
-                              className="input-field h-9 min-h-0 text-sm sm:h-10"
-                            />
-                            <input
-                              type="time"
-                              value={massEnd}
-                              onChange={(e) => setMassEnd(e.target.value)}
-                              className="input-field h-9 min-h-0 text-sm sm:h-10"
-                            />
+                            {useCompactTimeInput ? (
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="09:00"
+                                value={massStart}
+                                onChange={(e) => setMassStart(normalizeCompactTime(e.target.value))}
+                                onBlur={(e) => setMassStart(finalizeCompactTime(e.target.value))}
+                                className="input-field h-9 min-h-0 text-sm sm:h-10"
+                              />
+                            ) : (
+                              <input
+                                type="time"
+                                value={massStart}
+                                onChange={(e) => setMassStart(e.target.value)}
+                                className="input-field h-9 min-h-0 text-sm sm:h-10"
+                              />
+                            )}
+                            {useCompactTimeInput ? (
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="12:00"
+                                value={massEnd}
+                                onChange={(e) => setMassEnd(normalizeCompactTime(e.target.value))}
+                                onBlur={(e) => setMassEnd(finalizeCompactTime(e.target.value))}
+                                className="input-field h-9 min-h-0 text-sm sm:h-10"
+                              />
+                            ) : (
+                              <input
+                                type="time"
+                                value={massEnd}
+                                onChange={(e) => setMassEnd(e.target.value)}
+                                className="input-field h-9 min-h-0 text-sm sm:h-10"
+                              />
+                            )}
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <Button
@@ -569,18 +616,42 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
 
                             {showDayWindows && active && (
                               <div className="mt-2 grid grid-cols-2 gap-2">
-                                <input
-                                  type="time"
-                                  value={w.start}
-                                  onChange={(e) => updateDayWindow(d.key, 'start', e.target.value)}
-                                  className="input-field h-8 min-h-0 text-sm sm:h-9"
-                                />
-                                <input
-                                  type="time"
-                                  value={w.end}
-                                  onChange={(e) => updateDayWindow(d.key, 'end', e.target.value)}
-                                  className="input-field h-8 min-h-0 text-sm sm:h-9"
-                                />
+                                {useCompactTimeInput ? (
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    placeholder="Inicio"
+                                    value={w.start}
+                                    onChange={(e) => updateDayWindow(d.key, 'start', normalizeCompactTime(e.target.value))}
+                                    onBlur={(e) => updateDayWindow(d.key, 'start', finalizeCompactTime(e.target.value))}
+                                    className="input-field h-8 min-h-0 text-sm sm:h-9"
+                                  />
+                                ) : (
+                                  <input
+                                    type="time"
+                                    value={w.start}
+                                    onChange={(e) => updateDayWindow(d.key, 'start', e.target.value)}
+                                    className="input-field h-8 min-h-0 text-sm sm:h-9"
+                                  />
+                                )}
+                                {useCompactTimeInput ? (
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    placeholder="Fim"
+                                    value={w.end}
+                                    onChange={(e) => updateDayWindow(d.key, 'end', normalizeCompactTime(e.target.value))}
+                                    onBlur={(e) => updateDayWindow(d.key, 'end', finalizeCompactTime(e.target.value))}
+                                    className="input-field h-8 min-h-0 text-sm sm:h-9"
+                                  />
+                                ) : (
+                                  <input
+                                    type="time"
+                                    value={w.end}
+                                    onChange={(e) => updateDayWindow(d.key, 'end', e.target.value)}
+                                    className="input-field h-8 min-h-0 text-sm sm:h-9"
+                                  />
+                                )}
                               </div>
                             )}
                           </div>
