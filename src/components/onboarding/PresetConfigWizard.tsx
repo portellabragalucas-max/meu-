@@ -61,6 +61,7 @@ const overlayVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 } };
 const modalVariants = { hidden: { opacity: 0, y: 24, scale: 0.99 }, visible: { opacity: 1, y: 0, scale: 1 } };
 
 const clampHours = (v: number) => Math.min(12, Math.max(0, Math.round(v * 2) / 2));
+const clampHoursPrecise = (v: number) => Math.min(12, Math.max(0, Math.round(v * 100) / 100));
 const toDateKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const fmtDate = (k?: string) => {
   if (!k) return 'Nao definido';
@@ -75,6 +76,11 @@ const fmtHours = (v: number) => {
   return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
 };
 const isValidWindow = (start: string, end: string) => Boolean(start && end && timeToMinutes(end) > timeToMinutes(start));
+const windowHours = (start: string, end: string) => {
+  if (!isValidWindow(start, end)) return null;
+  const diff = (timeToMinutes(end) - timeToMinutes(start)) / 60;
+  return clampHoursPrecise(diff);
+};
 
 const emptyAvailability = (): DailyAvailabilityByWeekday => ({
   dom: { start: '', end: '' },
@@ -241,16 +247,23 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
     }));
   };
   const updateDayWindow = (key: WeekdayKey, field: 'start' | 'end', value: string) => {
-    setAnswers((prev) => ({
-      ...prev,
-      dailyAvailabilityByWeekday: {
+    setAnswers((prev) => {
+      const nextWindows = {
         ...prev.dailyAvailabilityByWeekday,
         [key]: {
           ...prev.dailyAvailabilityByWeekday[key],
           [field]: value,
         },
-      },
-    }));
+      };
+      const nextHours = { ...prev.dailyHoursByWeekday };
+      const autoHours = windowHours(nextWindows[key].start, nextWindows[key].end);
+      if (autoHours !== null) nextHours[key] = autoHours;
+      return {
+        ...prev,
+        dailyAvailabilityByWeekday: nextWindows,
+        dailyHoursByWeekday: nextHours,
+      };
+    });
   };
   const applyMassHours = () => {
     if (massDays.length === 0) return;
@@ -268,12 +281,15 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
     if (massDays.length === 0) return;
     setAnswers((prev) => {
       const next = { ...prev.dailyAvailabilityByWeekday };
+      const nextHours = { ...prev.dailyHoursByWeekday };
+      const autoHours = windowHours(massStart, massEnd);
       massDays.forEach((value) => {
         const day = DAY_OPTIONS.find((d) => d.value === value);
         if (!day) return;
         next[day.key] = { start: massStart, end: massEnd };
+        if (autoHours !== null) nextHours[day.key] = autoHours;
       });
-      return { ...prev, dailyAvailabilityByWeekday: next };
+      return { ...prev, dailyAvailabilityByWeekday: next, dailyHoursByWeekday: nextHours };
     });
   };
   const copyMondayToSelected = () => {
@@ -296,9 +312,10 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
     setAnswers((prev) => {
       const hours = { ...prev.dailyHoursByWeekday };
       const windows = { ...prev.dailyAvailabilityByWeekday };
+      const autoHours = windowHours(massStart, massEnd);
       ['seg', 'ter', 'qua', 'qui', 'sex'].forEach((key) => {
         const k = key as WeekdayKey;
-        hours[k] = clampHours(massHours);
+        hours[k] = autoHours ?? clampHours(massHours);
         if (massStart || massEnd) {
           windows[k] = { start: massStart, end: massEnd };
         }
@@ -311,8 +328,9 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
     setAnswers((prev) => {
       const hours = { ...prev.dailyHoursByWeekday };
       const windows = { ...prev.dailyAvailabilityByWeekday };
+      const autoHours = windowHours(massStart, massEnd);
       DAY_OPTIONS.forEach((d) => {
-        hours[d.key] = clampHours(massHours);
+        hours[d.key] = autoHours ?? clampHours(massHours);
         if (massStart || massEnd) {
           windows[d.key] = { start: massStart, end: massEnd };
         }
