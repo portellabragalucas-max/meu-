@@ -265,94 +265,23 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
       };
     });
   };
-  const applyMassHours = () => {
+  const applyMassSchedule = () => {
     if (massDays.length === 0) return;
     setAnswers((prev) => {
-      const next = { ...prev.dailyHoursByWeekday };
-      massDays.forEach((value) => {
-        const day = DAY_OPTIONS.find((d) => d.value === value);
-        if (!day) return;
-        next[day.key] = clampHours(massHours);
-      });
-      return { ...prev, dailyHoursByWeekday: next };
-    });
-  };
-  const applyMassWindow = () => {
-    if (massDays.length === 0) return;
-    setAnswers((prev) => {
-      const next = { ...prev.dailyAvailabilityByWeekday };
+      const nextWindows = { ...prev.dailyAvailabilityByWeekday };
       const nextHours = { ...prev.dailyHoursByWeekday };
       const autoHours = windowHours(massStart, massEnd);
       massDays.forEach((value) => {
         const day = DAY_OPTIONS.find((d) => d.value === value);
         if (!day) return;
-        next[day.key] = { start: massStart, end: massEnd };
-        if (autoHours !== null) nextHours[day.key] = autoHours;
-      });
-      return { ...prev, dailyAvailabilityByWeekday: next, dailyHoursByWeekday: nextHours };
-    });
-  };
-  const copyMondayToSelected = () => {
-    setAnswers((prev) => {
-      const segHours = prev.dailyHoursByWeekday.seg;
-      const segWindow = prev.dailyAvailabilityByWeekday.seg;
-      const hours = { ...prev.dailyHoursByWeekday };
-      const windows = { ...prev.dailyAvailabilityByWeekday };
-      massDays.forEach((value) => {
-        const day = DAY_OPTIONS.find((d) => d.value === value);
-        if (!day || day.key === 'seg') return;
-        hours[day.key] = segHours;
-        windows[day.key] = { ...segWindow };
-      });
-      return { ...prev, dailyHoursByWeekday: hours, dailyAvailabilityByWeekday: windows };
-    });
-  };
-  const applyMonToFri = () => {
-    setMassDays([1, 2, 3, 4, 5]);
-    setAnswers((prev) => {
-      const hours = { ...prev.dailyHoursByWeekday };
-      const windows = { ...prev.dailyAvailabilityByWeekday };
-      const autoHours = windowHours(massStart, massEnd);
-      ['seg', 'ter', 'qua', 'qui', 'sex'].forEach((key) => {
-        const k = key as WeekdayKey;
-        hours[k] = autoHours ?? clampHours(massHours);
+        nextHours[day.key] = autoHours ?? clampHours(massHours);
         if (massStart || massEnd) {
-          windows[k] = { start: massStart, end: massEnd };
+          nextWindows[day.key] = { start: massStart, end: massEnd };
         }
       });
-      return { ...prev, dailyHoursByWeekday: hours, dailyAvailabilityByWeekday: windows };
+      return { ...prev, dailyAvailabilityByWeekday: nextWindows, dailyHoursByWeekday: nextHours };
     });
   };
-  const applyToAll = () => {
-    setMassDays([0, 1, 2, 3, 4, 5, 6]);
-    setAnswers((prev) => {
-      const hours = { ...prev.dailyHoursByWeekday };
-      const windows = { ...prev.dailyAvailabilityByWeekday };
-      const autoHours = windowHours(massStart, massEnd);
-      DAY_OPTIONS.forEach((d) => {
-        hours[d.key] = autoHours ?? clampHours(massHours);
-        if (massStart || massEnd) {
-          windows[d.key] = { start: massStart, end: massEnd };
-        }
-      });
-      return { ...prev, dailyHoursByWeekday: hours, dailyAvailabilityByWeekday: windows };
-    });
-  };
-  const clearMassSelectionValues = () => {
-    if (massDays.length === 0) return;
-    setAnswers((prev) => {
-      const hours = { ...prev.dailyHoursByWeekday };
-      const windows = { ...prev.dailyAvailabilityByWeekday };
-      massDays.forEach((value) => {
-        const day = DAY_OPTIONS.find((d) => d.value === value);
-        if (!day) return;
-        hours[day.key] = 0;
-        windows[day.key] = { start: '', end: '' };
-      });
-      return { ...prev, dailyHoursByWeekday: hours, dailyAvailabilityByWeekday: windows };
-    });
-  };
-
   const validateStep0 = () => {
     if (activeDays.length === 0) return 'Defina pelo menos um dia com horas liquidas > 0.';
     for (const day of DAY_OPTIONS) {
@@ -483,35 +412,14 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                         ))}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
+                      <div>
                         <Button
                           variant="secondary"
-                          className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm"
-                          onClick={applyMassHours}
+                          className="h-9 min-h-0 w-full rounded-xl px-3 text-xs sm:h-10 sm:text-sm"
+                          onClick={applyMassSchedule}
                           disabled={massDays.length === 0}
                         >
-                          Aplicar horas
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm"
-                          onClick={applyMonToFri}
-                        >
-                          Aplicar seg-sex
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm"
-                          onClick={applyToAll}
-                        >
-                          Aplicar em todos
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm"
-                          onClick={clearMassSelectionValues}
-                        >
-                          Limpar lote
+                          Aplicar horario
                         </Button>
                       </div>
 
@@ -554,23 +462,6 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                                 className="input-field h-9 min-h-0 text-sm sm:h-10"
                               />
                             )}
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <Button
-                              variant="ghost"
-                              className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm"
-                              onClick={applyMassWindow}
-                              disabled={massDays.length === 0}
-                            >
-                              Aplicar horario
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              className="h-9 min-h-0 rounded-xl px-3 text-xs sm:h-10 sm:text-sm"
-                              onClick={copyMondayToSelected}
-                            >
-                              Copiar segunda
-                            </Button>
                           </div>
                         </div>
                       )}
