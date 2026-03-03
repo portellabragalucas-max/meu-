@@ -503,11 +503,16 @@ export function computeIntelligentAnalyticsSummary(params: {
   const consistencyRate = last30.length > 0 ? studyDays / last30.length : 0;
 
   const avgTrend = list.length > 0 ? list.reduce((sum, profile) => sum + (profile.trend7d || 0), 0) / list.length : 0;
-  const projectedImprovement30d = clamp(
-    (avgTrend * 100 * 4) + consistencyRate * 6 + getExamProximityFactor(studyPrefs?.examDate, now) * 2,
-    -10,
-    30
-  );
+  const projectedImprovement30d =
+    list.length > 0
+      ? clamp(
+          avgTrend * 100 * 4 +
+            consistencyRate * 6 +
+            getExamProximityFactor(studyPrefs?.examDate, now) * 2,
+          -10,
+          30
+        )
+      : 0;
 
   return {
     avgAccuracyRate: Number(avgAccuracyRate.toFixed(4)),

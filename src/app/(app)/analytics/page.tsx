@@ -73,6 +73,24 @@ export default function AnalyticsPage() {
     return { hoursByDate, sessionsByDate, hoursBySubject };
   }, [plannerBlocks]);
 
+  const analyticsForSummary = useMemo(() => {
+    const mergedDaily = { ...(analytics.daily || {}) };
+
+    Object.entries(completedStats.hoursByDate).forEach(([dateKey, blockHours]) => {
+      const current = mergedDaily[dateKey] || { hours: 0, sessions: 0 };
+      mergedDaily[dateKey] = {
+        ...current,
+        hours: Math.max(current.hours ?? 0, blockHours),
+        sessions: Math.max(current.sessions ?? 0, completedStats.sessionsByDate[dateKey] ?? 0),
+      };
+    });
+
+    return {
+      ...analytics,
+      daily: mergedDaily,
+    };
+  }, [analytics, completedStats.hoursByDate, completedStats.sessionsByDate]);
+
   const productivityData = useMemo(() => {
     if (!now) return [];
     const data: { date: string; focusScore: number; productivityScore: number; hours: number }[] = [];
@@ -146,8 +164,8 @@ export default function AnalyticsPage() {
 
   const totalHours = productivityData.reduce((sum, d) => sum + d.hours, 0);
   const intelligentSummary = useMemo(
-    () => computeIntelligentAnalyticsSummary({ analytics, subjects, now: now ?? new Date() }),
-    [analytics, subjects, now]
+    () => computeIntelligentAnalyticsSummary({ analytics: analyticsForSummary, subjects, now: now ?? new Date() }),
+    [analyticsForSummary, subjects, now]
   );
   const studiedDays = productivityData.filter((item) => item.hours > 0);
   const avgFocus =
