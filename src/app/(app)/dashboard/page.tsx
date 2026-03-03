@@ -59,6 +59,29 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
+const hasManualSequence = (block: StudyBlock) =>
+  typeof block.sequenceIndex === 'number' && Number.isFinite(block.sequenceIndex);
+
+const compareBlocksWithinDay = (a: StudyBlock, b: StudyBlock) => {
+  const aHasSequence = hasManualSequence(a);
+  const bHasSequence = hasManualSequence(b);
+
+  if (aHasSequence && bHasSequence) {
+    const sequenceDiff = (a.sequenceIndex as number) - (b.sequenceIndex as number);
+    if (sequenceDiff !== 0) return sequenceDiff;
+  } else if (aHasSequence !== bHasSequence) {
+    return aHasSequence ? -1 : 1;
+  }
+
+  return a.startTime.localeCompare(b.startTime);
+};
+
+const comparePlannerBlocks = (a: StudyBlock, b: StudyBlock) => {
+  const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+  if (dateDiff !== 0) return dateDiff;
+  return compareBlocksWithinDay(a, b);
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const {
@@ -147,14 +170,35 @@ export default function DashboardPage() {
     }).length;
   }, [plannerBlocks]);
 
+  const weeklyCompletedHoursBySubject = useMemo(() => {
+    const weekStart = getWeekStart(new Date());
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+
+    const totals = new Map<string, number>();
+
+    plannerBlocks.forEach((block) => {
+      if (block.isBreak || block.status !== 'completed' || !block.subjectId) return;
+      const blockDate = new Date(block.date);
+      if (blockDate < weekStart || blockDate >= weekEnd) return;
+
+      const previous = totals.get(block.subjectId) ?? 0;
+      totals.set(block.subjectId, previous + block.durationMinutes / 60);
+    });
+
+    return totals;
+  }, [plannerBlocks]);
+
   const todayPlan = useMemo(() => {
     const today = new Date();
+    const todayStart = new Date(today);
+    todayStart.setHours(0, 0, 0, 0);
     const normalizedBlocks = plannerBlocks
       .map((block) => ({
         ...block,
         date: new Date(block.date),
       }))
-      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+      .sort(comparePlannerBlocks);
 
     const blocksForToday = normalizedBlocks.filter((block) =>
       isSameDay(new Date(block.date), today)
@@ -165,7 +209,7 @@ export default function DashboardPage() {
     }
 
     // Fallback: show next available day blocks if none scheduled today
-    const nextBlock = normalizedBlocks.find((block) => block.date >= today);
+    const nextBlock = normalizedBlocks.find((block) => block.date >= todayStart);
     if (nextBlock) {
       const nextDate = new Date(nextBlock.date);
       return {
@@ -192,6 +236,37 @@ export default function DashboardPage() {
   }, [plannerBlocks]);
 
   const todayBlocks = todayPlan.blocks;
+  const subjectOrderByPlan = useMemo(() => {
+    const order = new Map<string, number>();
+    todayBlocks.forEach((block, index) => {
+      if (block.isBreak || !block.subjectId) return;
+      if (!order.has(block.subjectId)) {
+        order.set(block.subjectId, index);
+      }
+    });
+    return order;
+  }, [todayBlocks]);
+
+  const subjectProgressRows = useMemo(
+    () =>
+      subjects
+        .map((subject) => ({
+          subject,
+          completedHours: Number((weeklyCompletedHoursBySubject.get(subject.id) ?? 0).toFixed(1)),
+        }))
+        .sort((a, b) => {
+          const aOrder = subjectOrderByPlan.get(a.subject.id);
+          const bOrder = subjectOrderByPlan.get(b.subject.id);
+
+          if (aOrder !== undefined && bOrder !== undefined) return aOrder - bOrder;
+          if (aOrder !== undefined) return -1;
+          if (bOrder !== undefined) return 1;
+
+          return a.subject.name.localeCompare(b.subject.name, 'pt-BR');
+        }),
+    [subjects, subjectOrderByPlan, weeklyCompletedHoursBySubject]
+  );
+
   const planTitle =
     todayPlan.source === 'today' || todayPlan.source === 'none'
       ? 'Plano de Hoje'
@@ -585,7 +660,7 @@ export default function DashboardPage() {
                   </p>
 
                   <div className="space-y-5 max-[479px]:space-y-3">
-                    {subjects.map((subject, index) => (
+                    {subjectProgressRows.map(({ subject, completedHours }, index) => (
                       <motion.div
                         key={subject.id}
                         initial={{ opacity: 0, x: -20 }}
@@ -603,15 +678,15 @@ export default function DashboardPage() {
                             </span>
                           </div>
                           <span className="shrink-0 text-xs text-text-secondary">
-                            {subject.completedHours}h / {subject.targetHours}h
+                            {completedHours}h / {subject.targetHours}h
                           </span>
                         </div>
                         <div className="relative">
                           <ProgressBar
-                            value={subject.completedHours}
+                            value={completedHours}
                             max={subject.targetHours}
                             color={
-                              subject.completedHours >= subject.targetHours
+                              completedHours >= subject.targetHours
                                 ? 'cyan'
                                 : 'blue'
                             }
