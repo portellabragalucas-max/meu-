@@ -13,6 +13,7 @@ import TopBar from './TopBar';
 import BottomNav from './BottomNav';
 import AppContainer from './AppContainer';
 import { useLocalStorage } from '@/hooks';
+import { useServerProgressSync } from '@/hooks/useServerProgressSync';
 import { defaultSettings } from '@/lib/defaultSettings';
 import type { UserSettings } from '@/types';
 
@@ -21,6 +22,7 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
+  useServerProgressSync();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const { data: session } = useSession();

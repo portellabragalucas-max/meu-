@@ -7,7 +7,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-const LOCAL_STORAGE_SYNC_EVENT = 'nexora-local-storage-sync';
+export const LOCAL_STORAGE_SYNC_EVENT = 'nexora-local-storage-sync';
+
+export function emitLocalStorageSyncEvent<T>(key: string, value: T) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent(LOCAL_STORAGE_SYNC_EVENT, {
+      detail: { key, value },
+    })
+  );
+}
 
 export function useLocalStorage<T>(
   key: string,
@@ -72,11 +81,7 @@ export function useLocalStorage<T>(
 
         if (typeof window !== 'undefined') {
           window.localStorage.setItem(key, JSON.stringify(valueToStore));
-          window.dispatchEvent(
-            new CustomEvent(LOCAL_STORAGE_SYNC_EVENT, {
-              detail: { key, value: valueToStore },
-            })
-          );
+          emitLocalStorageSyncEvent(key, valueToStore);
         }
 
         return valueToStore;

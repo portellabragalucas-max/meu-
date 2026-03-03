@@ -79,6 +79,7 @@ model User {
   notifications UserNotification[]
   performanceMetrics PerformanceMetrics[]
   topicProgress TopicProgress[]
+  progressSnapshot UserProgressSnapshot?
 }
 
 model UserPreferences {
@@ -370,6 +371,18 @@ model UserProfile {
   focus_subjects     String // JSON array
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model UserProgressSnapshot {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  payload   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([updatedAt])
 }
 
 model Account {
