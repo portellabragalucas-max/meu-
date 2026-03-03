@@ -492,15 +492,14 @@ export function computeIntelligentAnalyticsSummary(params: {
   const weakest = [...list].sort((a, b) => a.accuracyRate - b.accuracyRate)[0];
   const strongest = [...list].sort((a, b) => b.accuracyRate - a.accuracyRate)[0];
 
-  const last30 = Object.entries(analytics.daily)
-    .filter(([date]) => {
-      const d = normalizeDateString(date);
-      if (!d) return false;
-      return now.getTime() - d.getTime() <= 30 * 24 * 60 * 60 * 1000;
-    })
-    .map(([, record]) => record);
-  const studyDays = last30.filter((record) => (record.hours || 0) > 0).length;
-  const consistencyRate = last30.length > 0 ? studyDays / last30.length : 0;
+  const last30DayRecords = Array.from({ length: 30 }, (_, index) => {
+    const date = new Date(now);
+    date.setDate(now.getDate() - index);
+    const dateKey = date.toISOString().split('T')[0];
+    return analytics.daily[dateKey] || { hours: 0, sessions: 0 };
+  });
+  const studyDays = last30DayRecords.filter((record) => (record.hours || 0) > 0).length;
+  const consistencyRate = studyDays / 30;
 
   const avgTrend = list.length > 0 ? list.reduce((sum, profile) => sum + (profile.trend7d || 0), 0) / list.length : 0;
   const projectedImprovement30d =
