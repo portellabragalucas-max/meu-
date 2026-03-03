@@ -5,7 +5,7 @@
  * Modal para iniciar uma sessão de estudo rápida
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -46,23 +46,28 @@ export default function QuickSessionModal({
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
   const [focusScore, setFocusScore] = useState(85);
+  const sessionEndAtRef = useRef<number | null>(null);
 
   // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    if (sessionState !== 'running') return;
 
-    if (sessionState === 'running' && timeRemaining > 0) {
-      interval = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            setSessionState('completed');
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (!sessionEndAtRef.current) {
+      sessionEndAtRef.current = Date.now() + (Math.max(0, timeRemaining) * 1000);
     }
 
+    const tick = () => {
+      if (!sessionEndAtRef.current) return;
+      const liveRemaining = Math.max(0, Math.ceil((sessionEndAtRef.current - Date.now()) / 1000));
+      setTimeRemaining(liveRemaining);
+      if (liveRemaining <= 0) {
+        sessionEndAtRef.current = null;
+        setSessionState('completed');
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 250);
     return () => clearInterval(interval);
   }, [sessionState, timeRemaining]);
 
@@ -82,21 +87,37 @@ export default function QuickSessionModal({
     const totalSeconds = duration * 60;
     setTotalTime(totalSeconds);
     setTimeRemaining(totalSeconds);
+    sessionEndAtRef.current = Date.now() + (totalSeconds * 1000);
     setSessionState('running');
   };
 
   // Pausar/Continuar
   const togglePause = () => {
-    setSessionState((prev) => (prev === 'running' ? 'paused' : 'running'));
+    if (sessionState === 'running') {
+      if (sessionEndAtRef.current) {
+        const liveRemaining = Math.max(0, Math.ceil((sessionEndAtRef.current - Date.now()) / 1000));
+        setTimeRemaining(liveRemaining);
+      }
+      sessionEndAtRef.current = null;
+      setSessionState('paused');
+      return;
+    }
+
+    if (sessionState === 'paused') {
+      sessionEndAtRef.current = Date.now() + (Math.max(0, timeRemaining) * 1000);
+      setSessionState('running');
+    }
   };
 
   // Parar sessão
   const stopSession = () => {
+    sessionEndAtRef.current = null;
     setSessionState('completed');
   };
 
   // Resetar
   const resetSession = () => {
+    sessionEndAtRef.current = null;
     setSessionState('setup');
     setSelectedSubject(null);
     setDuration(25);

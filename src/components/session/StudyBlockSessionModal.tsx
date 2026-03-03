@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import { X, Play, Pause, Square, CheckCircle2, Coffee } from 'lucide-react';
+import { X, Play, CheckCircle2, Coffee } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { formatDuration } from '@/lib/utils';
 import type { StudyBlock, UserSettings } from '@/types';
@@ -23,6 +23,12 @@ interface StudyBlockSessionModalProps {
 }
 
 type SessionState = 'ready' | 'running' | 'paused' | 'completed';
+type SessionTimerSnapshot = {
+  remaining: number;
+  state: SessionState;
+  runningUntil?: number | null;
+  savedAt?: number;
+};
 
 export default function StudyBlockSessionModal({
   isOpen,
@@ -35,13 +41,14 @@ export default function StudyBlockSessionModal({
   const [sessionState, setSessionState] = useState<SessionState>('ready');
   const [completedOnce, setCompletedOnce] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [timers, setTimers] = useLocalStorage<Record<string, { remaining: number; state: SessionState }>>(
+  const [timers, setTimers] = useLocalStorage<Record<string, SessionTimerSnapshot>>(
     'nexora_session_timers',
     {}
   );
   const [userSettings] = useLocalStorage<UserSettings>('nexora_user_settings', defaultSettings);
   const timersRef = useRef(timers);
   const initialTotalRef = useRef(totalSeconds);
+  const runningUntilRef = useRef<number | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
@@ -57,9 +64,21 @@ export default function StudyBlockSessionModal({
     initialTotalRef.current = totalSeconds;
     const saved = timersRef.current[block.id];
     if (saved && saved.remaining > 0) {
-      setTimeRemaining(saved.remaining);
-      setSessionState(saved.state === 'completed' ? 'ready' : saved.state);
+      const nextState: SessionState = saved.state === 'completed' ? 'ready' : saved.state;
+      if (nextState === 'running') {
+        const fallbackRunningUntil = (saved.savedAt || Date.now()) + (saved.remaining * 1000);
+        runningUntilRef.current =
+          typeof saved.runningUntil === 'number' ? saved.runningUntil : fallbackRunningUntil;
+        const liveRemaining = Math.max(0, Math.ceil((runningUntilRef.current - Date.now()) / 1000));
+        setTimeRemaining(liveRemaining);
+        setSessionState('running');
+      } else {
+        runningUntilRef.current = null;
+        setTimeRemaining(saved.remaining);
+        setSessionState(nextState);
+      }
     } else {
+      runningUntilRef.current = null;
       setTimeRemaining(totalSeconds);
       setSessionState('ready');
     }
@@ -68,9 +87,16 @@ export default function StudyBlockSessionModal({
 
   useEffect(() => {
     if (!block) return;
+    const runningUntil =
+      sessionState === 'running'
+        ? (runningUntilRef.current ?? (Date.now() + (timeRemaining * 1000)))
+        : null;
+    if (sessionState === 'running') {
+      runningUntilRef.current = runningUntil;
+    }
     setTimers((prev) => ({
       ...prev,
-      [block.id]: { remaining: timeRemaining, state: sessionState },
+      [block.id]: { remaining: timeRemaining, state: sessionState, runningUntil, savedAt: Date.now() },
     }));
   }, [block, timeRemaining, sessionState, setTimers]);
 
@@ -168,6 +194,7 @@ export default function StudyBlockSessionModal({
   const finishSession = useCallback(
     (spentSeconds: number, mode: 'auto' | 'manual' = 'manual') => {
       if (completedOnce) return;
+      runningUntilRef.current = null;
       const minutesSpent =
         mode === 'auto'
           ? Math.max(1, block?.durationMinutes || 0)
@@ -185,20 +212,49 @@ export default function StudyBlockSessionModal({
     [completedOnce, block, onComplete, onClose, playAlarm]
   );
 
+  const startOrResumeSession = useCallback(() => {
+    ensureAudioContext();
+    runningUntilRef.current = Date.now() + (Math.max(0, timeRemaining) * 1000);
+    setSessionState('running');
+  }, [ensureAudioContext, timeRemaining]);
+
+  const pauseOrResumeSession = useCallback(() => {
+    if (sessionState === 'running') {
+      if (runningUntilRef.current) {
+        const liveRemaining = Math.max(0, Math.ceil((runningUntilRef.current - Date.now()) / 1000));
+        setTimeRemaining(liveRemaining);
+      }
+      runningUntilRef.current = null;
+      setSessionState('paused');
+      return;
+    }
+
+    if (sessionState === 'paused') {
+      runningUntilRef.current = Date.now() + (Math.max(0, timeRemaining) * 1000);
+      setSessionState('running');
+    }
+  }, [sessionState, timeRemaining]);
+
   useEffect(() => {
     if (sessionState !== 'running') return;
-    const interval = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          finishSession(initialTotalRef.current, 'auto');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+
+    if (!runningUntilRef.current) {
+      runningUntilRef.current = Date.now() + (Math.max(0, timeRemaining) * 1000);
+    }
+
+    const tick = () => {
+      if (!runningUntilRef.current) return;
+      const liveRemaining = Math.max(0, Math.ceil((runningUntilRef.current - Date.now()) / 1000));
+      setTimeRemaining(liveRemaining);
+      if (liveRemaining <= 0) {
+        finishSession(initialTotalRef.current, 'auto');
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 250);
     return () => clearInterval(interval);
-  }, [sessionState, block, onComplete, completedOnce, onClose, finishSession]);
+  }, [sessionState, timeRemaining, finishSession]);
 
   if (!isOpen || !block || !mounted) return null;
 
@@ -258,10 +314,7 @@ export default function StudyBlockSessionModal({
                   <Button
                     variant="primary"
                     className="h-9 min-h-0 flex-1 text-xs sm:h-10 sm:text-sm"
-                    onClick={() => {
-                      ensureAudioContext();
-                      setSessionState('running');
-                    }}
+                    onClick={startOrResumeSession}
                   >
                     Iniciar
                   </Button>
@@ -280,9 +333,7 @@ export default function StudyBlockSessionModal({
                   <Button
                     variant="primary"
                     className="h-9 min-h-0 flex-1 text-xs sm:h-10 sm:text-sm"
-                    onClick={() =>
-                      setSessionState((prev) => (prev === 'running' ? 'paused' : 'running'))
-                    }
+                    onClick={pauseOrResumeSession}
                   >
                     {sessionState === 'running' ? 'Pausar' : 'Continuar'}
                   </Button>
