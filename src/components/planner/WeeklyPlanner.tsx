@@ -1277,7 +1277,10 @@ export default function WeeklyPlanner({
               </div>
             </div>
           )}
-          <div ref={boardScrollRef} className="overflow-x-auto overflow-y-hidden pb-1">
+          <div
+            ref={boardScrollRef}
+            className="overflow-x-auto overflow-y-hidden pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             <div
               ref={boardContentRef}
               className={
