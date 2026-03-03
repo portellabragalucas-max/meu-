@@ -29,7 +29,7 @@ import {
   dashboardEmptyTutorialSteps,
 } from '@/components/onboarding';
 import { useOnboarding, useLocalStorage } from '@/hooks';
-import { isSameDay, formatDate, getWeekStart, getWeekDates } from '@/lib/utils';
+import { isSameDay, formatDate, formatHoursDuration, getWeekStart, getWeekDates } from '@/lib/utils';
 import { applyBlockCompletionMetrics } from '@/services/adaptiveStudyIntelligence';
 import type { StudyBlock, Subject, AnalyticsStore, StudyPreferences, UserSettings } from '@/types';
 import { StudyBlockSessionModal } from '@/components/session';
@@ -583,8 +583,8 @@ export default function DashboardPage() {
               <StatsCard
                 title="Horas Semanais"
                 titleShort="Horas"
-                value={`${weeklyHours.toFixed(1)}h`}
-                subtitle={`de ${weeklyGoal.toFixed(1)}h de meta`}
+                value={formatHoursDuration(weeklyHours)}
+                subtitle={`de ${formatHoursDuration(weeklyGoal)} de meta`}
                 icon={Clock}
                 trend={{ value: 0, isPositive: false }}
                 color="blue"
@@ -692,7 +692,7 @@ export default function DashboardPage() {
                             </span>
                           </div>
                           <span className="shrink-0 text-xs text-text-secondary">
-                            {completedHours}h / {subject.targetHours}h
+                            {formatHoursDuration(completedHours)} / {formatHoursDuration(subject.targetHours)}
                           </span>
                         </div>
                         <div className="relative">

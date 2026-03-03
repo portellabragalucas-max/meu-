@@ -32,7 +32,7 @@ import SystemNotificationsCard from '@/components/settings/SystemNotificationsCa
 import { useIsMobile, useOnboarding, useLocalStorage } from '@/hooks';
 import { clearClientStoreKeys } from '@/hooks/useLocalStorage';
 import { SERVER_PROGRESS_STORE_KEYS } from '@/hooks/useServerProgressSync';
-import { cn } from '@/lib/utils';
+import { cn, formatHoursDuration } from '@/lib/utils';
 import type { DailyHoursByWeekday, StudyPreferences, UserSettings, WeekdayKey } from '@/types';
 import { defaultSettings } from '@/lib/defaultSettings';
 
@@ -74,11 +74,7 @@ const weekDayKeys: WeekdayKey[] = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sa
 const clampHours = (value: number) => Math.min(12, Math.max(0, Math.round(value * 2) / 2));
 
 const formatHours = (value: number) => {
-  const safe = Math.max(0, value);
-  const hours = Math.floor(safe);
-  const minutes = Math.round((safe - hours) * 60);
-  if (minutes <= 0) return `${hours}h`;
-  return `${hours}h${String(minutes).padStart(2, '0')}`;
+  return formatHoursDuration(value);
 };
 
 const buildDailyHoursByWeekday = (dailyGoalHours: number, excludeDays: number[]): DailyHoursByWeekday => {

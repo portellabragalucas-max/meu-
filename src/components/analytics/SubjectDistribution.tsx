@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui';
+import { formatHoursDuration } from '@/lib/utils';
 
 interface SubjectDistributionProps {
   data: {
@@ -31,7 +32,7 @@ const CustomTooltip = ({ active, payload }: any) => {
       <div className="glass-card p-3">
         <p className="text-sm font-medium text-white">{data.name}</p>
         <p className="text-sm" style={{ color: data.color }}>
-          {data.hours.toFixed(1)} horas
+          {formatHoursDuration(data.hours)}
         </p>
         <p className="text-xs text-text-muted">
           {data.percentage.toFixed(1)}% do total
@@ -105,7 +106,7 @@ export default function SubjectDistribution({ data }: SubjectDistributionProps) 
               {subject.name}
             </span>
             <span className="shrink-0 text-sm font-medium text-white max-[479px]:text-xs">
-              {subject.hours.toFixed(1)}h
+              {formatHoursDuration(subject.hours)}
             </span>
           </div>
         ))}

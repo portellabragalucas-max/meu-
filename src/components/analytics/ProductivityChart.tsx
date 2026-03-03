@@ -17,6 +17,7 @@ import {
 } from 'recharts';
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui';
+import { formatHoursDuration } from '@/lib/utils';
 
 interface ProductivityChartProps {
   data: {
@@ -34,8 +35,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <p className="text-sm font-medium text-white mb-2">{label}</p>
         {payload.map((entry: any, index: number) => (
           <p key={index} className="text-sm" style={{ color: entry.color }}>
-            {entry.name}: {entry.value}
-            {entry.name === 'Horas' ? 'h' : '%'}
+            {entry.name === 'Horas'
+              ? `${entry.name}: ${formatHoursDuration(entry.value)}`
+              : `${entry.name}: ${entry.value}%`}
           </p>
         ))}
       </div>

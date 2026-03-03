@@ -23,6 +23,7 @@ import {
   ActivityHeatmap,
 } from '@/components/analytics';
 import { computeIntelligentAnalyticsSummary } from '@/services/adaptiveStudyIntelligence';
+import { formatHoursDuration } from '@/lib/utils';
 import type { AnalyticsStore, StudyBlock, Subject } from '@/types';
 
 const emptyAnalytics: AnalyticsStore = { daily: {} };
@@ -233,7 +234,7 @@ export default function AnalyticsPage() {
         <StatsCard
           title="Tempo Total de Estudo"
           titleShort="Tempo"
-          value={`${totalHours.toFixed(1)}h`}
+          value={formatHoursDuration(totalHours)}
           subtitle="Últimos 14 dias"
           icon={Clock}
           trend={{ value: 0, isPositive: false }}

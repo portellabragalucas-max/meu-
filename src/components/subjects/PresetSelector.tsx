@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
 import { PresetConfigWizard } from '@/components/onboarding';
-import { cn } from '@/lib/utils';
+import { cn, formatHoursDuration } from '@/lib/utils';
 import { getEnemPresetSubjects } from '@/lib/enemCatalog';
 import { getCuratedPresets, normalizeComparableText } from '@/lib/presetCatalog';
 import type { PresetWizardAnswers, StudyPreferences, UserSettings } from '@/types';
@@ -305,7 +305,7 @@ export default function PresetSelector({
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
                       <span>{preset.subjects.length} disciplinas base</span>
-                      <span>{weeklyHours} h/semana sugeridas</span>
+                      <span>{formatHoursDuration(weeklyHours)} / semana sugeridas</span>
                       {moduleCount > 0 && (
                         <span className="inline-flex items-center gap-1">
                           <Layers className="h-3 w-3" />
@@ -334,7 +334,9 @@ export default function PresetSelector({
                               <div className="mb-2 flex items-center justify-between gap-2">
                                 <div className="text-xs font-semibold text-white">{group}</div>
                                 <Badge size="sm" variant="default">
-                                  {groupItems.reduce((sum, subject) => sum + subject.recommendedWeeklyHours, 0)}h/sem
+                                  {formatHoursDuration(
+                                    groupItems.reduce((sum, subject) => sum + subject.recommendedWeeklyHours, 0)
+                                  )}/sem
                                 </Badge>
                               </div>
                               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -346,7 +348,9 @@ export default function PresetSelector({
                                     <span className="min-w-0 truncate text-xs text-white">{subject.name}</span>
                                     <div className="flex shrink-0 items-center gap-2">
                                       <span className="text-xs text-text-muted">P{subject.priority}</span>
-                                      <span className="text-xs text-text-muted">{subject.recommendedWeeklyHours}h</span>
+                                      <span className="text-xs text-text-muted">
+                                        {formatHoursDuration(subject.recommendedWeeklyHours)}
+                                      </span>
                                     </div>
                                   </div>
                                 ))}

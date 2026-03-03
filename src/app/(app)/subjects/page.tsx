@@ -13,7 +13,7 @@ import { Button, Card } from '@/components/ui';
 import { SubjectCard, SubjectForm, PresetSelector } from '@/components/subjects';
 import { EmptySubjects } from '@/components/onboarding';
 import { useOnboarding, useLocalStorage } from '@/hooks';
-import { generateId } from '@/lib/utils';
+import { formatHoursDuration, generateId } from '@/lib/utils';
 import {
   createEnemSubjectBank,
   isEnemGoal,
@@ -541,12 +541,12 @@ export default function SubjectsPage() {
               </div>
               <div>
                 <span className="text-text-secondary">Meta Semanal: </span>
-                <span className="font-bold text-white">{totalTargetHours}h</span>
+                <span className="font-bold text-white">{formatHoursDuration(totalTargetHours)}</span>
               </div>
               <div>
                 <span className="text-text-secondary">Concluído: </span>
                 <span className="font-bold text-neon-cyan">
-                  {totalCompletedHours.toFixed(1)}h
+                  {formatHoursDuration(totalCompletedHours)}
                 </span>
               </div>
             </div>
@@ -625,6 +625,7 @@ export default function SubjectsPage() {
     </motion.div>
   );
 }
+
 
 
 

@@ -39,12 +39,11 @@ const toIsoWeekKey = (date: Date) => {
 };
 
 const formatHoursFromMinutes = (minutes: number) => {
-  const safeMinutes = Math.max(0, minutes);
+  const safeMinutes = Math.max(0, Math.round(minutes));
   const hours = Math.floor(safeMinutes / 60);
   const remainingMinutes = safeMinutes % 60;
-  if (hours === 0) return `${remainingMinutes}min`;
-  if (remainingMinutes === 0) return `${hours}h`;
-  return `${hours}h${String(remainingMinutes).padStart(2, '0')}`;
+  if (safeMinutes < 60) return `${safeMinutes} min`;
+  return `${hours}:${String(remainingMinutes).padStart(2, '0')}`;
 };
 
 const pushToUser = async ({

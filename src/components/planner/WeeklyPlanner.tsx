@@ -34,6 +34,7 @@ import {
   getWeekStart,
   getWeekDates,
   formatDate,
+  formatDuration,
   isSameDay,
   generateId,
   timeToMinutes,
@@ -1175,7 +1176,7 @@ export default function WeeklyPlanner({
               {plannedStudyBlocks.length} blocos ativos
             </span>
             <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] px-2.5 py-1 text-white">
-              {(plannedStudyMinutes / 60).toFixed(1)}h planejadas
+              {formatDuration(plannedStudyMinutes)} planejadas
             </span>
           </div>
         </div>
@@ -1339,7 +1340,7 @@ export default function WeeklyPlanner({
               <div>
                 <span className="text-text-secondary">Total de Horas: </span>
                 <span className="font-bold text-white">
-                  {(plannedStudyMinutes / 60).toFixed(1)}h
+                  {formatDuration(plannedStudyMinutes)}
                 </span>
               </div>
               <div>
@@ -1354,7 +1355,7 @@ export default function WeeklyPlanner({
         {isMobile && (
           <div className="flex min-w-0 items-center justify-between gap-3 text-xs text-text-secondary">
             <span>
-              Total: {(mobileStudyMinutes / 60).toFixed(1)}h
+              Total: {formatDuration(mobileStudyMinutes)}
             </span>
             <span>{mobileSessions} sessoes</span>
           </div>

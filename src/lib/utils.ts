@@ -36,12 +36,20 @@ export function formatTime(time: string): string {
  * Format minutes to hours and minutes display
  */
 export function formatDuration(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  
-  if (hours === 0) return `${mins}m`;
-  if (mins === 0) return `${hours}h`;
-  return `${hours}h ${mins}m`;
+  const safeMinutes = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(safeMinutes / 60);
+  const mins = safeMinutes % 60;
+
+  if (safeMinutes < 60) return `${safeMinutes} min`;
+  return `${hours}:${mins.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Format decimal hours to display duration (e.g. 0.8 -> 48 min, 1.8 -> 1:48)
+ */
+export function formatHoursDuration(hours: number): string {
+  if (!Number.isFinite(hours) || hours <= 0) return '0 min';
+  return formatDuration(hours * 60);
 }
 
 /**

@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/sortable';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
-import { cn, isSameDay } from '@/lib/utils';
+import { cn, formatDuration, isSameDay } from '@/lib/utils';
 import TimeBlock from './TimeBlock';
 import type { StudyBlock } from '@/types';
 
@@ -62,8 +62,8 @@ export default function DayColumn({
   const totalMinutes = blocks
     .filter((b) => !b.isBreak)
     .reduce((sum, b) => sum + b.durationMinutes, 0);
-  const totalHours = (totalMinutes / 60).toFixed(1);
-  const limitHours = dailyLimitMinutes > 0 ? (dailyLimitMinutes / 60).toFixed(1) : null;
+  const totalHours = formatDuration(totalMinutes);
+  const limitHours = dailyLimitMinutes > 0 ? formatDuration(dailyLimitMinutes) : null;
   const overMinutes = dailyLimitMinutes > 0 ? Math.max(0, totalMinutes - dailyLimitMinutes) : 0;
   const usageRatio = dailyLimitMinutes > 0 ? Math.min(1, totalMinutes / dailyLimitMinutes) : 0;
 
@@ -116,10 +116,10 @@ export default function DayColumn({
         {/* Estatísticas do Dia */}
         <div className="mt-2 flex items-center justify-between gap-2 text-xs text-text-secondary">
           <span>{blocks.filter((b) => !b.isBreak).length} blocos</span>
-          <span className="font-semibold text-white">{totalHours}h</span>
+          <span className="font-semibold text-white">{totalHours}</span>
         </div>
         <div className="mt-2 flex items-center justify-between gap-2 text-xs text-text-secondary">
-          <span>Capacidade: {limitHours ? `${limitHours}h` : 'livre'}</span>
+          <span>Capacidade: {limitHours || 'livre'}</span>
           {onAdjustDailyLimit && (
             <div className="flex shrink-0 items-center gap-1.5">
               <button
@@ -143,7 +143,7 @@ export default function DayColumn({
         </div>
         {overMinutes > 0 && (
           <p className="mt-2 text-xs text-red-400">
-            Excedente: {(overMinutes / 60).toFixed(1)}h
+            Excedente: {formatDuration(overMinutes)}
           </p>
         )}
         {dailyLimitMinutes > 0 && (

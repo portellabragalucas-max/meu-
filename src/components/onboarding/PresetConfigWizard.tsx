@@ -16,7 +16,7 @@ import type {
   WeekdayKey,
 } from '@/types';
 import { computeStudyPreferences } from '@/services/presetConfigurator';
-import { cn, timeToMinutes } from '@/lib/utils';
+import { cn, formatDuration, formatHoursDuration, timeToMinutes } from '@/lib/utils';
 
 interface PresetConfigWizardProps {
   isOpen: boolean;
@@ -70,10 +70,7 @@ const fmtDate = (k?: string) => {
   return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
 };
 const fmtHours = (v: number) => {
-  const n = Math.max(0, v);
-  const h = Math.floor(n);
-  const m = Math.round((n - h) * 60);
-  return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
+  return formatHoursDuration(v);
 };
 const isValidWindow = (start: string, end: string) => Boolean(start && end && timeToMinutes(end) > timeToMinutes(start));
 const windowHours = (start: string, end: string) => {
@@ -399,7 +396,7 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                             )}
                             onClick={() => setMassHours(h)}
                           >
-                            {h}h
+                            {formatDuration(h * 60)}
                           </button>
                         ))}
                       </div>

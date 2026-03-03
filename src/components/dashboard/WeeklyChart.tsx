@@ -15,7 +15,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { cn } from '@/lib/utils';
+import { cn, formatHoursDuration } from '@/lib/utils';
 import Card from '@/components/ui/Card';
 
 interface WeeklyChartProps {
@@ -34,10 +34,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       <div className="glass-card p-3">
         <p className="text-sm font-medium text-white">{label}</p>
         <p className="text-sm text-neon-blue">
-          {payload[0].value.toFixed(1)}h estudadas
+          {formatHoursDuration(payload[0].value)} estudadas
         </p>
         <p className="text-xs text-text-muted">
-          Meta: {payload[0].payload.target}h
+          Meta: {formatHoursDuration(payload[0].payload.target)}
         </p>
       </div>
     );
@@ -86,7 +86,7 @@ export default function WeeklyChart({ data, className }: WeeklyChartProps) {
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#8892A6', fontSize: 12 }}
-              tickFormatter={(value) => `${value}h`}
+              tickFormatter={(value) => formatHoursDuration(Number(value))}
             />
             <Tooltip content={<CustomTooltip />} cursor={false} />
             <Bar
@@ -119,7 +119,7 @@ export default function WeeklyChart({ data, className }: WeeklyChartProps) {
       <div className="mt-4 flex flex-wrap items-start justify-between gap-3 border-t border-card-border pt-4 max-[479px]:mt-3 max-[479px]:pt-3">
         <div className="min-w-0">
           <p className="text-2xl max-[479px]:text-[22px] font-heading font-bold text-white">
-            {data.reduce((sum, d) => sum + d.hours, 0).toFixed(1)}h
+            {formatHoursDuration(data.reduce((sum, d) => sum + d.hours, 0))}
           </p>
           <p className="text-xs text-text-secondary">Total esta semana</p>
         </div>

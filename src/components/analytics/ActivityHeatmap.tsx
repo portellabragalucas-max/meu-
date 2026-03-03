@@ -6,7 +6,7 @@
  */
 
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { cn, formatHoursDuration } from '@/lib/utils';
 import { Card } from '@/components/ui';
 
 interface HeatmapData {
@@ -77,7 +77,7 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
         <div className="flex flex-wrap items-center gap-3 text-sm max-[479px]:gap-2 max-[479px]:text-xs sm:gap-4">
           <div>
             <span className="text-text-secondary">Total: </span>
-            <span className="font-bold text-white">{totalHours.toFixed(1)}h</span>
+            <span className="font-bold text-white">{formatHoursDuration(totalHours)}</span>
           </div>
           <div>
             <span className="text-text-secondary">Dias Ativos: </span>
@@ -133,7 +133,7 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
                           })}
                         </div>
                         <div className="text-text-secondary">
-                          {day.hours > 0 ? `${day.hours.toFixed(1)} horas` : 'Sem atividade'}
+                          {day.hours > 0 ? formatHoursDuration(day.hours) : 'Sem atividade'}
                         </div>
                       </div>
                     </div>

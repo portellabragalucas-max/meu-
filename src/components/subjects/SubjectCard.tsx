@@ -13,7 +13,7 @@ import {
   Trash2,
   Star,
 } from 'lucide-react';
-import { percentage } from '@/lib/utils';
+import { formatHoursDuration, percentage } from '@/lib/utils';
 import { Card, Badge, ProgressBar, Button } from '@/components/ui';
 import type { Subject } from '@/types';
 
@@ -88,7 +88,7 @@ export default function SubjectCard({
           <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
             <span className="min-w-0 text-sm text-text-secondary">Progresso Semanal</span>
             <span className="shrink-0 text-sm font-medium text-white">
-              {subject.completedHours}h / {subject.targetHours}h
+              {formatHoursDuration(subject.completedHours)} / {formatHoursDuration(subject.targetHours)}
             </span>
           </div>
           <ProgressBar
@@ -104,7 +104,7 @@ export default function SubjectCard({
             <div className="mb-1 flex items-center justify-center gap-1 text-text-muted">
               <Clock className="w-3 h-3" />
             </div>
-            <p className="truncate text-lg font-bold text-white">{subject.totalHours}h</p>
+            <p className="truncate text-lg font-bold text-white">{formatHoursDuration(subject.totalHours)}</p>
             <p className="text-xs text-text-muted">Total</p>
           </div>
 
