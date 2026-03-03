@@ -274,9 +274,9 @@ export default function StudyBlockSessionModal({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className="app-modal-panel !w-[min(320px,calc(100vw-24px))] !max-w-[min(320px,calc(100vw-24px))] sm:!w-[min(360px,calc(100vw-32px))] sm:!max-w-[min(360px,calc(100vw-32px))]"
+          className="app-modal-panel max-w-[360px] sm:max-w-xl lg:max-w-2xl"
         >
-          <Card className="relative overflow-hidden p-2.5 sm:p-4" padding="none">
+          <Card className="relative overflow-hidden p-3 sm:p-6 lg:p-8" padding="none">
             <button
               onClick={onClose}
               className="absolute right-2.5 top-2.5 rounded-lg p-1 text-text-muted transition-colors hover:bg-white/5 hover:text-white sm:right-4 sm:top-4 sm:p-2"
@@ -285,24 +285,24 @@ export default function StudyBlockSessionModal({
               <X className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
 
-            <div className="space-y-2.5 text-center sm:space-y-3">
-              <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-neon-blue/20 sm:h-14 sm:w-14 sm:rounded-2xl">
+            <div className="space-y-3 text-center sm:space-y-5">
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-neon-blue/20 sm:h-16 sm:w-16 sm:rounded-2xl">
                 {block.isBreak ? (
-                  <Coffee className="h-4 w-4 text-neon-cyan sm:h-6 sm:w-6" />
+                  <Coffee className="h-4 w-4 text-neon-cyan sm:h-7 sm:w-7" />
                 ) : (
-                  <Play className="h-4 w-4 text-neon-blue sm:h-6 sm:w-6" />
+                  <Play className="h-4 w-4 text-neon-blue sm:h-7 sm:w-7" />
                 )}
               </div>
               <div>
-                <h2 className="break-words text-lg font-heading font-bold text-white sm:text-2xl">
+                <h2 className="break-words text-lg font-heading font-bold text-white sm:text-3xl">
                   {subjectName}
                 </h2>
-                <p className="text-[11px] text-text-secondary sm:text-sm">
+                <p className="text-xs text-text-secondary sm:text-base">
                   Duração planejada: {formatDuration(block.durationMinutes)}
                 </p>
               </div>
 
-              <div className="text-[2.2rem] font-heading font-bold leading-none text-white sm:text-4xl">
+              <div className="font-mono text-[2.8rem] font-bold leading-none tracking-[0.04em] text-[#ffb020] sm:text-6xl lg:text-7xl">
                 {formatTimer(timeRemaining)}
               </div>
 

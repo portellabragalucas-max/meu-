@@ -161,7 +161,7 @@ export default function QuickSessionModal({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="app-modal-panel max-w-lg"
+            className="app-modal-panel max-w-[360px] sm:max-w-xl lg:max-w-2xl"
           >
             <Card className="relative overflow-hidden" padding="none">
               {/* Header gradient */}
