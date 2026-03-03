@@ -62,6 +62,23 @@ const parseLocalDateKey = (value: string) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+const hasManualSequence = (block: StudyBlock) =>
+  typeof block.sequenceIndex === 'number' && Number.isFinite(block.sequenceIndex);
+
+const compareDayBlocks = (a: StudyBlock, b: StudyBlock) => {
+  const aHasSequence = hasManualSequence(a);
+  const bHasSequence = hasManualSequence(b);
+
+  if (aHasSequence && bHasSequence) {
+    const sequenceDiff = (a.sequenceIndex as number) - (b.sequenceIndex as number);
+    if (sequenceDiff !== 0) return sequenceDiff;
+  } else if (aHasSequence !== bHasSequence) {
+    return aHasSequence ? -1 : 1;
+  }
+
+  return a.startTime.localeCompare(b.startTime);
+};
+
 interface WeeklyPlannerProps {
   initialBlocks: StudyBlock[];
   onBlocksChange: (blocks: StudyBlock[]) => void;
@@ -297,7 +314,7 @@ export default function WeeklyPlanner({
         dateKey,
         blocks
           .filter((b) => isSameDay(new Date(b.date), date))
-          .sort((a, b) => a.startTime.localeCompare(b.startTime))
+          .sort(compareDayBlocks)
       );
     });
     
@@ -629,7 +646,7 @@ export default function WeeklyPlanner({
     if (next <= 0) return;
 
     const dayBlocks = blocksByDay.get(key) ?? [];
-    const sorted = [...dayBlocks].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const sorted = [...dayBlocks].sort(compareDayBlocks);
     let studyMinutes = 0;
     let keepIndex = -1;
 
@@ -870,10 +887,31 @@ export default function WeeklyPlanner({
       const overBlock = blocks.find((b) => b.id === over.id);
 
       if (activeBlock && overBlock) {
-        const oldIndex = blocks.indexOf(activeBlock);
-        const newIndex = blocks.indexOf(overBlock);
+        const activeDate = new Date(activeBlock.date);
+        const overDate = new Date(overBlock.date);
+        if (!isSameDay(activeDate, overDate)) return;
 
-        const newBlocks = arrayMove(blocks, oldIndex, newIndex);
+        const dayBlocks = blocks
+          .filter((block) => isSameDay(new Date(block.date), activeDate))
+          .sort(compareDayBlocks);
+
+        const oldIndex = dayBlocks.findIndex((block) => block.id === activeBlock.id);
+        const newIndex = dayBlocks.findIndex((block) => block.id === overBlock.id);
+        if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return;
+
+        const reorderedDayBlocks = arrayMove(dayBlocks, oldIndex, newIndex).map((block, index) => {
+          const nextSequence = index + 1;
+          if (block.sequenceIndex === nextSequence) return block;
+          return {
+            ...block,
+            sequenceIndex: nextSequence,
+            updatedAt: new Date(),
+          };
+        });
+
+        const reorderedMap = new Map(reorderedDayBlocks.map((block) => [block.id, block]));
+        const newBlocks = blocks.map((block) => reorderedMap.get(block.id) ?? block);
+
         setBlocks(newBlocks);
         onBlocksChange(newBlocks);
       }
