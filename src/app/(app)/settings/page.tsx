@@ -30,6 +30,8 @@ import { Card, Button, Badge } from '@/components/ui';
 import TimePickerField from '@/components/settings/TimePickerField';
 import SystemNotificationsCard from '@/components/settings/SystemNotificationsCard';
 import { useIsMobile, useOnboarding, useLocalStorage } from '@/hooks';
+import { clearClientStoreKeys } from '@/hooks/useLocalStorage';
+import { SERVER_PROGRESS_STORE_KEYS } from '@/hooks/useServerProgressSync';
 import { cn } from '@/lib/utils';
 import type { DailyHoursByWeekday, StudyPreferences, UserSettings, WeekdayKey } from '@/types';
 import { defaultSettings } from '@/lib/defaultSettings';
@@ -173,7 +175,6 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [hasRemotePrefs, setHasRemotePrefs] = useState(false);
-  const [hasLocalPrefs, setHasLocalPrefs] = useState(false);
   const hasAttemptedRemotePrefs = useRef(false);
   const [pendingAlarmSound, setPendingAlarmSound] = useState<UserSettings['alarmSound']>(
     settings.alarmSound || 'pulse'
@@ -367,11 +368,6 @@ export default function SettingsPage() {
     );
     setSettings((prev) => ({ ...prev, dailyHoursByWeekday: fallback }));
   }, [settings.dailyHoursByWeekday, settings.dailyGoalHours, settings.excludeDays, setSettings]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    setHasLocalPrefs(Boolean(window.localStorage.getItem('nexora_user_settings')));
-  }, []);
 
   useEffect(() => {
     if (!session?.user) return;
@@ -632,7 +628,6 @@ export default function SettingsPage() {
           }
 
           setHasRemotePrefs(true);
-          setHasLocalPrefs(true);
           setStudyPrefs({
             hoursPerDay: Number(averageHours.toFixed(1)),
             daysOfWeek: activeDays,
@@ -666,15 +661,19 @@ export default function SettingsPage() {
     return () => clearTimeout(timeout);
   }, [saveState]);
 
-  const clearLocalStudyData = () => {
-    try {
-      localStorage.removeItem('nexora_subjects');
-      localStorage.removeItem('nexora_onboarding');
-      localStorage.removeItem('nexora_planner_blocks');
-      localStorage.removeItem('nexora_analytics');
-      localStorage.removeItem('nexora_study_prefs');
-    } catch (error) {
-      console.warn('Erro ao limpar dados locais:', error);
+  const clearClientProgressStore = () => {
+    clearClientStoreKeys(SERVER_PROGRESS_STORE_KEYS);
+  };
+
+  const clearServerProgress = async (mode: 'onboarding' | 'progress') => {
+    const response = await fetch('/api/progress', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode }),
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || payload?.success === false) {
+      throw new Error(payload?.error || 'Falha ao limpar progresso no servidor.');
     }
   };
 
@@ -721,8 +720,9 @@ export default function SettingsPage() {
     setDeleteFeedback(null);
 
     try {
-      clearLocalStudyData();
+      await clearServerProgress('onboarding');
       resetOnboarding();
+      setHasRemotePrefs(false);
       setGeneralDangerFeedback({ type: 'success', message: 'Tutorial reiniciado. Recarregando...' });
       setTimeout(() => window.location.reload(), 350);
     } catch (error) {
@@ -754,8 +754,10 @@ export default function SettingsPage() {
     setDeleteFeedback(null);
 
     try {
-      clearLocalStudyData();
+      await clearServerProgress('progress');
+      clearClientProgressStore();
       resetOnboarding();
+      setHasRemotePrefs(false);
       setGeneralDangerFeedback({ type: 'success', message: 'Progresso resetado. Recarregando...' });
       setTimeout(() => window.location.reload(), 350);
     } catch (error) {
@@ -826,7 +828,7 @@ export default function SettingsPage() {
         throw new Error(payload?.error || 'Nao foi possivel excluir sua conta agora.');
       }
 
-      clearLocalStudyData();
+      clearClientProgressStore();
       setDeleteConfirmText('');
       setDeleteStep('idle');
       setDeleteFeedback({
@@ -942,7 +944,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Desktop-only. On mobile, this lives inside the root list screen so it animates with push/pop. */}
-      {!hasRemotePrefs && !hasLocalPrefs && (
+      {!hasRemotePrefs && (
         <Card className="hidden md:block border-neon-cyan/40 bg-neon-cyan/5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -970,7 +972,7 @@ export default function SettingsPage() {
             transition={mobileStackTransition}
             className="relative z-0 space-y-3 md:hidden"
           >
-            {!hasRemotePrefs && !hasLocalPrefs && (
+            {!hasRemotePrefs && (
               <Card className="border-neon-cyan/40 bg-neon-cyan/5">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>

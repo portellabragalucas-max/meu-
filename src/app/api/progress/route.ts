@@ -4,35 +4,74 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '@/lib/auth';
 
-const TRACKED_KEYS = [
-  'subjects',
-  'plannerBlocks',
-  'analytics',
-  'studyPrefs',
-  'userSettings',
-  'scheduleRange',
-  'dailyLimits',
-  'firstCycleAllSubjects',
+const TRACKED_STORE_KEYS = [
+  'nexora_subjects',
+  'nexora_planner_blocks',
+  'nexora_analytics',
+  'nexora_study_prefs',
+  'nexora_user_settings',
+  'nexora_schedule_range',
+  'nexora_daily_limits',
+  'nexora_first_cycle_all_subjects',
+  'nexora_onboarding',
+  'nexora_session_timers',
+  'nexora_backlog_last_auto_run_day',
 ] as const;
 
-type TrackedKey = (typeof TRACKED_KEYS)[number];
-type ProgressPayload = Partial<Record<TrackedKey, Prisma.JsonValue>>;
+type TrackedStoreKey = (typeof TRACKED_STORE_KEYS)[number];
+type StorePayload = Partial<Record<TrackedStoreKey, Prisma.JsonValue>>;
+
+type DeleteMode = 'snapshot' | 'keys' | 'onboarding' | 'progress';
+
+const trackedStoreKeySet = new Set<string>(TRACKED_STORE_KEYS);
+
+const LEGACY_KEY_MAP: Record<string, TrackedStoreKey> = {
+  subjects: 'nexora_subjects',
+  plannerBlocks: 'nexora_planner_blocks',
+  analytics: 'nexora_analytics',
+  studyPrefs: 'nexora_study_prefs',
+  userSettings: 'nexora_user_settings',
+  scheduleRange: 'nexora_schedule_range',
+  dailyLimits: 'nexora_daily_limits',
+  firstCycleAllSubjects: 'nexora_first_cycle_all_subjects',
+  onboarding: 'nexora_onboarding',
+  sessionTimers: 'nexora_session_timers',
+  lastBacklogAutoRunDay: 'nexora_backlog_last_auto_run_day',
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 };
 
-const pickTrackedKeys = (input: Record<string, unknown>): ProgressPayload => {
-  const payload: ProgressPayload = {};
+const isTrackedStoreKey = (value: string): value is TrackedStoreKey => {
+  return trackedStoreKeySet.has(value);
+};
 
-  for (const key of TRACKED_KEYS) {
-    if (!(key in input)) continue;
-    const value = input[key];
-    if (value === undefined) continue;
-    payload[key] = value as Prisma.JsonValue;
+const normalizePayload = (value: unknown): StorePayload => {
+  if (!isRecord(value)) return {};
+
+  const normalized: StorePayload = {};
+
+  for (const [rawKey, rawValue] of Object.entries(value)) {
+    if (rawValue === undefined) continue;
+
+    if (isTrackedStoreKey(rawKey)) {
+      normalized[rawKey] = rawValue as Prisma.JsonValue;
+      continue;
+    }
+
+    const mappedKey = LEGACY_KEY_MAP[rawKey];
+    if (mappedKey) {
+      normalized[mappedKey] = rawValue as Prisma.JsonValue;
+    }
   }
 
-  return payload;
+  return normalized;
+};
+
+const parseSnapshotPayload = (payload: Prisma.JsonValue | null): StorePayload => {
+  if (!payload || !isRecord(payload)) return {};
+  return normalizePayload(payload);
 };
 
 const serializeSubject = (subject: {
@@ -121,36 +160,30 @@ export async function GET() {
       },
     });
 
-    if (snapshot && isRecord(snapshot.payload)) {
+    if (snapshot) {
       return NextResponse.json({
         success: true,
         source: 'snapshot',
         updatedAt: snapshot.updatedAt.toISOString(),
-        data: pickTrackedKeys(snapshot.payload),
+        data: parseSnapshotPayload(snapshot.payload),
       });
     }
 
     const [subjects, plannerBlocks] = await Promise.all([
       prisma.subject.findMany({
         where: { userId },
-        orderBy: [
-          { priority: 'desc' },
-          { name: 'asc' },
-        ],
+        orderBy: [{ priority: 'desc' }, { name: 'asc' }],
       }),
       prisma.studyBlock.findMany({
         where: { userId },
         include: { subject: true },
-        orderBy: [
-          { date: 'asc' },
-          { startTime: 'asc' },
-        ],
+        orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
       }),
     ]);
 
-    const fallbackPayload: ProgressPayload = {
-      subjects: subjects.map(serializeSubject) as unknown as Prisma.JsonValue,
-      plannerBlocks: plannerBlocks.map(serializeBlock) as unknown as Prisma.JsonValue,
+    const fallbackPayload: StorePayload = {
+      nexora_subjects: subjects.map(serializeSubject) as unknown as Prisma.JsonValue,
+      nexora_planner_blocks: plannerBlocks.map(serializeBlock) as unknown as Prisma.JsonValue,
     };
 
     return NextResponse.json({
@@ -179,30 +212,33 @@ export async function PUT(request: Request) {
     const body = await request.json().catch(() => null);
     const incoming = isRecord(body) && isRecord(body.data) ? body.data : body;
 
-    if (!isRecord(incoming)) {
-      return NextResponse.json(
-        { success: false, error: 'Payload invalido para sincronizacao de progresso.' },
-        { status: 400 }
-      );
-    }
+    const incomingPayload = normalizePayload(incoming);
 
-    const payload = pickTrackedKeys(incoming);
-
-    if (Object.keys(payload).length === 0) {
+    if (Object.keys(incomingPayload).length === 0) {
       return NextResponse.json(
         { success: false, error: 'Nenhuma chave valida para sincronizar.' },
         { status: 400 }
       );
     }
 
+    const existing = await prisma.userProgressSnapshot.findUnique({
+      where: { userId },
+      select: { payload: true },
+    });
+
+    const mergedPayload = {
+      ...parseSnapshotPayload(existing?.payload ?? null),
+      ...incomingPayload,
+    };
+
     const snapshot = await prisma.userProgressSnapshot.upsert({
       where: { userId },
       update: {
-        payload: payload as Prisma.InputJsonValue,
+        payload: mergedPayload as Prisma.InputJsonValue,
       },
       create: {
         userId,
-        payload: payload as Prisma.InputJsonValue,
+        payload: mergedPayload as Prisma.InputJsonValue,
       },
       select: {
         updatedAt: true,
@@ -221,3 +257,82 @@ export async function PUT(request: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const parsedBody = isRecord(body) ? body : {};
+    const mode =
+      typeof parsedBody.mode === 'string' &&
+      ['snapshot', 'keys', 'onboarding', 'progress'].includes(parsedBody.mode)
+        ? (parsedBody.mode as DeleteMode)
+        : 'snapshot';
+
+    if (mode === 'progress') {
+      await prisma.$transaction([
+        prisma.userProgressSnapshot.deleteMany({ where: { userId } }),
+        prisma.studySession.deleteMany({ where: { userId } }),
+        prisma.performanceMetrics.deleteMany({ where: { userId } }),
+        prisma.topicProgress.deleteMany({ where: { userId } }),
+        prisma.studyBlock.deleteMany({ where: { userId } }),
+        prisma.subject.deleteMany({ where: { userId } }),
+        prisma.weeklyStats.deleteMany({ where: { userId } }),
+      ]);
+
+      return NextResponse.json({ success: true, mode: 'progress' });
+    }
+
+    const keysToRemoveRaw =
+      mode === 'onboarding'
+        ? (['nexora_onboarding'] as string[])
+        : mode === 'keys' && Array.isArray(parsedBody.keys)
+          ? parsedBody.keys.filter((key): key is string => typeof key === 'string')
+          : [];
+
+    const keysToRemove = keysToRemoveRaw.filter(isTrackedStoreKey);
+
+    if (keysToRemove.length === 0) {
+      await prisma.userProgressSnapshot.deleteMany({ where: { userId } });
+      return NextResponse.json({ success: true, mode: 'snapshot' });
+    }
+
+    const existing = await prisma.userProgressSnapshot.findUnique({
+      where: { userId },
+      select: { payload: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ success: true, mode, removedKeys: keysToRemove });
+    }
+
+    const payload = parseSnapshotPayload(existing.payload);
+    keysToRemove.forEach((key) => {
+      delete payload[key];
+    });
+
+    if (Object.keys(payload).length === 0) {
+      await prisma.userProgressSnapshot.delete({ where: { userId } });
+    } else {
+      await prisma.userProgressSnapshot.update({
+        where: { userId },
+        data: { payload: payload as Prisma.InputJsonValue },
+      });
+    }
+
+    return NextResponse.json({ success: true, mode, removedKeys: keysToRemove });
+  } catch (error) {
+    console.error('Progress DELETE error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Falha ao limpar progresso da conta.' },
+      { status: 500 }
+    );
+  }
+}
+

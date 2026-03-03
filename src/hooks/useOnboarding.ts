@@ -2,10 +2,10 @@
 
 /**
  * useOnboarding Hook
- * Gerencia o estado do onboarding e primeiro uso
+ * Gerencia o estado do onboarding e primeiro uso no client store sincronizado.
  */
 
-import { useState, useEffect } from 'react';
+import { useLocalStorage } from './useLocalStorage';
 
 interface OnboardingState {
   hasCompletedWelcome: boolean;
@@ -24,31 +24,12 @@ const defaultState: OnboardingState = {
 };
 
 export function useOnboarding() {
-  const [state, setState] = useState<OnboardingState>(defaultState);
-  const [isLoading, setIsLoading] = useState(true);
+  const [state, setState] = useLocalStorage<OnboardingState>(STORAGE_KEY, defaultState);
+  const isLoading = false;
 
-  // Load state from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setState(JSON.parse(stored));
-      }
-    } catch (error) {
-      console.warn('Erro ao carregar estado do onboarding:', error);
-    }
-    setIsLoading(false);
-  }, []);
-
-  // Save state to localStorage
+  // Save state
   const saveState = (newState: Partial<OnboardingState>) => {
-    const updated = { ...state, ...newState };
-    setState(updated);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    } catch (error) {
-      console.warn('Erro ao salvar estado do onboarding:', error);
-    }
+    setState((prev) => ({ ...prev, ...newState }));
   };
 
   // Check if user is a first-time user
@@ -83,7 +64,6 @@ export function useOnboarding() {
   // Reset onboarding (for testing)
   const resetOnboarding = () => {
     setState(defaultState);
-    localStorage.removeItem(STORAGE_KEY);
   };
 
   return {

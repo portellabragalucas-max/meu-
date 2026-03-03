@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, ArrowRight, Sparkles, Clock, Zap, BookOpen } from 'lucide-react';
 import { Card, Button, ProgressBar } from '@/components/ui';
 import type { OnboardingAnswers, OnboardingResult, StudyGoal } from '@/types';
+import { setClientStoreEntries } from '@/hooks/useLocalStorage';
 
 const stepVariants = {
   initial: { opacity: 0, y: 12 },
@@ -129,15 +130,32 @@ export default function OnboardingPage() {
       }
 
       const data = (await res.json()) as OnboardingResult;
+      const onboardingState = {
+        hasCompletedWelcome: true,
+        hasCompletedTutorial: true,
+        hasAddedFirstSubject: true,
+        tutorialStep: 0,
+      };
+      const storePayload = {
+        nexora_subjects: data.subjects,
+        nexora_planner_blocks: data.schedule.blocks,
+        nexora_study_prefs: data.studyPrefs,
+        nexora_onboarding: onboardingState,
+      };
 
-      // Persistir localmente
-      localStorage.setItem('nexora_subjects', JSON.stringify(data.subjects));
-      localStorage.setItem('nexora_planner_blocks', JSON.stringify(data.schedule.blocks));
-      localStorage.setItem('nexora_study_prefs', JSON.stringify(data.studyPrefs));
-      localStorage.setItem(
-        'nexora_onboarding',
-        JSON.stringify({ hasCompletedWelcome: true, hasCompletedTutorial: true, hasAddedFirstSubject: true })
-      );
+      // Atualiza client store em memória para a navegação atual
+      setClientStoreEntries(storePayload);
+
+      // Persiste no servidor para sincronização entre navegadores/dispositivos
+      try {
+        await fetch('/api/progress', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: storePayload }),
+        });
+      } catch (syncError) {
+        console.warn('Falha ao sincronizar progresso inicial no servidor:', syncError);
+      }
 
       router.push('/dashboard');
     } catch (err: any) {
