@@ -131,11 +131,6 @@ export default function TodayPlan({
                         </span>
                       )}
                     </div>
-                    {!block.isBreak && block.topicName && (
-                      <p className="mt-1 text-xs max-[479px]:text-[11px] text-neon-cyan/90">
-                        Topico: {block.topicName}
-                      </p>
-                    )}
                   </div>
 
                   {/* Status e Ações */}

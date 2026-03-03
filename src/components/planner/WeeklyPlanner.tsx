@@ -173,6 +173,10 @@ export default function WeeklyPlanner({
   const [sessionBlock, setSessionBlock] = useState<StudyBlock | null>(null);
   const [isSessionOpen, setIsSessionOpen] = useState(false);
   const autoBacklogRunRef = useRef<string>('');
+  const topScrollRef = useRef<HTMLDivElement | null>(null);
+  const boardScrollRef = useRef<HTMLDivElement | null>(null);
+  const boardContentRef = useRef<HTMLDivElement | null>(null);
+  const [boardScrollWidth, setBoardScrollWidth] = useState(0);
   const weekDayKeys: WeekdayKey[] = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
   const weekIndexFromDate = (date: Date) => (date.getDay() + 6) % 7;
 
@@ -309,6 +313,52 @@ export default function WeeklyPlanner({
   const mobileSessions = mobileDayBlocks.filter((block) => !block.isBreak).length;
   const visibleDates = isMobile ? [mobileDay] : weekDates;
   const todayKey = useMemo(() => toLocalDateKey(new Date()), []);
+
+  useEffect(() => {
+    const content = boardContentRef.current;
+    if (!content || isMobile) {
+      setBoardScrollWidth(0);
+      return;
+    }
+
+    const updateWidth = () => setBoardScrollWidth(content.scrollWidth);
+    updateWidth();
+
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => updateWidth());
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, [isMobile, visibleDates.length, blocks.length]);
+
+  useEffect(() => {
+    if (isMobile) return;
+    const topScroll = topScrollRef.current;
+    const boardScroll = boardScrollRef.current;
+    if (!topScroll || !boardScroll) return;
+
+    let lock = false;
+    const syncFromTop = () => {
+      if (lock) return;
+      lock = true;
+      boardScroll.scrollLeft = topScroll.scrollLeft;
+      lock = false;
+    };
+    const syncFromBoard = () => {
+      if (lock) return;
+      lock = true;
+      topScroll.scrollLeft = boardScroll.scrollLeft;
+      lock = false;
+    };
+
+    topScroll.addEventListener('scroll', syncFromTop, { passive: true });
+    boardScroll.addEventListener('scroll', syncFromBoard, { passive: true });
+    topScroll.scrollLeft = boardScroll.scrollLeft;
+
+    return () => {
+      topScroll.removeEventListener('scroll', syncFromTop);
+      boardScroll.removeEventListener('scroll', syncFromBoard);
+    };
+  }, [isMobile, boardScrollWidth]);
 
   const backlogEntries = useMemo(() => getBacklogEntries(blocks, new Date()), [blocks]);
   const overdueBacklogCount = backlogEntries.filter((entry) => entry.dateKey < todayKey).length;
@@ -1220,8 +1270,16 @@ export default function WeeklyPlanner({
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="overflow-x-auto overflow-y-hidden pb-1">
+          {!isMobile && (
+            <div className="mb-2 rounded-xl border border-white/10 bg-[#0f1524]/80 px-2 py-1">
+              <div ref={topScrollRef} className="h-2 overflow-x-auto overflow-y-hidden rounded-full">
+                <div className="h-1 w-px" style={{ width: `${Math.max(boardScrollWidth, 1)}px` }} />
+              </div>
+            </div>
+          )}
+          <div ref={boardScrollRef} className="overflow-x-auto overflow-y-hidden pb-1">
             <div
+              ref={boardContentRef}
               className={
                 isMobile
                   ? 'flex min-w-0 flex-col gap-3 pb-6 sm:gap-4 sm:pb-8'

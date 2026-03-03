@@ -166,12 +166,6 @@ export default function TimeBlock({
             )}
           </div>
 
-          {!block.isBreak && block.topicName && (
-            <p className="hidden sm:block mt-1 text-[11px] text-neon-cyan/90 truncate">
-              Topico: {block.topicName}
-            </p>
-          )}
-
           {!block.isBreak && block.description && (
             <p className="hidden sm:block mt-2 text-xs text-text-muted line-clamp-2">
               {block.description}
