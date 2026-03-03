@@ -999,18 +999,36 @@ export default function WeeklyPlanner({
   // Verificar se está visualizando a semana atual
   const isCurrentWeek = isSameDay(currentWeekStart, getWeekStart());
   const isViewingToday = isMobile && mobileDay ? isSameDay(mobileDay, new Date()) : false;
+  const plannedStudyBlocks = useMemo(() => blocks.filter((block) => !block.isBreak), [blocks]);
+  const plannedStudyMinutes = useMemo(
+    () => plannedStudyBlocks.reduce((sum, block) => sum + block.durationMinutes, 0),
+    [plannedStudyBlocks]
+  );
 
   return (
-    <div className="mx-auto flex min-h-0 min-w-0 w-full max-w-[980px] flex-col">
+    <div className="mx-auto flex min-h-0 min-w-0 w-full max-w-full flex-col">
       {/* Cabeçalho */}
-      <div className="mb-5 flex min-w-0 flex-col gap-4 sm:mb-6 md:flex-row md:items-center md:justify-between">
+      <Card
+        className="mb-4 border-white/10 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(0,180,255,0.16),rgba(9,12,22,0.95)_45%,rgba(9,12,22,0.92)_100%)] shadow-[0_20px_45px_rgba(0,0,0,0.28)]"
+        padding="md"
+        hover={false}
+      >
+        <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-heading font-bold text-white">
+          <h1 className="text-2xl font-heading font-bold text-white sm:text-[2rem]">
             Agenda Inteligente
           </h1>
-          <p className="text-sm text-text-secondary mt-1">
-            Otimização de cronograma de estudos com IA
+          <p className="mt-1 text-sm text-text-secondary sm:text-base">
+            Otimização de cronograma de estudos com IA.
           </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-1 rounded-full border border-neon-cyan/35 bg-neon-cyan/10 px-2.5 py-1 text-neon-cyan">
+              {plannedStudyBlocks.length} blocos ativos
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] px-2.5 py-1 text-white">
+              {(plannedStudyMinutes / 60).toFixed(1)}h planejadas
+            </span>
+          </div>
         </div>
 
         <div className="flex w-full min-w-0 flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
@@ -1038,9 +1056,14 @@ export default function WeeklyPlanner({
             Reagendar pendências
           </Button>
         </div>
-      </div>
+        </div>
+      </Card>
 
-      <Card className="mb-4 border-white/10 bg-[#161922]/95 sm:border-neon-cyan/20 sm:bg-slate-900/50" padding="sm">
+      <Card
+        className="mb-4 border-amber-300/20 bg-[linear-gradient(165deg,rgba(46,30,18,0.52),rgba(22,25,35,0.96)_45%,rgba(14,18,27,0.96))] shadow-[0_16px_34px_rgba(0,0,0,0.28)]"
+        padding="sm"
+        hover={false}
+      >
         <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
@@ -1098,7 +1121,11 @@ export default function WeeklyPlanner({
       </Card>
 
       {/* Navegação da Semana */}
-      <Card className="mb-6 border-white/10 bg-[#161922]/95 sm:border-card-border sm:bg-card-bg/50" padding="sm">
+      <Card
+        className="mb-5 border-white/10 bg-[linear-gradient(170deg,rgba(12,17,31,0.92),rgba(16,23,37,0.9))] shadow-[0_14px_30px_rgba(0,0,0,0.25)]"
+        padding="sm"
+        hover={false}
+      >
         <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex min-w-0 items-center gap-2">
             <Button
@@ -1163,13 +1190,13 @@ export default function WeeklyPlanner({
               <div>
                 <span className="text-text-secondary">Total de Horas: </span>
                 <span className="font-bold text-white">
-                  {(blocks.filter((b) => !b.isBreak).reduce((sum, b) => sum + b.durationMinutes, 0) / 60).toFixed(1)}h
+                  {(plannedStudyMinutes / 60).toFixed(1)}h
                 </span>
               </div>
               <div>
                 <span className="text-text-secondary">Sessoes: </span>
                 <span className="font-bold text-white">
-                  {blocks.filter((b) => !b.isBreak).length}
+                  {plannedStudyBlocks.length}
                 </span>
               </div>
             </div>
@@ -1186,35 +1213,43 @@ export default function WeeklyPlanner({
       </Card>
 
       {/* Grade do Planner */}
-      <div className="flex-1 min-w-0 overflow-x-hidden md:overflow-x-auto">
+      <div className="flex-1 min-w-0 rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,13,24,0.9),rgba(5,9,18,0.96))] p-2 shadow-[0_18px_36px_rgba(0,0,0,0.28)] sm:p-3">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex min-w-0 flex-col gap-3 pb-6 sm:gap-4 sm:pb-8 md:min-h-[500px] md:flex-row md:items-start md:pr-1">
-            {visibleDates.map((date) => {
-              const dateKey = date.toISOString().split('T')[0];
-      const dayBlocks = blocksByDay.get(dateKey) || [];
+          <div className="overflow-x-auto overflow-y-hidden pb-1">
+            <div
+              className={
+                isMobile
+                  ? 'flex min-w-0 flex-col gap-3 pb-6 sm:gap-4 sm:pb-8'
+                  : 'flex min-w-max flex-row items-start gap-4 pb-6 pr-2'
+              }
+            >
+              {visibleDates.map((date) => {
+                const dateKey = date.toISOString().split('T')[0];
+                const dayBlocks = blocksByDay.get(dateKey) || [];
 
-      return (
-        <DayColumn
-          key={dateKey}
-          date={date}
-          blocks={dayBlocks}
-          dailyLimitMinutes={getDailyLimitMinutes(date)}
-          onAdjustDailyLimit={handleAdjustDailyLimit}
-          onAddBlock={handleAddBlock}
-          onEditBlock={handleEditBlock}
-          onDeleteBlock={handleDeleteBlock}
-          onStartBlock={handleStartBlock}
-          onMarkBlockDone={handleMarkBlockDoneQuick}
-          onSkipBlockToday={handleSkipBlockToday}
-          onQuickRescheduleBlock={handleRequestQuickReschedule}
-        />
-      );
-    })}
+                return (
+                  <DayColumn
+                    key={dateKey}
+                    date={date}
+                    blocks={dayBlocks}
+                    dailyLimitMinutes={getDailyLimitMinutes(date)}
+                    onAdjustDailyLimit={handleAdjustDailyLimit}
+                    onAddBlock={handleAddBlock}
+                    onEditBlock={handleEditBlock}
+                    onDeleteBlock={handleDeleteBlock}
+                    onStartBlock={handleStartBlock}
+                    onMarkBlockDone={handleMarkBlockDoneQuick}
+                    onSkipBlockToday={handleSkipBlockToday}
+                    onQuickRescheduleBlock={handleRequestQuickReschedule}
+                  />
+                );
+              })}
+            </div>
           </div>
 
           {/* Overlay de Arrastar */}

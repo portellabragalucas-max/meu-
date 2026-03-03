@@ -61,11 +61,11 @@ export default function TimeBlock({
   };
 
   const statusColors = {
-    scheduled: 'border-white/10 bg-[#171A24]/95',
-    'in-progress': 'border-yellow-500/45 bg-yellow-500/10',
-    completed: 'border-neon-cyan/45 bg-neon-cyan/10',
-    skipped: 'border-red-500/30 bg-red-500/10 opacity-60',
-    rescheduled: 'border-amber-400/40 bg-amber-400/10',
+    scheduled: 'border-white/10 bg-[linear-gradient(160deg,rgba(23,26,36,0.97),rgba(16,19,30,0.97))]',
+    'in-progress': 'border-yellow-400/45 bg-[linear-gradient(160deg,rgba(77,57,24,0.34),rgba(24,23,31,0.96))]',
+    completed: 'border-neon-cyan/45 bg-[linear-gradient(160deg,rgba(15,71,76,0.35),rgba(18,26,38,0.96))]',
+    skipped: 'border-red-500/30 bg-[linear-gradient(160deg,rgba(89,30,40,0.28),rgba(24,19,29,0.92))] opacity-70',
+    rescheduled: 'border-amber-400/40 bg-[linear-gradient(160deg,rgba(85,62,28,0.26),rgba(25,23,33,0.96))]',
   };
   const statusLabelMap: Record<StudyBlock['status'], string> = {
     scheduled: 'Pendente',
@@ -97,8 +97,8 @@ export default function TimeBlock({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
-        'group relative overflow-hidden rounded-xl border p-2 sm:rounded-2xl sm:p-3',
-        'transition-all duration-200',
+        'group relative overflow-hidden rounded-2xl border p-2.5 sm:p-3.5',
+        'transition-all duration-200 hover:-translate-y-[1px]',
         statusColors[block.status],
         isDragging && 'shadow-lg shadow-neon-blue/20 z-50'
       )}
@@ -111,7 +111,7 @@ export default function TimeBlock({
         />
       )}
 
-      <div className="ml-1 sm:ml-2 flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5">
+      <div className="ml-1 sm:ml-2 flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2.5">
         {/* Alça de Arrastar */}
         <button
           type="button"
@@ -134,13 +134,13 @@ export default function TimeBlock({
                 style={{ backgroundColor: block.subject?.color || '#00B4FF' }}
               />
             )}
-            <h4 className="font-medium text-sm text-white truncate sm:text-base">
+            <h4 className="font-medium text-sm text-white truncate sm:text-[1rem]">
               {displayTitle}
             </h4>
           </div>
 
           <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] text-text-secondary sm:mt-1 sm:gap-1.5 sm:text-xs">
-            <span className="text-text-muted text-[11px] sm:text-xs">
+            <span className="text-text-muted text-[11px] sm:text-[12px]">
               {formatDuration(block.durationMinutes)}
             </span>
             {!block.isBreak && (

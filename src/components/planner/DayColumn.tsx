@@ -65,6 +65,7 @@ export default function DayColumn({
   const totalHours = (totalMinutes / 60).toFixed(1);
   const limitHours = dailyLimitMinutes > 0 ? (dailyLimitMinutes / 60).toFixed(1) : null;
   const overMinutes = dailyLimitMinutes > 0 ? Math.max(0, totalMinutes - dailyLimitMinutes) : 0;
+  const usageRatio = dailyLimitMinutes > 0 ? Math.min(1, totalMinutes / dailyLimitMinutes) : 0;
 
   const dayNameEn = date.toLocaleDateString('en-US', { weekday: 'long' });
   const dayNamePt = dayNamesLong[dayNameEn] || dayNameEn;
@@ -73,9 +74,9 @@ export default function DayColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        'mx-auto flex w-full max-w-[34rem] min-w-0 flex-col md:max-w-none md:min-w-[280px]',
-        'rounded-[1.5rem] border bg-gradient-to-b from-[#191C27]/95 to-[#131620]/95 shadow-[0_18px_36px_rgba(0,0,0,0.35)]',
-        'md:rounded-2xl md:bg-card-bg/50 md:shadow-none',
+        'mx-auto md:mx-0 flex w-full max-w-[34rem] min-w-0 flex-col md:max-w-none md:min-w-[320px] xl:min-w-[340px]',
+        'rounded-[1.5rem] border bg-[linear-gradient(175deg,rgba(24,30,44,0.95),rgba(15,20,32,0.97))] shadow-[0_18px_36px_rgba(0,0,0,0.35)]',
+        'md:rounded-3xl',
         isToday ? 'border-neon-blue/45' : 'border-white/10 md:border-card-border',
         isOver && 'ring-2 ring-neon-blue/30 bg-neon-blue/5'
       )}
@@ -83,8 +84,8 @@ export default function DayColumn({
       {/* Cabeçalho do Dia */}
       <div
         className={cn(
-          'border-b border-white/10 p-3 sm:p-3.5 md:border-card-border',
-          isToday && 'bg-neon-blue/10 md:bg-neon-blue/10'
+          'border-b border-white/10 p-3.5 sm:p-4 md:border-card-border',
+          isToday && 'bg-neon-blue/10'
         )}
       >
         <div className="flex items-center justify-between">
@@ -144,6 +145,21 @@ export default function DayColumn({
           <p className="mt-2 text-xs text-red-400">
             Excedente: {(overMinutes / 60).toFixed(1)}h
           </p>
+        )}
+        {dailyLimitMinutes > 0 && (
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-300',
+                overMinutes > 0
+                  ? 'bg-red-400'
+                  : usageRatio >= 0.85
+                  ? 'bg-amber-300'
+                  : 'bg-neon-cyan'
+              )}
+              style={{ width: usageRatio > 0 ? `${Math.max(6, Math.round(usageRatio * 100))}%` : '0%' }}
+            />
+          </div>
         )}
 
       </div>
