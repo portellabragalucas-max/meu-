@@ -46,8 +46,11 @@ import DayColumn from './DayColumn';
 import TimeBlock from './TimeBlock';
 import BlockFormModal, { type BlockFormData } from './BlockFormModal';
 import { StudyBlockSessionModal } from '@/components/session';
-import type { DailyHoursByWeekday, StudyBlock, Subject, WeekdayKey } from '@/types';
+import type { AnalyticsStore, DailyHoursByWeekday, StudyBlock, Subject, WeekdayKey } from '@/types';
 import { autoRescheduleBacklog, getBacklogEntries } from '@/services/backlogRescheduler';
+import { applyBlockCompletionMetrics } from '@/services/adaptiveStudyIntelligence';
+
+const emptyAnalytics: AnalyticsStore = { daily: {} };
 
 const toLocalDateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
@@ -183,6 +186,8 @@ export default function WeeklyPlanner({
     'nexora_daily_limits',
     {}
   );
+  const [storedSubjects, setStoredSubjects] = useLocalStorage<Subject[]>('nexora_subjects', []);
+  const [analytics, setAnalytics] = useLocalStorage<AnalyticsStore>('nexora_analytics', emptyAnalytics);
   const [lastBacklogAutoRunDay, setLastBacklogAutoRunDay] = useLocalStorage<string>(
     'nexora_backlog_last_auto_run_day',
     ''
@@ -962,19 +967,25 @@ export default function WeeklyPlanner({
 
   const handleCompleteBlock = (blockId: string, minutesSpent?: number) => {
     const completedBlock = blocks.find((block) => block.id === blockId);
+    if (!completedBlock || completedBlock.status === 'completed') return;
+    const hasExplicitMinutes =
+      typeof minutesSpent === 'number' && Number.isFinite(minutesSpent);
+    const effectiveMinutes = hasExplicitMinutes
+      ? Math.max(1, minutesSpent)
+      : completedBlock.durationMinutes;
+    const hours = effectiveMinutes / 60;
+
     setBlocks((prev) => {
       const next = prev.map((block) =>
         block.id === blockId
           ? (() => {
-              const hasExplicitMinutes =
-                typeof minutesSpent === 'number' && Number.isFinite(minutesSpent);
               return {
                 ...block,
                 status: 'completed' as const,
                 completedAt: new Date(),
                 updatedAt: new Date(),
                 durationMinutes: hasExplicitMinutes
-                  ? Math.max(1, Math.round(minutesSpent))
+                  ? Math.max(1, Math.round(effectiveMinutes))
                   : block.durationMinutes,
               };
             })()
@@ -984,7 +995,57 @@ export default function WeeklyPlanner({
       return next;
     });
 
-    if (completedBlock && !completedBlock.isBreak) {
+    if (!completedBlock.isBreak && completedBlock.subjectId) {
+      const targetSubject =
+        subjects.find((subject) => subject.id === completedBlock.subjectId) ??
+        storedSubjects.find((subject) => subject.id === completedBlock.subjectId);
+
+      if (targetSubject) {
+        const metricsUpdate = applyBlockCompletionMetrics({
+          analytics,
+          block: completedBlock,
+          subject: targetSubject,
+          minutesSpent: effectiveMinutes,
+        });
+
+        setStoredSubjects((prev) =>
+          prev.map((subject) =>
+            subject.id === completedBlock.subjectId
+              ? {
+                  ...subject,
+                  completedHours: Number((subject.completedHours + hours).toFixed(1)),
+                  totalHours: Number((subject.totalHours + hours).toFixed(1)),
+                  sessionsCount: subject.sessionsCount + 1,
+                  averageScore:
+                    metricsUpdate?.subjectRollingAccuracy !== undefined
+                      ? Math.round(metricsUpdate.subjectRollingAccuracy * 100)
+                      : subject.averageScore,
+                }
+              : subject
+          )
+        );
+
+        setAnalytics(metricsUpdate.analytics);
+      } else {
+        const dateKey = new Date(completedBlock.date).toISOString().split('T')[0];
+        setAnalytics((prev) => {
+          const current = prev.daily[dateKey] || { hours: 0, sessions: 0 };
+          return {
+            ...prev,
+            daily: {
+              ...prev.daily,
+              [dateKey]: {
+                ...current,
+                hours: Number((current.hours + hours).toFixed(2)),
+                sessions: current.sessions + 1,
+              },
+            },
+          };
+        });
+      }
+    }
+
+    if (!completedBlock.isBreak) {
       const sameDayBreaks = blocks
         .filter(
           (block) =>

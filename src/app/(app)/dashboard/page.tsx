@@ -110,6 +110,16 @@ export default function DashboardPage() {
     return subjectsGoal > 0 ? subjectsGoal : prefsGoal;
   }, [subjects, studyPrefs]);
 
+  const completedHoursByDate = useMemo(() => {
+    const totals: Record<string, number> = {};
+    plannerBlocks.forEach((block) => {
+      if (block.isBreak || block.status !== 'completed') return;
+      const key = new Date(block.date).toISOString().split('T')[0];
+      totals[key] = (totals[key] ?? 0) + block.durationMinutes / 60;
+    });
+    return totals;
+  }, [plannerBlocks]);
+
   const weeklyData = useMemo(() => {
     const weekStart = getWeekStart(new Date());
     const weekDates = getWeekDates(weekStart);
@@ -125,7 +135,9 @@ export default function DashboardPage() {
 
     return weekDates.map((date) => {
       const dateKey = date.toISOString().split('T')[0];
-      const hours = analytics.daily[dateKey]?.hours ?? 0;
+      const analyticsHours = analytics.daily[dateKey]?.hours ?? 0;
+      const blocksHours = completedHoursByDate[dateKey] ?? 0;
+      const hours = Math.max(analyticsHours, blocksHours);
       const dayIndex = date.getDay();
       return {
         day: dayLabels[dayIndex],
@@ -133,7 +145,7 @@ export default function DashboardPage() {
         target: activeDays.includes(dayIndex) ? Number(perDayGoal.toFixed(1)) : 0,
       };
     });
-  }, [analytics, studyPrefs, weeklyGoal]);
+  }, [analytics, completedHoursByDate, studyPrefs, weeklyGoal]);
 
   const weeklyHours = weeklyData.reduce((sum, d) => sum + d.hours, 0);
   const focusScore = 0;
@@ -145,7 +157,9 @@ export default function DashboardPage() {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
       const key = date.toISOString().split('T')[0];
-      const hours = analytics.daily[key]?.hours ?? 0;
+      const analyticsHours = analytics.daily[key]?.hours ?? 0;
+      const blocksHours = completedHoursByDate[key] ?? 0;
+      const hours = Math.max(analyticsHours, blocksHours);
       if (hours > 0) {
         count += 1;
       } else {
@@ -153,7 +167,7 @@ export default function DashboardPage() {
       }
     }
     return count;
-  }, [analytics]);
+  }, [analytics, completedHoursByDate]);
 
   const completedThisWeek = useMemo(() => {
     const weekStart = getWeekStart(new Date());

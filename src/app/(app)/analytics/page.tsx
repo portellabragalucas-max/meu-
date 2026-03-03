@@ -23,7 +23,7 @@ import {
   ActivityHeatmap,
 } from '@/components/analytics';
 import { computeIntelligentAnalyticsSummary } from '@/services/adaptiveStudyIntelligence';
-import type { AnalyticsStore, Subject } from '@/types';
+import type { AnalyticsStore, StudyBlock, Subject } from '@/types';
 
 const emptyAnalytics: AnalyticsStore = { daily: {} };
 
@@ -44,6 +44,7 @@ const itemVariants = {
 export default function AnalyticsPage() {
   const [analytics] = useLocalStorage<AnalyticsStore>('nexora_analytics', emptyAnalytics);
   const [subjects] = useLocalStorage<Subject[]>('nexora_subjects', []);
+  const [plannerBlocks] = useLocalStorage<StudyBlock[]>('nexora_planner_blocks', []);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -51,6 +52,26 @@ export default function AnalyticsPage() {
   }, []);
 
   const now = useMemo(() => (mounted ? new Date() : null), [mounted]);
+
+  const completedStats = useMemo(() => {
+    const hoursByDate: Record<string, number> = {};
+    const sessionsByDate: Record<string, number> = {};
+    const hoursBySubject: Record<string, number> = {};
+
+    plannerBlocks.forEach((block) => {
+      if (block.isBreak || block.status !== 'completed') return;
+      const dateKey = new Date(block.date).toISOString().split('T')[0];
+      const hours = block.durationMinutes / 60;
+      hoursByDate[dateKey] = (hoursByDate[dateKey] ?? 0) + hours;
+      sessionsByDate[dateKey] = (sessionsByDate[dateKey] ?? 0) + 1;
+
+      if (block.subjectId) {
+        hoursBySubject[block.subjectId] = (hoursBySubject[block.subjectId] ?? 0) + hours;
+      }
+    });
+
+    return { hoursByDate, sessionsByDate, hoursBySubject };
+  }, [plannerBlocks]);
 
   const productivityData = useMemo(() => {
     if (!now) return [];
@@ -62,7 +83,9 @@ export default function AnalyticsPage() {
       date.setDate(today.getDate() - i);
       const dateKey = date.toISOString().split('T')[0];
       const dayRecord = analytics.daily[dateKey];
-      const hours = dayRecord?.hours ?? 0;
+      const analyticsHours = dayRecord?.hours ?? 0;
+      const blocksHours = completedStats.hoursByDate[dateKey] ?? 0;
+      const hours = Math.max(analyticsHours, blocksHours);
 
       data.push({
         date: date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
@@ -73,18 +96,27 @@ export default function AnalyticsPage() {
     }
 
     return data;
-  }, [analytics, now]);
+  }, [analytics, completedStats.hoursByDate, now]);
 
   const subjectDistribution = useMemo(
     () =>
       subjects
-        .filter((subject) => (subject.totalHours || 0) > 0)
+        .map((subject) => {
+          const storeHours = subject.totalHours || 0;
+          const blocksHours = completedStats.hoursBySubject[subject.id] ?? 0;
+          return {
+            name: subject.name,
+            hours: Number(Math.max(storeHours, blocksHours).toFixed(1)),
+            color: subject.color,
+          };
+        })
+        .filter((subject) => subject.hours > 0)
         .map((subject) => ({
           name: subject.name,
-          hours: Number((subject.totalHours || 0).toFixed(1)),
+          hours: subject.hours,
           color: subject.color,
         })),
-    [subjects]
+    [completedStats.hoursBySubject, subjects]
   );
 
   const heatmapData = useMemo(() => {
@@ -96,7 +128,9 @@ export default function AnalyticsPage() {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
       const dateKey = date.toISOString().split('T')[0];
-      const hours = analytics.daily[dateKey]?.hours ?? 0;
+      const analyticsHours = analytics.daily[dateKey]?.hours ?? 0;
+      const blocksHours = completedStats.hoursByDate[dateKey] ?? 0;
+      const hours = Math.max(analyticsHours, blocksHours);
 
       let level: 0 | 1 | 2 | 3 | 4 = 0;
       if (hours > 0 && hours < 1) level = 1;
@@ -108,30 +142,43 @@ export default function AnalyticsPage() {
     }
 
     return data;
-  }, [analytics, now]);
+  }, [analytics, completedStats.hoursByDate, now]);
 
   const totalHours = productivityData.reduce((sum, d) => sum + d.hours, 0);
   const intelligentSummary = useMemo(
     () => computeIntelligentAnalyticsSummary({ analytics, subjects, now: now ?? new Date() }),
     [analytics, subjects, now]
   );
+  const studiedDays = productivityData.filter((item) => item.hours > 0);
   const avgFocus =
     intelligentSummary.avgFocusScore ||
-    (productivityData.length > 0
+    (studiedDays.length > 0
       ? Math.round(
-          productivityData.reduce((sum, d) => sum + d.focusScore, 0) /
-            productivityData.length
+          studiedDays.reduce((sum, d) => sum + d.focusScore, 0) /
+            studiedDays.length
         )
       : 0);
   const avgProductivity =
     intelligentSummary.avgProductivityScore ||
-    (productivityData.length > 0
+    (studiedDays.length > 0
       ? Math.round(
-          productivityData.reduce((sum, d) => sum + d.productivityScore, 0) /
-            productivityData.length
+          studiedDays.reduce((sum, d) => sum + d.productivityScore, 0) /
+            studiedDays.length
         )
       : 0);
-  const sessionsCompleted = productivityData.filter((d) => d.hours > 0).length;
+  const sessionsCompleted = useMemo(() => {
+    if (!now) return 0;
+    let total = 0;
+    for (let i = 13; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(now.getDate() - i);
+      const dateKey = date.toISOString().split('T')[0];
+      const analyticsSessions = analytics.daily[dateKey]?.sessions ?? 0;
+      const blockSessions = completedStats.sessionsByDate[dateKey] ?? 0;
+      total += Math.max(analyticsSessions, blockSessions);
+    }
+    return total;
+  }, [analytics, completedStats.sessionsByDate, now]);
   const avgAccuracy = Math.round((intelligentSummary.avgAccuracyRate || 0) * 100);
 
   if (!mounted) {
