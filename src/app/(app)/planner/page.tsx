@@ -116,8 +116,7 @@ export default function PlannerPage() {
     null
   );
   const [userSettings] = useLocalStorage<UserSettings>('nexora_user_settings', defaultSettings);
-  const [isMobile, setIsMobile] = useState(false);
-  const [showRoadmap, setShowRoadmap] = useState(true);
+  const [showRoadmap, setShowRoadmap] = useState(false);
   const [dailyLimits] = useLocalStorage<Record<string, number>>('nexora_daily_limits', {});
   const [analytics] = useLocalStorage<AnalyticsStore>('nexora_analytics', emptyAnalytics);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -560,21 +559,6 @@ export default function PlannerPage() {
     setScheduleRange,
   ]);
 
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    setShowRoadmap(!isMobile);
-  }, [isMobile]);
-
-
-
   const roadmapSummary = useMemo(() => {
     return subjects.map((subject) => {
       const subjectBlocks = blocks
@@ -601,20 +585,28 @@ export default function PlannerPage() {
       animate={{ opacity: 1 }}
       className="app-page w-full min-h-0 min-w-0 max-w-[980px] mx-auto overflow-x-hidden pb-[calc(var(--bottom-nav-safe-height)+1.25rem)] md:pb-3"
     >
-      {isMobile && !showRoadmap && (
+      {!showRoadmap && (
         <button
-          className="flex min-w-0 items-center gap-2 rounded-full border border-neon-cyan/30 bg-slate-900/60 px-3 py-2 text-xs text-neon-cyan shadow-sm"
+          className="flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-neon-cyan/30 bg-slate-900/60 px-3 py-2.5 text-left text-neon-cyan shadow-sm"
           onClick={() => setShowRoadmap(true)}
           aria-label="Abrir trilha de aprovação"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-neon-cyan/15 text-neon-cyan">
-            <MapIcon className="h-4 w-4" />
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-neon-cyan/15 text-neon-cyan">
+              <MapIcon className="h-4 w-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium text-white">{phaseInfo.label}</span>
+              <span className="block text-[11px] text-text-secondary">Clique para expandir a trilha</span>
+            </span>
           </span>
-          <span className="min-w-0 truncate">Base (Fundamentos)</span>
+          <span className="shrink-0 rounded-full border border-neon-cyan/35 px-2 py-0.5 text-[11px] text-neon-cyan">
+            Expandir
+          </span>
         </button>
       )}
 
-      {(!isMobile || showRoadmap) && (
+      {showRoadmap && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -636,15 +628,13 @@ export default function PlannerPage() {
                 <div className="px-3 py-1 rounded-full bg-neon-purple/10 border border-neon-purple/30 text-neon-purple text-xs">
                   Roadmap ativo
                 </div>
-                {isMobile && (
-                  <button
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-text-secondary"
-                    onClick={() => setShowRoadmap(false)}
-                    aria-label="Minimizar trilha de aprovação"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
+                <button
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-text-secondary"
+                  onClick={() => setShowRoadmap(false)}
+                  aria-label="Minimizar trilha de aprovação"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             </div>
 
