@@ -125,7 +125,7 @@ export default function AnalyticsPage() {
           const blocksHours = completedStats.hoursBySubject[subject.id] ?? 0;
           return {
             name: subject.name,
-            hours: Number(Math.max(storeHours, blocksHours).toFixed(1)),
+            hours: Math.max(storeHours, blocksHours),
             color: subject.color,
           };
         })
@@ -157,7 +157,7 @@ export default function AnalyticsPage() {
       else if (hours >= 2.5 && hours < 4) level = 3;
       else if (hours >= 4) level = 4;
 
-      data.push({ date: dateKey, hours: Number(hours.toFixed(1)), level });
+      data.push({ date: dateKey, hours, level });
     }
 
     return data;

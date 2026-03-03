@@ -1014,8 +1014,8 @@ export default function WeeklyPlanner({
             subject.id === completedBlock.subjectId
               ? {
                   ...subject,
-                  completedHours: Number((subject.completedHours + hours).toFixed(1)),
-                  totalHours: Number((subject.totalHours + hours).toFixed(1)),
+                  completedHours: Number((subject.completedHours + hours).toFixed(4)),
+                  totalHours: Number((subject.totalHours + hours).toFixed(4)),
                   sessionsCount: subject.sessionsCount + 1,
                   averageScore:
                     metricsUpdate?.subjectRollingAccuracy !== undefined

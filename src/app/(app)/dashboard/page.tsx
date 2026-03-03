@@ -141,8 +141,8 @@ export default function DashboardPage() {
       const dayIndex = date.getDay();
       return {
         day: dayLabels[dayIndex],
-        hours: Number(hours.toFixed(1)),
-        target: activeDays.includes(dayIndex) ? Number(perDayGoal.toFixed(1)) : 0,
+        hours,
+        target: activeDays.includes(dayIndex) ? perDayGoal : 0,
       };
     });
   }, [analytics, completedHoursByDate, studyPrefs, weeklyGoal]);
@@ -266,7 +266,7 @@ export default function DashboardPage() {
       subjects
         .map((subject) => ({
           subject,
-          completedHours: Number((weeklyCompletedHoursBySubject.get(subject.id) ?? 0).toFixed(1)),
+          completedHours: weeklyCompletedHoursBySubject.get(subject.id) ?? 0,
         }))
         .sort((a, b) => {
           const aOrder = subjectOrderByPlan.get(a.subject.id);
@@ -354,8 +354,8 @@ export default function DashboardPage() {
           subject.id === targetBlock.subjectId
             ? {
                 ...subject,
-                completedHours: Number((subject.completedHours + hours).toFixed(1)),
-                totalHours: Number((subject.totalHours + hours).toFixed(1)),
+                completedHours: Number((subject.completedHours + hours).toFixed(4)),
+                totalHours: Number((subject.totalHours + hours).toFixed(4)),
                 sessionsCount: subject.sessionsCount + 1,
                 averageScore:
                   metricsUpdate?.subjectRollingAccuracy !== undefined
