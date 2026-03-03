@@ -635,7 +635,7 @@ export default function DashboardPage() {
               {/* Plano do dia - 2 colunas */}
               <motion.div
                 variants={itemVariants}
-                className="lg:col-span-2"
+                className="self-start lg:col-span-2"
                 data-tutorial="plan"
               >
                 <TodayPlan

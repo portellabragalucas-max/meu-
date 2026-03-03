@@ -55,7 +55,7 @@ export default function TodayPlan({
   );
 
   return (
-    <Card className="h-full" padding="none">
+    <Card padding="none">
       <div className="p-4 max-[479px]:p-3 sm:p-6 border-b border-card-border">
         <h2 className="text-xl max-[479px]:text-lg font-heading font-bold text-white">{title}</h2>
         <p className="text-sm max-[479px]:text-xs text-text-secondary mt-1">
