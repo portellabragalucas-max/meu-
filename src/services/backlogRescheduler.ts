@@ -1,5 +1,5 @@
 import type { StudyBlock } from '@/types';
-import { minutesToTime, timeToMinutes } from '@/lib/utils';
+import { generateId, minutesToTime, timeToMinutes } from '@/lib/utils';
 
 export interface BacklogRescheduleConfig {
   blocks: StudyBlock[];
@@ -39,6 +39,10 @@ export interface BacklogEntry {
 const DEFAULT_DAY_START = '09:00';
 const DEFAULT_DAY_END = '22:00';
 const DAY_MS = 24 * 60 * 60 * 1000;
+const RECOVERY_RESCHEDULE_THRESHOLD = 3;
+const RECOVERY_SPLIT_MINUTES = 55;
+const RECOVERY_MICRO_BLOCK_MIN = 25;
+const RECOVERY_MICRO_BLOCK_TARGET = 35;
 
 const toDateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
@@ -54,7 +58,6 @@ const parseDateKey = (value: string) => {
 
 const cloneDate = (value?: Date | null) => (value ? new Date(value) : undefined);
 
-const isDoneStatus = (status: StudyBlock['status']) => status === 'completed';
 const isBacklogStatus = (status: StudyBlock['status']) =>
   status === 'scheduled' || status === 'in-progress' || status === 'skipped' || status === 'rescheduled';
 
@@ -83,6 +86,7 @@ export function computeBacklogPriorityScore(block: StudyBlock, today: Date) {
   const blockDate = new Date(block.date);
   blockDate.setHours(0, 0, 0, 0);
   const daysOverdue = Math.max(0, Math.floor((today.getTime() - blockDate.getTime()) / DAY_MS));
+  const reschedules = block.rescheduleCount || 0;
   let score = 0;
   if (isReviewType(block)) score += 1000;
   if (isSimuladoType(block)) score += 700;
@@ -91,7 +95,7 @@ export function computeBacklogPriorityScore(block: StudyBlock, today: Date) {
   score += daysOverdue * 30;
   score += getSubjectWeight(block);
   score += Math.min(240, block.durationMinutes);
-  score -= (block.rescheduleCount || 0) * 15;
+  score += Math.min(220, reschedules * 25);
   return score;
 }
 
@@ -118,6 +122,102 @@ export function getBacklogEntries(blocks: StudyBlock[], today = new Date()): Bac
       };
     })
     .sort((a, b) => b.priorityScore - a.priorityScore);
+}
+
+const isLockedForDayStartShift = (status: StudyBlock['status']) =>
+  status === 'completed' || status === 'in-progress';
+
+const canSplitForRecovery = (block: StudyBlock) =>
+  !block.isBreak &&
+  isBacklogStatus(block.status) &&
+  (block.rescheduleCount || 0) >= RECOVERY_RESCHEDULE_THRESHOLD &&
+  block.durationMinutes >= RECOVERY_SPLIT_MINUTES &&
+  !isReviewType(block) &&
+  !isSimuladoType(block);
+
+function buildRecoveryDurations(totalMinutes: number) {
+  const safeTotal = Math.max(RECOVERY_MICRO_BLOCK_MIN, Math.round(totalMinutes));
+  const pieces = Math.max(2, Math.ceil(safeTotal / RECOVERY_MICRO_BLOCK_TARGET));
+  const base = Math.floor(safeTotal / pieces);
+  const remainder = safeTotal % pieces;
+  const durations: number[] = [];
+
+  for (let index = 0; index < pieces; index += 1) {
+    durations.push(base + (index < remainder ? 1 : 0));
+  }
+
+  for (let index = durations.length - 1; index > 0; index -= 1) {
+    if (durations[index] >= RECOVERY_MICRO_BLOCK_MIN) continue;
+    const deficit = RECOVERY_MICRO_BLOCK_MIN - durations[index];
+    const transferable = Math.max(0, durations[index - 1] - RECOVERY_MICRO_BLOCK_MIN);
+    const transfer = Math.min(deficit, transferable);
+    durations[index - 1] -= transfer;
+    durations[index] += transfer;
+  }
+
+  return durations.filter((duration) => duration > 0);
+}
+
+function buildRecoveryDescription(description: string | null | undefined, index: number, total: number) {
+  const base = (description ?? '').trim();
+  const suffix = `Recuperacao ${index}/${total}`;
+  return base.length > 0 ? `${base} - ${suffix}` : suffix;
+}
+
+function expandRecoveryBacklogBlocks(blocksById: Map<string, StudyBlock>) {
+  const changedIds: string[] = [];
+  let expandedCount = 0;
+  const snapshot = Array.from(blocksById.values());
+
+  for (const block of snapshot) {
+    if (!canSplitForRecovery(block)) continue;
+
+    const durations = buildRecoveryDurations(block.durationMinutes);
+    if (durations.length <= 1) continue;
+
+    const originalDate = block.originalDate ? new Date(block.originalDate) : new Date(block.date);
+    originalDate.setHours(0, 0, 0, 0);
+    const referenceStart = timeToMinutes(block.startTime);
+    const total = durations.length;
+
+    const firstDuration = durations[0];
+    blocksById.set(block.id, {
+      ...block,
+      durationMinutes: firstDuration,
+      startTime: minutesToTime(referenceStart),
+      endTime: minutesToTime(referenceStart + firstDuration),
+      status: 'rescheduled',
+      originalDate,
+      description: buildRecoveryDescription(block.description, 1, total),
+      updatedAt: new Date(),
+    });
+    changedIds.push(block.id);
+
+    let cursorStart = referenceStart;
+    for (let index = 1; index < durations.length; index += 1) {
+      const duration = durations[index];
+      cursorStart += durations[index - 1];
+      const id = generateId();
+
+      blocksById.set(id, {
+        ...block,
+        id,
+        durationMinutes: duration,
+        startTime: minutesToTime(cursorStart),
+        endTime: minutesToTime(cursorStart + duration),
+        status: 'rescheduled',
+        originalDate,
+        description: buildRecoveryDescription(block.description, index + 1, total),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      changedIds.push(id);
+    }
+
+    expandedCount += 1;
+  }
+
+  return { changedIds, expandedCount };
 }
 
 function buildDayKeys(today: Date, lookaheadDays: number, allowedDays: number[]) {
@@ -213,14 +313,6 @@ function getExistingBacklogSubjects(blocks: StudyBlock[], dayKey: string) {
   return set;
 }
 
-function findLastEndMinute(blocks: StudyBlock[], dayKey: string) {
-  const dayBlocks = blocks
-    .filter((block) => getBlockDateKey(block) === dayKey)
-    .sort((a, b) => a.startTime.localeCompare(b.startTime));
-  if (dayBlocks.length === 0) return timeToMinutes(DEFAULT_DAY_START);
-  return dayBlocks.reduce((max, block) => Math.max(max, timeToMinutes(block.endTime)), timeToMinutes(DEFAULT_DAY_START));
-}
-
 function updateBlock(blocksById: Map<string, StudyBlock>, nextBlock: StudyBlock) {
   blocksById.set(nextBlock.id, nextBlock);
 }
@@ -236,8 +328,8 @@ function appendBlockToDay(
   opts: {
     status?: StudyBlock['status'];
     incrementReschedule?: boolean;
-    preserveStatusIfBreak?: boolean;
     dayEndLimitMinutes?: number;
+    preferDayStart?: boolean;
   }
 ) {
   const allBlocks = Array.from(blocksById.values());
@@ -245,16 +337,69 @@ function appendBlockToDay(
   if (!block) return false;
   if (block.isBreak) return false;
 
-  const dayBlocks = allBlocks.filter((b) => getBlockDateKey(b) === dayKey);
+  const dayBlocks = allBlocks
+    .filter((b) => getBlockDateKey(b) === dayKey)
+    .filter((b) => b.id !== block.id);
   const dayWindow = inferDayWindow(dayBlocks);
-  const lastEnd = findLastEndMinute(allBlocks, dayKey);
-  const start = Math.max(lastEnd, timeToMinutes(dayWindow.start));
-  const end = start + block.durationMinutes;
   const hardEnd = opts.dayEndLimitMinutes ?? timeToMinutes(dayWindow.end);
-  if (end > hardEnd) return false;
 
   const originalDate = block.originalDate ? new Date(block.originalDate) : new Date(block.date);
   originalDate.setHours(0, 0, 0, 0);
+
+  if (opts.preferDayStart) {
+    const dayStart = timeToMinutes(dayWindow.start);
+    const lockedEnd = dayBlocks
+      .filter((item) => isLockedForDayStartShift(item.status))
+      .reduce((max, item) => Math.max(max, timeToMinutes(item.endTime)), dayStart);
+    const insertionStart = Math.max(dayStart, lockedEnd);
+    const insertionEnd = insertionStart + block.durationMinutes;
+
+    if (insertionEnd <= hardEnd) {
+      const shiftTargets = dayBlocks
+        .filter((item) => !isLockedForDayStartShift(item.status))
+        .filter((item) => timeToMinutes(item.startTime) >= insertionStart)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+      const canShift = shiftTargets.every(
+        (item) => timeToMinutes(item.endTime) + block.durationMinutes <= hardEnd
+      );
+
+      if (canShift) {
+        shiftTargets.forEach((item) => {
+          const shiftedStart = timeToMinutes(item.startTime) + block.durationMinutes;
+          const shiftedEnd = timeToMinutes(item.endTime) + block.durationMinutes;
+
+          updateBlock(blocksById, {
+            ...item,
+            date: parseDateKey(dayKey),
+            startTime: minutesToTime(shiftedStart),
+            endTime: minutesToTime(shiftedEnd),
+            updatedAt: new Date(),
+          });
+        });
+
+        updateBlock(blocksById, {
+          ...block,
+          date: parseDateKey(dayKey),
+          startTime: minutesToTime(insertionStart),
+          endTime: minutesToTime(insertionEnd),
+          status: opts.status ?? 'rescheduled',
+          originalDate,
+          rescheduleCount: (block.rescheduleCount || 0) + (opts.incrementReschedule ? 1 : 0),
+          updatedAt: new Date(),
+        });
+        return true;
+      }
+    }
+  }
+
+  const lastEnd = dayBlocks.reduce(
+    (max, item) => Math.max(max, timeToMinutes(item.endTime)),
+    timeToMinutes(dayWindow.start)
+  );
+  const start = Math.max(lastEnd, timeToMinutes(dayWindow.start));
+  const end = start + block.durationMinutes;
+  if (end > hardEnd) return false;
 
   updateBlock(blocksById, {
     ...block,
@@ -265,7 +410,6 @@ function appendBlockToDay(
     originalDate,
     rescheduleCount: (block.rescheduleCount || 0) + (opts.incrementReschedule ? 1 : 0),
     updatedAt: new Date(),
-    completedAt: block.status === 'completed' ? block.completedAt : block.completedAt,
   });
   return true;
 }
@@ -329,13 +473,15 @@ export function autoRescheduleBacklog(config: BacklogRescheduleConfig): BacklogR
   }
 
   const dayKeys = buildDayKeys(today, lookaheadDays, allowedDays);
-  const queue = backlogBeforeEntries.map((entry) => entry.block.id);
-  const queuedSet = new Set(queue);
   const changedIds = new Set<string>();
+  const recoveryExpansion = expandRecoveryBacklogBlocks(blocksById);
+  recoveryExpansion.changedIds.forEach((id) => changedIds.add(id));
+  const queue = getBacklogEntries(Array.from(blocksById.values()), today).map((entry) => entry.block.id);
+  const queuedSet = new Set(queue);
   let insertedTodayCount = 0;
   let movedCount = 0;
 
-  const popNextPrioritized = (dayKey: string, existingBacklogSubjects: Set<string>) => {
+  const popNextPrioritized = (existingBacklogSubjects: Set<string>) => {
     const allBlocks = Array.from(blocksById.values());
     const queueWithScores = queue
       .map((id) => blocksById.get(id))
@@ -437,6 +583,7 @@ export function autoRescheduleBacklog(config: BacklogRescheduleConfig): BacklogR
       status: 'rescheduled',
       incrementReschedule: true,
       dayEndLimitMinutes: dayEndMinute,
+      preferDayStart: true,
     });
     if (!placed) return false;
 
@@ -478,7 +625,7 @@ export function autoRescheduleBacklog(config: BacklogRescheduleConfig): BacklogR
     let keepPlacing = true;
     while (keepPlacing && queue.length > 0) {
       const existingSubjects = getExistingBacklogSubjects(Array.from(blocksById.values()), dayKey);
-      const nextBlock = popNextPrioritized(dayKey, existingSubjects);
+      const nextBlock = popNextPrioritized(existingSubjects);
       if (!nextBlock) break;
       const placed = placeBlockOnDay(nextBlock, dayKey);
       if (!placed) {
@@ -505,11 +652,11 @@ export function autoRescheduleBacklog(config: BacklogRescheduleConfig): BacklogR
   const backlogAfter = backlogAfterEntries.length;
   const pendingBacklogCount = backlogAfterEntries.length;
   const stuckItems = resultBlocks.filter(
-    (block) => !block.isBreak && isBacklogStatus(block.status) && (block.rescheduleCount || 0) >= 3
+    (block) => !block.isBreak && isBacklogStatus(block.status) && (block.rescheduleCount || 0) >= RECOVERY_RESCHEDULE_THRESHOLD
   );
   const suggestion: BacklogReplanSuggestion = {
     shouldSuggestReplan: backlogAfter >= 6,
-    shouldSuggestRecoveryMode: stuckItems.length > 0,
+    shouldSuggestRecoveryMode: stuckItems.length > 0 || recoveryExpansion.expandedCount > 0,
     suggestedExtraMinutesPerDay:
       backlogAfter > 0 && dayKeys.length > 0
         ? Math.ceil(
@@ -517,7 +664,8 @@ export function autoRescheduleBacklog(config: BacklogRescheduleConfig): BacklogR
               Math.max(1, Math.min(dayKeys.length, 5))
           )
         : 0,
-    suggestedReduceNewContent: backlogAfter >= 4 || stuckItems.length > 0,
+    suggestedReduceNewContent:
+      backlogAfter >= 4 || stuckItems.length > 0 || recoveryExpansion.expandedCount > 0,
   };
 
   return {
