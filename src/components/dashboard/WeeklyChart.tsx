@@ -51,6 +51,8 @@ export default function WeeklyChart({ data, className }: WeeklyChartProps) {
     ...item,
     metTarget: item.target > 0 && item.hours >= item.target,
   }));
+  const totalTargetDays = processedData.filter((d) => d.target > 0).length;
+  const achievedTargetDays = processedData.filter((d) => d.metTarget).length;
 
   return (
     <Card className={cn('h-full', className)}>
@@ -125,7 +127,7 @@ export default function WeeklyChart({ data, className }: WeeklyChartProps) {
         </div>
         <div className="min-w-0 text-left sm:text-right">
           <p className="text-2xl max-[479px]:text-[22px] font-heading font-bold text-neon-cyan">
-            {data.filter((d) => d.target > 0 && d.hours >= d.target).length}/7
+            {achievedTargetDays}/{totalTargetDays || 7}
           </p>
           <p className="text-xs text-text-secondary">Dias com meta atingida</p>
         </div>
