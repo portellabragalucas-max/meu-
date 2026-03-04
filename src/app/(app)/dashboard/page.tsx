@@ -30,8 +30,17 @@ import {
 } from '@/components/onboarding';
 import { useOnboarding, useLocalStorage } from '@/hooks';
 import { isSameDay, formatDate, formatHoursDuration, getWeekStart, getWeekDates } from '@/lib/utils';
-import { buildCompletedHoursByDate, computeGamificationSnapshot } from '@/lib/progressSnapshot';
-import { applyBlockCompletionMetrics } from '@/services/adaptiveStudyIntelligence';
+import {
+  buildCompletedHoursByDate,
+  buildCompletedSessionsByDate,
+  buildMergedDailyStudyData,
+  computeGamificationSnapshot,
+  getStudySessionsForDate,
+} from '@/lib/progressSnapshot';
+import {
+  applyBlockCompletionMetrics,
+  computeIntelligentAnalyticsSummary,
+} from '@/services/adaptiveStudyIntelligence';
 import type { StudyBlock, Subject, AnalyticsStore, StudyPreferences, UserSettings } from '@/types';
 import { StudyBlockSessionModal } from '@/components/session';
 import { defaultSettings } from '@/lib/defaultSettings';
@@ -114,11 +123,35 @@ export default function DashboardPage() {
   const completedHoursByDate = useMemo(() => {
     return buildCompletedHoursByDate(plannerBlocks);
   }, [plannerBlocks]);
+  const completedSessionsByDate = useMemo(() => {
+    return buildCompletedSessionsByDate(plannerBlocks);
+  }, [plannerBlocks]);
+  const analyticsForSummary = useMemo(
+    () => ({
+      ...analytics,
+      daily: buildMergedDailyStudyData(
+        analytics.daily || {},
+        completedHoursByDate,
+        completedSessionsByDate
+      ),
+    }),
+    [analytics, completedHoursByDate, completedSessionsByDate]
+  );
+  const intelligentSummary = useMemo(
+    () =>
+      computeIntelligentAnalyticsSummary({
+        analytics: analyticsForSummary,
+        subjects,
+        now: new Date(),
+      }),
+    [analyticsForSummary, subjects]
+  );
 
   const weeklyData = useMemo(() => {
     const weekStart = getWeekStart(new Date());
     const weekDates = getWeekDates(weekStart);
     const dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+    const mergedDaily = analyticsForSummary.daily || {};
     const configuredDays = studyPrefs.daysOfWeek ?? [];
     const activeDays =
       configuredDays.length > 0
@@ -130,9 +163,7 @@ export default function DashboardPage() {
 
     return weekDates.map((date) => {
       const dateKey = date.toISOString().split('T')[0];
-      const analyticsHours = analytics.daily[dateKey]?.hours ?? 0;
-      const blocksHours = completedHoursByDate[dateKey] ?? 0;
-      const hours = Math.max(analyticsHours, blocksHours);
+      const hours = mergedDaily[dateKey]?.hours ?? 0;
       const dayIndex = date.getDay();
       return {
         day: dayLabels[dayIndex],
@@ -140,29 +171,48 @@ export default function DashboardPage() {
         target: activeDays.includes(dayIndex) ? perDayGoal : 0,
       };
     });
-  }, [analytics, completedHoursByDate, studyPrefs, weeklyGoal]);
+  }, [analyticsForSummary.daily, studyPrefs, weeklyGoal]);
 
   const weeklyHours = weeklyData.reduce((sum, d) => sum + d.hours, 0);
-  const focusScore = 0;
+  const focusScore = useMemo(() => {
+    if (intelligentSummary.avgFocusScore > 0) {
+      return intelligentSummary.avgFocusScore;
+    }
+
+    const samples: number[] = [];
+    const today = new Date();
+    for (let i = 13; i >= 0; i -= 1) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const dateKey = date.toISOString().split('T')[0];
+      const record = analyticsForSummary.daily[dateKey];
+      const hours = record?.hours ?? 0;
+      if (hours <= 0) continue;
+      samples.push(Math.round(record?.focusScoreAvg ?? 80));
+    }
+
+    if (samples.length === 0) return 0;
+    return Math.round(samples.reduce((sum, value) => sum + value, 0) / samples.length);
+  }, [analyticsForSummary.daily, intelligentSummary.avgFocusScore]);
   const gamification = useMemo(
-    () => computeGamificationSnapshot({ plannerBlocks, analytics }),
-    [plannerBlocks, analytics]
+    () => computeGamificationSnapshot({ plannerBlocks, analytics: analyticsForSummary }),
+    [plannerBlocks, analyticsForSummary]
   );
 
   const completedThisWeek = useMemo(() => {
     const weekStart = getWeekStart(new Date());
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 7);
-    return plannerBlocks.filter((block) => {
-      const blockDate = new Date(block.date);
+    return getWeekDates(weekStart).reduce((sum, date) => {
+      const dateKey = date.toISOString().split('T')[0];
       return (
-        block.status === 'completed' &&
-        blockDate >= weekStart &&
-        blockDate < weekEnd &&
-        !block.isBreak
+        sum +
+        getStudySessionsForDate(
+          dateKey,
+          analyticsForSummary.daily || {},
+          completedSessionsByDate
+        )
       );
-    }).length;
-  }, [plannerBlocks]);
+    }, 0);
+  }, [analyticsForSummary.daily, completedSessionsByDate]);
 
   const weeklyCompletedHoursBySubject = useMemo(() => {
     const weekStart = getWeekStart(new Date());
@@ -574,7 +624,7 @@ export default function DashboardPage() {
                 title="Pontuação de Foco"
                 titleShort="Foco"
                 value={`${focusScore}%`}
-                subtitle="Sem dados ainda"
+                subtitle={focusScore > 0 ? 'Média adaptativa' : 'Sem dados ainda'}
                 icon={Brain}
                 trend={{ value: 0, isPositive: false }}
                 color="purple"

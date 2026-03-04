@@ -1,5 +1,5 @@
 import { levelFromXp } from '@/lib/utils';
-import type { AnalyticsStore, StudyBlock } from '@/types';
+import type { AnalyticsStore, DailyAnalyticsRecord, StudyBlock } from '@/types';
 
 type DailyAnalytics = AnalyticsStore['daily'];
 
@@ -26,6 +26,18 @@ export function buildCompletedHoursByDate(plannerBlocks: StudyBlock[]): Record<s
   return totals;
 }
 
+export function buildCompletedSessionsByDate(plannerBlocks: StudyBlock[]): Record<string, number> {
+  const totals: Record<string, number> = {};
+
+  plannerBlocks.forEach((block) => {
+    if (block.isBreak || block.status !== 'completed') return;
+    const key = toDateKey(block.date);
+    totals[key] = (totals[key] ?? 0) + 1;
+  });
+
+  return totals;
+}
+
 export function getStudyHoursForDate(
   dateKey: string,
   dailyAnalytics: DailyAnalytics,
@@ -34,6 +46,40 @@ export function getStudyHoursForDate(
   const analyticsHours = dailyAnalytics[dateKey]?.hours ?? 0;
   const blockHours = completedHoursByDate[dateKey] ?? 0;
   return Math.max(analyticsHours, blockHours);
+}
+
+export function getStudySessionsForDate(
+  dateKey: string,
+  dailyAnalytics: DailyAnalytics,
+  completedSessionsByDate: Record<string, number>
+) {
+  const analyticsSessions = dailyAnalytics[dateKey]?.sessions ?? 0;
+  const blockSessions = completedSessionsByDate[dateKey] ?? 0;
+  return Math.max(analyticsSessions, blockSessions);
+}
+
+export function buildMergedDailyStudyData(
+  dailyAnalytics: DailyAnalytics,
+  completedHoursByDate: Record<string, number>,
+  completedSessionsByDate: Record<string, number>
+): DailyAnalytics {
+  const merged: DailyAnalytics = { ...dailyAnalytics };
+  const allDateKeys = new Set([
+    ...Object.keys(dailyAnalytics),
+    ...Object.keys(completedHoursByDate),
+    ...Object.keys(completedSessionsByDate),
+  ]);
+
+  allDateKeys.forEach((dateKey) => {
+    const currentRecord = (merged[dateKey] ?? { hours: 0, sessions: 0 }) as DailyAnalyticsRecord;
+    merged[dateKey] = {
+      ...currentRecord,
+      hours: getStudyHoursForDate(dateKey, dailyAnalytics, completedHoursByDate),
+      sessions: getStudySessionsForDate(dateKey, dailyAnalytics, completedSessionsByDate),
+    };
+  });
+
+  return merged;
 }
 
 export function computeStudyStreak(

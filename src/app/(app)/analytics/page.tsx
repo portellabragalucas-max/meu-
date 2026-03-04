@@ -23,7 +23,12 @@ import {
   ActivityHeatmap,
 } from '@/components/analytics';
 import { computeIntelligentAnalyticsSummary } from '@/services/adaptiveStudyIntelligence';
-import { formatHoursDuration } from '@/lib/utils';
+import {
+  buildCompletedHoursByDate,
+  buildCompletedSessionsByDate,
+  buildMergedDailyStudyData,
+} from '@/lib/progressSnapshot';
+import { formatHoursDuration, getWeekDates, getWeekStart } from '@/lib/utils';
 import type { AnalyticsStore, StudyBlock, Subject } from '@/types';
 
 const emptyAnalytics: AnalyticsStore = { daily: {} };
@@ -55,42 +60,26 @@ export default function AnalyticsPage() {
   const now = useMemo(() => (mounted ? new Date() : null), [mounted]);
 
   const completedStats = useMemo(() => {
-    const hoursByDate: Record<string, number> = {};
-    const sessionsByDate: Record<string, number> = {};
-    const hoursBySubject: Record<string, number> = {};
-
-    plannerBlocks.forEach((block) => {
-      if (block.isBreak || block.status !== 'completed') return;
-      const dateKey = new Date(block.date).toISOString().split('T')[0];
-      const hours = block.durationMinutes / 60;
-      hoursByDate[dateKey] = (hoursByDate[dateKey] ?? 0) + hours;
-      sessionsByDate[dateKey] = (sessionsByDate[dateKey] ?? 0) + 1;
-
-      if (block.subjectId) {
-        hoursBySubject[block.subjectId] = (hoursBySubject[block.subjectId] ?? 0) + hours;
-      }
-    });
-
-    return { hoursByDate, sessionsByDate, hoursBySubject };
+    const hoursByDate = buildCompletedHoursByDate(plannerBlocks);
+    const sessionsByDate = buildCompletedSessionsByDate(plannerBlocks);
+    return { hoursByDate, sessionsByDate };
   }, [plannerBlocks]);
+  const mergedDaily = useMemo(
+    () =>
+      buildMergedDailyStudyData(
+        analytics.daily || {},
+        completedStats.hoursByDate,
+        completedStats.sessionsByDate
+      ),
+    [analytics.daily, completedStats.hoursByDate, completedStats.sessionsByDate]
+  );
 
   const analyticsForSummary = useMemo(() => {
-    const mergedDaily = { ...(analytics.daily || {}) };
-
-    Object.entries(completedStats.hoursByDate).forEach(([dateKey, blockHours]) => {
-      const current = mergedDaily[dateKey] || { hours: 0, sessions: 0 };
-      mergedDaily[dateKey] = {
-        ...current,
-        hours: Math.max(current.hours ?? 0, blockHours),
-        sessions: Math.max(current.sessions ?? 0, completedStats.sessionsByDate[dateKey] ?? 0),
-      };
-    });
-
     return {
       ...analytics,
       daily: mergedDaily,
     };
-  }, [analytics, completedStats.hoursByDate, completedStats.sessionsByDate]);
+  }, [analytics, mergedDaily]);
 
   const productivityData = useMemo(() => {
     if (!now) return [];
@@ -101,10 +90,8 @@ export default function AnalyticsPage() {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
       const dateKey = date.toISOString().split('T')[0];
-      const dayRecord = analytics.daily[dateKey];
-      const analyticsHours = dayRecord?.hours ?? 0;
-      const blocksHours = completedStats.hoursByDate[dateKey] ?? 0;
-      const hours = Math.max(analyticsHours, blocksHours);
+      const dayRecord = mergedDaily[dateKey];
+      const hours = dayRecord?.hours ?? 0;
 
       data.push({
         date: date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
@@ -115,27 +102,43 @@ export default function AnalyticsPage() {
     }
 
     return data;
-  }, [analytics, completedStats.hoursByDate, now]);
+  }, [mergedDaily, now]);
 
   const subjectDistribution = useMemo(
-    () =>
-      subjects
-        .map((subject) => {
-          const storeHours = subject.totalHours || 0;
-          const blocksHours = completedStats.hoursBySubject[subject.id] ?? 0;
-          return {
-            name: subject.name,
-            hours: Math.max(storeHours, blocksHours),
-            color: subject.color,
-          };
-        })
-        .filter((subject) => subject.hours > 0)
+    () => {
+      const weekStart = getWeekStart(now ?? new Date());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 7);
+
+      const blocksBySubject: Record<string, number> = {};
+      plannerBlocks.forEach((block) => {
+        if (block.isBreak || block.status !== 'completed' || !block.subjectId) return;
+        const blockDate = new Date(block.date);
+        if (blockDate < weekStart || blockDate >= weekEnd) return;
+        blocksBySubject[block.subjectId] = (blocksBySubject[block.subjectId] ?? 0) + block.durationMinutes / 60;
+      });
+
+      const analyticsBySubject: Record<string, number> = {};
+      getWeekDates(weekStart).forEach((date) => {
+        const dateKey = date.toISOString().split('T')[0];
+        const bySubject = mergedDaily[dateKey]?.bySubject || {};
+        Object.entries(bySubject).forEach(([subjectId, record]) => {
+          analyticsBySubject[subjectId] = (analyticsBySubject[subjectId] ?? 0) + (record?.hours ?? 0);
+        });
+      });
+
+      return subjects
         .map((subject) => ({
           name: subject.name,
-          hours: subject.hours,
+          hours: Math.max(
+            blocksBySubject[subject.id] ?? 0,
+            analyticsBySubject[subject.id] ?? 0
+          ),
           color: subject.color,
-        })),
-    [completedStats.hoursBySubject, subjects]
+        }))
+        .filter((subject) => subject.hours > 0);
+    },
+    [mergedDaily, now, plannerBlocks, subjects]
   );
 
   const heatmapData = useMemo(() => {
@@ -147,9 +150,7 @@ export default function AnalyticsPage() {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
       const dateKey = date.toISOString().split('T')[0];
-      const analyticsHours = analytics.daily[dateKey]?.hours ?? 0;
-      const blocksHours = completedStats.hoursByDate[dateKey] ?? 0;
-      const hours = Math.max(analyticsHours, blocksHours);
+      const hours = mergedDaily[dateKey]?.hours ?? 0;
 
       let level: 0 | 1 | 2 | 3 | 4 = 0;
       if (hours > 0 && hours < 1) level = 1;
@@ -161,9 +162,24 @@ export default function AnalyticsPage() {
     }
 
     return data;
-  }, [analytics, completedStats.hoursByDate, now]);
+  }, [mergedDaily, now]);
 
-  const totalHours = productivityData.reduce((sum, d) => sum + d.hours, 0);
+  const weeklySummary = useMemo(() => {
+    const weekStart = getWeekStart(now ?? new Date());
+    const weekDates = getWeekDates(weekStart);
+
+    const hours = weekDates.reduce((sum, date) => {
+      const dateKey = date.toISOString().split('T')[0];
+      return sum + (mergedDaily[dateKey]?.hours ?? 0);
+    }, 0);
+
+    const sessions = weekDates.reduce((sum, date) => {
+      const dateKey = date.toISOString().split('T')[0];
+      return sum + (mergedDaily[dateKey]?.sessions ?? 0);
+    }, 0);
+
+    return { hours, sessions };
+  }, [mergedDaily, now]);
   const intelligentSummary = useMemo(
     () => computeIntelligentAnalyticsSummary({ analytics: analyticsForSummary, subjects, now: now ?? new Date() }),
     [analyticsForSummary, subjects, now]
@@ -185,19 +201,6 @@ export default function AnalyticsPage() {
             studiedDays.length
         )
       : 0);
-  const sessionsCompleted = useMemo(() => {
-    if (!now) return 0;
-    let total = 0;
-    for (let i = 13; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(now.getDate() - i);
-      const dateKey = date.toISOString().split('T')[0];
-      const analyticsSessions = analytics.daily[dateKey]?.sessions ?? 0;
-      const blockSessions = completedStats.sessionsByDate[dateKey] ?? 0;
-      total += Math.max(analyticsSessions, blockSessions);
-    }
-    return total;
-  }, [analytics, completedStats.sessionsByDate, now]);
   const avgAccuracy = Math.round((intelligentSummary.avgAccuracyRate || 0) * 100);
 
   if (!mounted) {
@@ -232,10 +235,10 @@ export default function AnalyticsPage() {
         className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-[479px]:gap-2"
       >
         <StatsCard
-          title="Tempo Total de Estudo"
+          title="Tempo de Estudo"
           titleShort="Tempo"
-          value={formatHoursDuration(totalHours)}
-          subtitle="Últimos 14 dias"
+          value={formatHoursDuration(weeklySummary.hours)}
+          subtitle="Esta semana"
           icon={Clock}
           trend={{ value: 0, isPositive: false }}
           color="blue"
@@ -274,8 +277,8 @@ export default function AnalyticsPage() {
         <StatsCard
           title="Sessões Concluídas"
           titleShort="Sessões"
-          value={sessionsCompleted}
-          subtitle="Últimos 14 dias"
+          value={weeklySummary.sessions}
+          subtitle="Esta semana"
           icon={Award}
           color="orange"
           variant="mobile"
