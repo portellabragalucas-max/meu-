@@ -27,6 +27,9 @@ interface WebPushError extends Error {
   statusCode?: number;
 }
 
+const STUDY_NOTIFICATION_DISPATCH_WINDOW_MINUTES = 15;
+const BLOCK_LOOKAROUND_HOURS = 36;
+
 const toUtcDayStart = (date: Date) =>
   new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 
@@ -51,6 +54,159 @@ const formatHoursFromMinutes = (minutes: number) => {
   const remainingMinutes = safeMinutes % 60;
   if (safeMinutes < 60) return `${safeMinutes} min`;
   return `${hours}:${String(remainingMinutes).padStart(2, '0')}`;
+};
+
+const formatClock = (date: Date) =>
+  `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+
+const resolveBlockStartDateTime = (date: Date, startTime: string) => {
+  const [hourValue, minuteValue] = startTime.split(':').map(Number);
+  if (!Number.isFinite(hourValue) || !Number.isFinite(minuteValue)) return null;
+  const startAt = new Date(date);
+  startAt.setHours(hourValue, minuteValue, 0, 0);
+  return Number.isNaN(startAt.getTime()) ? null : startAt;
+};
+
+const buildStudyBlockLabel = (subjectName: string | null | undefined, blockType: string | null) => {
+  const baseName = subjectName?.trim() || 'Sessao de estudo';
+  if (!blockType) return baseName;
+
+  const typeLabelMap: Record<string, string> = {
+    AULA: 'Aula',
+    EXERCICIOS: 'Exercicios',
+    REVISAO: 'Revisao',
+    SIMULADO_AREA: 'Simulado',
+    SIMULADO_COMPLETO: 'Simulado completo',
+    ANALISE: 'Analise',
+  };
+
+  const typeLabel = typeLabelMap[blockType] || 'Sessao';
+  return `${baseName} - ${typeLabel}`;
+};
+
+const dispatchScheduledStudyNotifications = async ({
+  userId,
+  firstName,
+  now,
+  todayKey,
+  todayStart,
+  notificationsEnabled,
+  notificationMinutesBefore,
+  backlogReminderEnabled,
+}: {
+  userId: string;
+  firstName: string;
+  now: Date;
+  todayKey: string;
+  todayStart: Date;
+  notificationsEnabled: boolean;
+  notificationMinutesBefore: number;
+  backlogReminderEnabled: boolean;
+}) => {
+  if (!notificationsEnabled) {
+    return 0;
+  }
+
+  const sanitizedMinutesBefore = Math.min(180, Math.max(1, Math.round(notificationMinutesBefore || 15)));
+  const rangeStart = new Date(now.getTime() - BLOCK_LOOKAROUND_HOURS * 60 * 60 * 1000);
+  const rangeEnd = new Date(now.getTime() + BLOCK_LOOKAROUND_HOURS * 60 * 60 * 1000);
+  const dispatchWindowMs = STUDY_NOTIFICATION_DISPATCH_WINDOW_MINUTES * 60 * 1000;
+
+  let createdCount = 0;
+
+  const candidateBlocks = await prisma.studyBlock.findMany({
+    where: {
+      userId,
+      isBreak: false,
+      status: {
+        in: ['scheduled', 'rescheduled'],
+      },
+      date: {
+        gte: rangeStart,
+        lte: rangeEnd,
+      },
+    },
+    select: {
+      id: true,
+      date: true,
+      startTime: true,
+      type: true,
+      subject: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  for (const block of candidateBlocks) {
+    const startAt = resolveBlockStartDateTime(new Date(block.date), block.startTime);
+    if (!startAt) continue;
+
+    const notifyAt = new Date(startAt.getTime() - sanitizedMinutesBefore * 60 * 1000);
+    const delayMs = now.getTime() - notifyAt.getTime();
+
+    if (delayMs < 0 || delayMs > dispatchWindowMs) continue;
+
+    const label = buildStudyBlockLabel(block.subject?.name, block.type ?? null);
+    const result = await createNotificationForUser({
+      userId,
+      type: 'study',
+      title: 'Lembrete de estudo',
+      message: `${firstName}, ${label} comeca as ${formatClock(startAt)}.`,
+      url: '/planner',
+      dedupeKey: `study:block:${block.id}:${sanitizedMinutesBefore}:${notifyAt.toISOString()}`,
+      sendPush: true,
+      metadata: {
+        source: 'cron_block_scheduler',
+        blockId: block.id,
+        notifyAtIso: notifyAt.toISOString(),
+        blockStartIso: startAt.toISOString(),
+        minutesBefore: sanitizedMinutesBefore,
+      },
+    });
+
+    if (result.created) {
+      createdCount += 1;
+    }
+  }
+
+  if (backlogReminderEnabled) {
+    const overdueBacklogCount = await prisma.studyBlock.count({
+      where: {
+        userId,
+        isBreak: false,
+        status: {
+          in: ['scheduled', 'rescheduled', 'skipped', 'in-progress'],
+        },
+        date: {
+          lt: todayStart,
+        },
+      },
+    });
+
+    if (overdueBacklogCount > 0) {
+      const backlogResult = await createNotificationForUser({
+        userId,
+        type: 'backlog',
+        title: 'Pendencias acumuladas',
+        message: `${firstName}, voce tem ${overdueBacklogCount} pendencia(s) vencida(s). Replaneje sua agenda hoje.`,
+        url: '/planner',
+        dedupeKey: `backlog:auto:${todayKey}`,
+        sendPush: true,
+        metadata: {
+          source: 'cron_backlog_scheduler',
+          overdueBacklogCount,
+        },
+      });
+
+      if (backlogResult.created) {
+        createdCount += 1;
+      }
+    }
+  }
+
+  return createdCount;
 };
 
 const pushToUser = async ({
@@ -243,6 +399,9 @@ export const syncNotificationsForUser = async (userId: string) => {
           streakReminder: true,
           weeklyReport: true,
           achievementAlerts: true,
+          notificationsEnabled: true,
+          notificationMinutesBefore: true,
+          backlogReminderEnabled: true,
         },
       },
     },
@@ -257,6 +416,9 @@ export const syncNotificationsForUser = async (userId: string) => {
   const streakReminderEnabled = preferences?.streakReminder ?? true;
   const weeklyReportEnabled = preferences?.weeklyReport ?? true;
   const achievementAlertsEnabled = preferences?.achievementAlerts ?? true;
+  const studyNotificationsEnabled = preferences?.notificationsEnabled ?? false;
+  const notificationMinutesBefore = preferences?.notificationMinutesBefore ?? 15;
+  const backlogReminderEnabled = preferences?.backlogReminderEnabled ?? false;
 
   const fullName = user.name?.trim() || 'Estudante';
   const firstName = fullName.split(' ')[0] || fullName;
@@ -388,6 +550,18 @@ export const syncNotificationsForUser = async (userId: string) => {
       }
     }
   }
+
+  const studyNotificationsCreated = await dispatchScheduledStudyNotifications({
+    userId,
+    firstName,
+    now,
+    todayKey,
+    todayStart,
+    notificationsEnabled: studyNotificationsEnabled,
+    notificationMinutesBefore,
+    backlogReminderEnabled,
+  });
+  createdCount += studyNotificationsCreated;
 
   return { createdCount };
 };

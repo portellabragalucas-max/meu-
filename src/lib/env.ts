@@ -12,7 +12,11 @@ export const env = {
   vapidPublicKey: (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '').trim(),
   vapidPrivateKey: (process.env.VAPID_PRIVATE_KEY ?? '').trim(),
   vapidSubject: (process.env.VAPID_SUBJECT ?? '').trim(),
-  notificationsCronSecret: (process.env.NOTIFICATIONS_CRON_SECRET ?? '').trim(),
+  notificationsCronSecret: (
+    process.env.NOTIFICATIONS_CRON_SECRET ??
+    process.env.CRON_SECRET ??
+    ''
+  ).trim(),
 };
 
 export const hasGoogleAuth = Boolean(env.googleClientId && env.googleClientSecret);
