@@ -64,7 +64,7 @@ export default function DayColumn({
 
   const isToday = isSameDay(date, new Date());
   const totalMinutes = blocks
-    .filter((b) => !b.isBreak)
+    .filter((b) => !b.isBreak && b.status !== 'completed' && b.status !== 'skipped')
     .reduce((sum, b) => sum + b.durationMinutes, 0);
   const totalHours = formatDuration(totalMinutes);
   const limitHours = dailyLimitMinutes > 0 ? formatDuration(dailyLimitMinutes) : null;
@@ -119,7 +119,7 @@ export default function DayColumn({
 
         {/* Estatísticas do Dia */}
         <div className="mt-2 flex items-center justify-between gap-2 text-xs text-text-secondary">
-          <span>{blocks.filter((b) => !b.isBreak).length} blocos</span>
+          <span>{blocks.filter((b) => !b.isBreak && b.status !== 'completed' && b.status !== 'skipped').length} blocos</span>
           <span className="font-semibold text-white">{totalHours}</span>
         </div>
         <div className="mt-2 flex items-center justify-between gap-2 text-xs text-text-secondary">

@@ -78,6 +78,12 @@ const parseLocalDateKey = (value: string) => {
 const hasManualSequence = (block: StudyBlock) =>
   typeof block.sequenceIndex === 'number' && Number.isFinite(block.sequenceIndex);
 
+const isLockedScheduleBlock = (block: StudyBlock) =>
+  block.status === 'completed' || block.status === 'in-progress';
+
+const isCapacityStudyBlock = (block: StudyBlock) =>
+  !block.isBreak && block.status !== 'completed' && block.status !== 'skipped';
+
 const compareDayBlocks = (a: StudyBlock, b: StudyBlock) => {
   const aHasSequence = hasManualSequence(a);
   const bHasSequence = hasManualSequence(b);
@@ -90,6 +96,30 @@ const compareDayBlocks = (a: StudyBlock, b: StudyBlock) => {
   }
 
   return a.startTime.localeCompare(b.startTime);
+};
+
+const sortBlocksChronologically = (blocks: StudyBlock[]) =>
+  [...blocks].sort((a, b) => {
+    const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+    if (dateDiff !== 0) return dateDiff;
+    return a.startTime.localeCompare(b.startTime);
+  });
+
+const areBlocksEquivalent = (a: StudyBlock[], b: StudyBlock[]) => {
+  if (a.length !== b.length) return false;
+  const first = sortBlocksChronologically(a);
+  const second = sortBlocksChronologically(b);
+  for (let i = 0; i < first.length; i += 1) {
+    const one = first[i];
+    const two = second[i];
+    if (one.id !== two.id) return false;
+    if (new Date(one.date).getTime() !== new Date(two.date).getTime()) return false;
+    if (one.startTime !== two.startTime || one.endTime !== two.endTime) return false;
+    if (one.durationMinutes !== two.durationMinutes) return false;
+    if (one.status !== two.status) return false;
+    if ((one.rescheduleCount || 0) !== (two.rescheduleCount || 0)) return false;
+  }
+  return true;
 };
 
 interface WeeklyPlannerProps {
@@ -346,7 +376,7 @@ export default function WeeklyPlanner({
     const grouped = new Map<string, StudyBlock[]>();
     
     weekDates.forEach((date) => {
-      const dateKey = date.toISOString().split('T')[0];
+      const dateKey = toLocalDateKey(date);
       grouped.set(
         dateKey,
         blocks
@@ -359,12 +389,12 @@ export default function WeeklyPlanner({
   }, [blocks, weekDates]);
 
   const mobileDay = weekDates[mobileDayIndex] ?? weekDates[0];
-  const mobileDayKey = mobileDay ? mobileDay.toISOString().split('T')[0] : '';
+  const mobileDayKey = mobileDay ? toLocalDateKey(mobileDay) : '';
   const mobileDayBlocks = mobileDayKey ? blocksByDay.get(mobileDayKey) ?? [] : [];
   const mobileStudyMinutes = mobileDayBlocks
-    .filter((block) => !block.isBreak)
+    .filter((block) => isCapacityStudyBlock(block))
     .reduce((sum, block) => sum + block.durationMinutes, 0);
-  const mobileSessions = mobileDayBlocks.filter((block) => !block.isBreak).length;
+  const mobileSessions = mobileDayBlocks.filter((block) => isCapacityStudyBlock(block)).length;
   const visibleDates = isMobile ? [mobileDay] : weekDates;
   const todayKey = useMemo(() => toLocalDateKey(new Date()), []);
 
@@ -498,17 +528,28 @@ export default function WeeklyPlanner({
     return defaultDailyLimitMinutes;
   };
 
-  const moveBlocksToNextAllowedDay = (
-    sourceDate: Date,
-    blocksToMove: StudyBlock[]
-  ) => {
-    if (blocksToMove.length === 0) return;
-    const DEFAULT_START = timeToMinutes('09:00');
-    const DEFAULT_END = timeToMinutes('18:00');
-
-    const baseBlocks = blocks.filter(
-      (block) => !blocksToMove.some((moved) => moved.id === block.id)
+  const getDayStudyMinutesForCapacity = (dayBlocks: StudyBlock[]) =>
+    dayBlocks.reduce(
+      (sum, block) => (isCapacityStudyBlock(block) ? sum + block.durationMinutes : sum),
+      0
     );
+
+  const getPlannerWindowBounds = () => {
+    const start = timeToMinutes(userSettings.preferredStart || '09:00');
+    const configuredEnd = timeToMinutes(userSettings.preferredEnd || '18:00');
+    const end = Math.max(start + 60, configuredEnd);
+    return { start, end };
+  };
+
+  const moveBlocksToNextAllowedDayInternal = (
+    sourceDate: Date,
+    blocksToMove: StudyBlock[],
+    sourceBlocks: StudyBlock[]
+  ) => {
+    if (blocksToMove.length === 0) return { blocks: sourceBlocks, moved: false };
+    const { start: defaultStart, end: defaultEnd } = getPlannerWindowBounds();
+    const idsToMove = new Set(blocksToMove.map((block) => block.id));
+    const baseBlocks = sourceBlocks.filter((block) => !idsToMove.has(block.id));
 
     const blocksMap = new Map<string, StudyBlock[]>();
     for (const block of baseBlocks) {
@@ -518,46 +559,67 @@ export default function WeeklyPlanner({
       blocksMap.set(key, list);
     }
 
-    const sortedToMove = [...blocksToMove].sort((a, b) =>
-      a.startTime.localeCompare(b.startTime)
-    );
+    const sortedToMove = [...blocksToMove].sort(compareDayBlocks);
+    const sourceBaseDate = new Date(sourceDate);
+    sourceBaseDate.setHours(0, 0, 0, 0);
 
-    let cursorDate = new Date(sourceDate);
+    let cursorDate = new Date(sourceBaseDate);
     cursorDate.setDate(cursorDate.getDate() + 1);
     while (!isAllowedDay(cursorDate)) {
       cursorDate.setDate(cursorDate.getDate() + 1);
     }
 
     const movedBlocks: StudyBlock[] = [];
+    let hasMutation = false;
 
     for (const block of sortedToMove) {
       let placed = false;
       let guard = 0;
-      while (!placed && guard < 31) {
+      while (!placed && guard < 90) {
         const key = toLocalKey(cursorDate);
-        const dayBlocks = blocksMap.get(key) ?? [];
+        const dayBlocks = [...(blocksMap.get(key) ?? [])].sort(compareDayBlocks);
+        const dayLimit = getDailyLimitMinutes(cursorDate);
+        const dayStudyMinutes = getDayStudyMinutesForCapacity(dayBlocks);
         const lastEnd = dayBlocks.reduce(
           (max, item) => Math.max(max, timeToMinutes(item.endTime)),
-          DEFAULT_START
+          defaultStart
         );
-        const startMinutes = Math.max(lastEnd, DEFAULT_START);
+        const startMinutes = Math.max(lastEnd, defaultStart);
         const endMinutes = startMinutes + block.durationMinutes;
+        const exceedsDailyLimit =
+          !block.isBreak && dayLimit > 0 && dayStudyMinutes + block.durationMinutes > dayLimit;
 
-        if (endMinutes <= DEFAULT_END) {
+        if (endMinutes <= defaultEnd && !exceedsDailyLimit) {
+          const originalDate = block.originalDate ? new Date(block.originalDate) : new Date(block.date);
+          originalDate.setHours(0, 0, 0, 0);
+
           const moved: StudyBlock = {
             ...block,
             date: new Date(cursorDate),
             startTime: minutesToTime(startMinutes),
             endTime: minutesToTime(endMinutes),
-            status: block.isBreak ? block.status : 'rescheduled',
-            originalDate: block.originalDate ? new Date(block.originalDate) : new Date(block.date),
-            rescheduleCount: block.isBreak ? block.rescheduleCount : (block.rescheduleCount || 0) + 1,
+            status:
+              block.isBreak || isLockedScheduleBlock(block) ? block.status : ('rescheduled' as const),
+            originalDate: block.isBreak ? block.originalDate : originalDate,
+            rescheduleCount:
+              block.isBreak || isLockedScheduleBlock(block)
+                ? block.rescheduleCount
+                : (block.rescheduleCount || 0) + 1,
             updatedAt: new Date(),
           };
           movedBlocks.push(moved);
           dayBlocks.push(moved);
           blocksMap.set(key, dayBlocks);
           placed = true;
+
+          if (
+            new Date(moved.date).getTime() !== new Date(block.date).getTime() ||
+            moved.startTime !== block.startTime ||
+            moved.endTime !== block.endTime ||
+            moved.status !== block.status
+          ) {
+            hasMutation = true;
+          }
         } else {
           cursorDate.setDate(cursorDate.getDate() + 1);
           while (!isAllowedDay(cursorDate)) {
@@ -566,22 +628,33 @@ export default function WeeklyPlanner({
         }
         guard += 1;
       }
+
+      if (!placed) {
+        movedBlocks.push(block);
+      }
     }
 
-    const updatedBlocks = [...baseBlocks, ...movedBlocks].sort((a, b) => {
-      const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (dateDiff !== 0) return dateDiff;
-      return a.startTime.localeCompare(b.startTime);
-    });
+    const updatedBlocks = sortBlocksChronologically([...baseBlocks, ...movedBlocks]);
+    return { blocks: updatedBlocks, moved: hasMutation };
+  };
 
-    setBlocks(updatedBlocks);
-    onBlocksChange(updatedBlocks);
+  const moveBlocksToNextAllowedDay = (
+    sourceDate: Date,
+    blocksToMove: StudyBlock[]
+  ) => {
+    const result = moveBlocksToNextAllowedDayInternal(sourceDate, blocksToMove, blocks);
+    if (!result.moved || areBlocksEquivalent(result.blocks, blocks)) {
+      return false;
+    }
+
+    setBlocks(result.blocks);
+    onBlocksChange(result.blocks);
+    return true;
   };
 
   const pullBlocksToDay = (targetDate: Date, availableStudyMinutes: number) => {
     if (availableStudyMinutes <= 0) return;
-    const DEFAULT_START = timeToMinutes('09:00');
-    const DEFAULT_END = timeToMinutes('18:00');
+    const { start: DEFAULT_START, end: DEFAULT_END } = getPlannerWindowBounds();
     const targetKey = toLocalKey(targetDate);
 
     const existingBlocks = blocks
@@ -689,14 +762,16 @@ export default function WeeklyPlanner({
 
     for (let i = 0; i < sorted.length; i++) {
       const block = sorted[i];
-      if (!block.isBreak) {
+      if (isCapacityStudyBlock(block)) {
         if (studyMinutes + block.durationMinutes > next) break;
         studyMinutes += block.durationMinutes;
       }
       keepIndex = i;
     }
 
-    const overflowBlocks = sorted.slice(keepIndex + 1);
+    const overflowBlocks = sorted
+      .slice(keepIndex + 1)
+      .filter((block) => !isLockedScheduleBlock(block));
     if (overflowBlocks.length > 0) {
       moveBlocksToNextAllowedDay(date, overflowBlocks);
     }
@@ -706,6 +781,55 @@ export default function WeeklyPlanner({
       pullBlocksToDay(date, availableStudyMinutes);
     }
   };
+
+  /* eslint-disable react-hooks/exhaustive-deps */
+  useEffect(() => {
+    if (blocks.length === 0) return;
+
+    const dayKeys = Array.from(
+      new Set(blocks.map((block) => toLocalKey(new Date(block.date))))
+    ).sort();
+
+    for (const dayKey of dayKeys) {
+      const dayDate = parseLocalKey(dayKey);
+      if (!dayDate || Number.isNaN(dayDate.getTime())) continue;
+      const dailyLimit = getDailyLimitMinutes(dayDate);
+      if (dailyLimit <= 0) continue;
+
+      const dayBlocks = blocks
+        .filter((block) => toLocalKey(new Date(block.date)) === dayKey)
+        .sort(compareDayBlocks);
+      const activeStudyMinutes = getDayStudyMinutesForCapacity(dayBlocks);
+      if (activeStudyMinutes <= dailyLimit) continue;
+
+      let studyMinutes = 0;
+      let keepIndex = -1;
+      for (let i = 0; i < dayBlocks.length; i += 1) {
+        const block = dayBlocks[i];
+        if (isCapacityStudyBlock(block)) {
+          if (studyMinutes + block.durationMinutes > dailyLimit) break;
+          studyMinutes += block.durationMinutes;
+        }
+        keepIndex = i;
+      }
+
+      const overflowBlocks = dayBlocks
+        .slice(keepIndex + 1)
+        .filter((block) => !isLockedScheduleBlock(block));
+      if (overflowBlocks.length === 0) continue;
+
+      const moved = moveBlocksToNextAllowedDay(dayDate, overflowBlocks);
+      if (moved) return;
+    }
+  }, [
+    allowedDays,
+    blocks,
+    dailyHoursByWeekday,
+    dailyLimits,
+    defaultDailyLimitMinutes,
+    defaultDailyLimitsByDate,
+  ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const buildDailyLimitMapForBacklog = (start: Date, days = 14) => {
     const map: Record<string, number> = {};
@@ -719,11 +843,7 @@ export default function WeeklyPlanner({
   };
 
   const commitBlocksUpdate = (nextBlocks: StudyBlock[]) => {
-    const ordered = [...nextBlocks].sort((a, b) => {
-      const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (dateDiff !== 0) return dateDiff;
-      return a.startTime.localeCompare(b.startTime);
-    });
+    const ordered = sortBlocksChronologically(nextBlocks);
     setBlocks(ordered);
     onBlocksChange(ordered);
   };
@@ -1180,7 +1300,10 @@ export default function WeeklyPlanner({
   // Verificar se está visualizando a semana atual
   const isCurrentWeek = isSameDay(currentWeekStart, getWeekStart());
   const isViewingToday = isMobile && mobileDay ? isSameDay(mobileDay, new Date()) : false;
-  const plannedStudyBlocks = useMemo(() => blocks.filter((block) => !block.isBreak), [blocks]);
+  const plannedStudyBlocks = useMemo(
+    () => blocks.filter((block) => isCapacityStudyBlock(block)),
+    [blocks]
+  );
   const plannedStudyMinutes = useMemo(
     () => plannedStudyBlocks.reduce((sum, block) => sum + block.durationMinutes, 0),
     [plannedStudyBlocks]
