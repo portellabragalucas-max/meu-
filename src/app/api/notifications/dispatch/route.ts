@@ -5,19 +5,32 @@ import { syncNotificationsForUser } from '@/lib/notification-center';
 
 export const dynamic = 'force-dynamic';
 
+const getAcceptedCronSecrets = () =>
+  Array.from(
+    new Set(
+      [env.notificationsCronSecret, (process.env.CRON_SECRET ?? '').trim()]
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0)
+    )
+  );
+
 const isAuthorized = (request: Request) => {
-  const expectedSecret = env.notificationsCronSecret.trim();
-  if (!expectedSecret) return false;
+  const acceptedSecrets = getAcceptedCronSecrets();
+  if (acceptedSecrets.length === 0) return false;
 
   const authorization = request.headers.get('authorization') || '';
-  return authorization === `Bearer ${expectedSecret}`;
+  return acceptedSecrets.some((secret) => authorization === `Bearer ${secret}`);
 };
 
 const handleDispatch = async (request: Request) => {
   try {
-    if (!env.notificationsCronSecret.trim()) {
+    const acceptedSecrets = getAcceptedCronSecrets();
+    if (acceptedSecrets.length === 0) {
       return NextResponse.json(
-        { success: false, error: 'NOTIFICATIONS_CRON_SECRET nao configurado.' },
+        {
+          success: false,
+          error: 'Configure NOTIFICATIONS_CRON_SECRET ou CRON_SECRET para habilitar o cron.',
+        },
         { status: 503 }
       );
     }
