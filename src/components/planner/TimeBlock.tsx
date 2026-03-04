@@ -10,6 +10,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
 import {
   GripVertical,
+  Bell,
   Coffee,
   Trash2,
   Edit,
@@ -24,6 +25,7 @@ import {
 } from 'lucide-react';
 import { cn, formatDuration } from '@/lib/utils';
 import { getStudyBlockDisplayTitle } from '@/lib/studyBlockLabels';
+import { getStudyBlockNotificationPreview } from '@/services/notificationScheduler';
 import type { StudyBlock } from '@/types';
 
 interface TimeBlockProps {
@@ -34,6 +36,8 @@ interface TimeBlockProps {
   onMarkDone?: (block: StudyBlock) => void;
   onSkipToday?: (block: StudyBlock) => void;
   onQuickReschedule?: (block: StudyBlock) => void;
+  notificationsEnabled?: boolean;
+  notificationMinutesBefore?: number;
   isDragging?: boolean;
 }
 
@@ -45,6 +49,8 @@ export default function TimeBlock({
   onMarkDone,
   onSkipToday,
   onQuickReschedule,
+  notificationsEnabled = false,
+  notificationMinutesBefore = 15,
   isDragging = false,
 }: TimeBlockProps) {
   const {
@@ -89,6 +95,16 @@ export default function TimeBlock({
     !block.isBreak && block.subject?.name
       ? block.subject.name
       : getStudyBlockDisplayTitle(block);
+
+  const notificationPreview = getStudyBlockNotificationPreview(
+    block,
+    {
+      notificationsEnabled,
+      notificationMinutesBefore,
+    },
+    new Date()
+  );
+  const showNotificationBadge = notificationPreview.isActive;
 
   return (
     <motion.div
@@ -137,6 +153,15 @@ export default function TimeBlock({
             <h4 className="font-medium text-sm text-white truncate sm:text-[1rem]">
               {displayTitle}
             </h4>
+            {showNotificationBadge && (
+              <span
+                className="inline-flex items-center justify-center rounded-full border border-neon-cyan/40 bg-neon-cyan/10 p-1 text-neon-cyan"
+                title={`Notificacao ${notificationPreview.minutesBefore} min antes`}
+                aria-label={`Notificacao ${notificationPreview.minutesBefore} minutos antes`}
+              >
+                <Bell className="h-3 w-3" />
+              </span>
+            )}
           </div>
 
           <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] text-text-secondary sm:mt-1 sm:gap-1.5 sm:text-xs">

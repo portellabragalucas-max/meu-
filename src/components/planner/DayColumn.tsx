@@ -28,6 +28,8 @@ interface DayColumnProps {
   onMarkBlockDone?: (block: StudyBlock) => void;
   onSkipBlockToday?: (block: StudyBlock) => void;
   onQuickRescheduleBlock?: (block: StudyBlock) => void;
+  notificationsEnabled?: boolean;
+  notificationMinutesBefore?: number;
 }
 
 // Mapa de dias da semana em português
@@ -53,6 +55,8 @@ export default function DayColumn({
   onMarkBlockDone,
   onSkipBlockToday,
   onQuickRescheduleBlock,
+  notificationsEnabled = false,
+  notificationMinutesBefore = 15,
 }: DayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: date.toISOString(),
@@ -184,6 +188,8 @@ export default function DayColumn({
                 onMarkDone={onMarkBlockDone}
                 onSkipToday={onSkipBlockToday}
                 onQuickReschedule={onQuickRescheduleBlock}
+                notificationsEnabled={notificationsEnabled}
+                notificationMinutesBefore={notificationMinutesBefore}
                 onEdit={onEditBlock}
                 onDelete={onDeleteBlock}
               />

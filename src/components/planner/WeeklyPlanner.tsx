@@ -29,6 +29,7 @@ import {
   ListTodo,
   AlertTriangle,
   Flame,
+  BellOff,
 } from 'lucide-react';
 import {
   getWeekStart,
@@ -42,12 +43,20 @@ import {
 } from '@/lib/utils';
 import { Button, Card } from '@/components/ui';
 import { useLocalStorage } from '@/hooks';
+import { defaultSettings } from '@/lib/defaultSettings';
 import { getStudyBlockDisplayTitle } from '@/lib/studyBlockLabels';
 import DayColumn from './DayColumn';
 import TimeBlock from './TimeBlock';
 import BlockFormModal, { type BlockFormData } from './BlockFormModal';
 import { StudyBlockSessionModal } from '@/components/session';
-import type { AnalyticsStore, DailyHoursByWeekday, StudyBlock, Subject, WeekdayKey } from '@/types';
+import type {
+  AnalyticsStore,
+  DailyHoursByWeekday,
+  StudyBlock,
+  Subject,
+  UserSettings,
+  WeekdayKey,
+} from '@/types';
 import { autoRescheduleBacklog, getBacklogEntries } from '@/services/backlogRescheduler';
 import { applyBlockCompletionMetrics } from '@/services/adaptiveStudyIntelligence';
 
@@ -154,6 +163,26 @@ export default function WeeklyPlanner({
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      setNotificationPermissionBlocked(false);
+      return;
+    }
+
+    const refreshPermissionState = () => {
+      setNotificationPermissionBlocked(Notification.permission === 'denied');
+    };
+
+    refreshPermissionState();
+    document.addEventListener('visibilitychange', refreshPermissionState);
+    window.addEventListener('focus', refreshPermissionState);
+
+    return () => {
+      document.removeEventListener('visibilitychange', refreshPermissionState);
+      window.removeEventListener('focus', refreshPermissionState);
+    };
+  }, []);
   const [activeBlock, setActiveBlock] = useState<StudyBlock | null>(null);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [editingBlock, setEditingBlock] = useState<StudyBlock | null>(null);
@@ -187,6 +216,7 @@ export default function WeeklyPlanner({
     'nexora_daily_limits',
     {}
   );
+  const [userSettings] = useLocalStorage<UserSettings>('nexora_user_settings', defaultSettings);
   const [storedSubjects, setStoredSubjects] = useLocalStorage<Subject[]>('nexora_subjects', []);
   const [analytics, setAnalytics] = useLocalStorage<AnalyticsStore>('nexora_analytics', emptyAnalytics);
   const [lastBacklogAutoRunDay, setLastBacklogAutoRunDay] = useLocalStorage<string>(
@@ -195,6 +225,7 @@ export default function WeeklyPlanner({
   );
   const [sessionBlock, setSessionBlock] = useState<StudyBlock | null>(null);
   const [isSessionOpen, setIsSessionOpen] = useState(false);
+  const [notificationPermissionBlocked, setNotificationPermissionBlocked] = useState(false);
   const autoBacklogRunRef = useRef<string>('');
   const topScrollRef = useRef<HTMLDivElement | null>(null);
   const boardScrollRef = useRef<HTMLDivElement | null>(null);
@@ -1268,6 +1299,18 @@ export default function WeeklyPlanner({
         )}
 
         {backlogNotice && <p className="mt-2 text-xs text-text-secondary">{backlogNotice}</p>}
+
+        {userSettings.notificationsEnabled && notificationPermissionBlocked && (
+          <div className="mt-3 rounded-xl border border-orange-400/30 bg-orange-400/10 p-3 text-xs text-orange-100">
+            <div className="flex items-start gap-2">
+              <BellOff className="mt-0.5 h-4 w-4 shrink-0 text-orange-200" />
+              <p>
+                Permissao de notificacao bloqueada no navegador. Reative para receber alertas dos
+                blocos no horario correto.
+              </p>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Navegação da Semana */}
@@ -1407,6 +1450,8 @@ export default function WeeklyPlanner({
                     onMarkBlockDone={handleMarkBlockDoneQuick}
                     onSkipBlockToday={handleSkipBlockToday}
                     onQuickRescheduleBlock={handleRequestQuickReschedule}
+                    notificationsEnabled={userSettings.notificationsEnabled}
+                    notificationMinutesBefore={userSettings.notificationMinutesBefore}
                   />
                 );
               })}

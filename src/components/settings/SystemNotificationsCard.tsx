@@ -177,7 +177,7 @@ export default function SystemNotificationsCard() {
         });
       }
 
-      const subscribeResponse = await fetch('/api/notifications/subscription', {
+      const subscribeResponse = await fetch('/api/notifications/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -265,7 +265,7 @@ export default function SystemNotificationsCard() {
       const subscription = await registration.pushManager.getSubscription();
 
       if (subscription) {
-        await fetch('/api/notifications/subscription', {
+        await fetch('/api/notifications/subscribe', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -275,7 +275,7 @@ export default function SystemNotificationsCard() {
 
         await subscription.unsubscribe();
       } else {
-        await fetch('/api/notifications/subscription', {
+        await fetch('/api/notifications/subscribe', {
           method: 'DELETE',
         });
       }

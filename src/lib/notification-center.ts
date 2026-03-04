@@ -3,7 +3,14 @@ import { hasWebPush } from '@/lib/env';
 import { sendWebPushNotification } from '@/lib/web-push';
 import type { Prisma } from '@prisma/client';
 
-export type NotificationType = 'daily' | 'streak' | 'weekly' | 'achievement' | 'system';
+export type NotificationType =
+  | 'daily'
+  | 'streak'
+  | 'weekly'
+  | 'achievement'
+  | 'study'
+  | 'backlog'
+  | 'system';
 
 interface CreateNotificationInput {
   userId: string;

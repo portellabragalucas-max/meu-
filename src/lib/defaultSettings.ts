@@ -34,6 +34,10 @@ export const defaultSettings: UserSettings = {
   streakReminder: true,
   achievementAlerts: true,
   weeklyReport: true,
+  notificationsEnabled: false,
+  notificationMinutesBefore: 15,
+  notificationSoundEnabled: true,
+  backlogReminderEnabled: false,
   alarmSound: 'pulse',
 
   // Prova

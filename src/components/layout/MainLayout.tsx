@@ -16,6 +16,10 @@ import { useLocalStorage } from '@/hooks';
 import { useServerProgressSync } from '@/hooks/useServerProgressSync';
 import { defaultSettings } from '@/lib/defaultSettings';
 import { computeGamificationSnapshot } from '@/lib/progressSnapshot';
+import {
+  clearStudyNotificationSchedule,
+  recalculateStudyNotificationSchedule,
+} from '@/services/notificationScheduler';
 import type { AnalyticsStore, StudyBlock, UserSettings } from '@/types';
 
 interface MainLayoutProps {
@@ -58,6 +62,46 @@ export default function MainLayout({ children }: MainLayoutProps) {
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
+
+  useEffect(() => {
+    const scheduleNow = () => {
+      recalculateStudyNotificationSchedule({
+        blocks: plannerBlocks,
+        settings: {
+          notificationsEnabled: userSettings.notificationsEnabled,
+          notificationMinutesBefore: userSettings.notificationMinutesBefore,
+          notificationSoundEnabled: userSettings.notificationSoundEnabled,
+          backlogReminderEnabled: userSettings.backlogReminderEnabled,
+        },
+      });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        scheduleNow();
+      }
+    };
+
+    const handleFocus = () => {
+      scheduleNow();
+    };
+
+    scheduleNow();
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearStudyNotificationSchedule();
+    };
+  }, [
+    plannerBlocks,
+    userSettings.notificationsEnabled,
+    userSettings.notificationMinutesBefore,
+    userSettings.notificationSoundEnabled,
+    userSettings.backlogReminderEnabled,
+  ]);
 
   const sidebarWidth = sidebarCollapsed ? 80 : 260;
   const contentOffset = isMobile ? 0 : sidebarWidth;

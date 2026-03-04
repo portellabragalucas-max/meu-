@@ -70,6 +70,7 @@ const alarmSoundOptions = [
 
 const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 const weekDayKeys: WeekdayKey[] = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+const notificationLeadOptions = [5, 10, 15, 30, 60] as const;
 
 const clampHours = (value: number) => Math.min(12, Math.max(0, Math.round(value * 2) / 2));
 
@@ -271,6 +272,12 @@ export default function SettingsPage() {
   const averageDailyHours =
     activeDayValues.length > 0 ? weeklyTotalHours / activeDayValues.length : 0;
   const emailValue = settings.email || session?.user?.email || '';
+  const notificationsEnabled = Boolean(settings.notificationsEnabled);
+  const backlogReminderEnabled = Boolean(settings.backlogReminderEnabled);
+  const notificationSoundEnabled = settings.notificationSoundEnabled !== false;
+  const notificationMinutesBefore = Number.isFinite(settings.notificationMinutesBefore)
+    ? Math.min(180, Math.max(1, Math.round(settings.notificationMinutesBefore)))
+    : 15;
 
   const updateSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -443,6 +450,27 @@ export default function SettingsPage() {
               : prev.achievementAlerts,
           weeklyReport:
             typeof remote.weeklyReport === 'boolean' ? remote.weeklyReport : prev.weeklyReport,
+          notificationsEnabled:
+            typeof remote.notificationsEnabled === 'boolean'
+              ? remote.notificationsEnabled
+              : prev.notificationsEnabled,
+          notificationMinutesBefore:
+            typeof remote.notificationMinutesBefore === 'number' &&
+            Number.isFinite(remote.notificationMinutesBefore)
+              ? Math.min(180, Math.max(1, Math.round(remote.notificationMinutesBefore)))
+              : prev.notificationMinutesBefore,
+          notificationSoundEnabled:
+            typeof remote.notificationSoundEnabled === 'boolean'
+              ? remote.notificationSoundEnabled
+              : prev.notificationSoundEnabled,
+          backlogReminderEnabled:
+            typeof remote.backlogReminderEnabled === 'boolean'
+              ? remote.backlogReminderEnabled
+              : prev.backlogReminderEnabled,
+          pushSubscription:
+            remote.pushSubscription && typeof remote.pushSubscription === 'object'
+              ? remote.pushSubscription
+              : prev.pushSubscription ?? null,
           dailyHoursByWeekday: remoteDailyHours ?? prev.dailyHoursByWeekday,
           excludeDays: restDays.length > 0 ? restDays : prev.excludeDays,
           examDate: remote.examDate ?? prev.examDate,
@@ -1388,6 +1416,142 @@ export default function SettingsPage() {
 
         <div className="space-y-4">
           <SystemNotificationsCard />
+          <div className="p-4 rounded-xl bg-card-bg border border-card-border space-y-4">
+            <div>
+              <div className="font-medium text-white">Notificacoes de estudo</div>
+              <div className="text-sm text-text-secondary">
+                Avisos dinamicos baseados no horario real dos blocos da agenda.
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => updateSetting('notificationsEnabled', !notificationsEnabled)}
+              aria-pressed={notificationsEnabled}
+              className="w-full flex items-center justify-between gap-3 p-4 rounded-xl bg-background-light border border-card-border text-left touch-manipulation active:scale-[0.995]"
+            >
+              <div className="min-w-0 pr-2">
+                <div className="font-medium text-white">Ativar notificacoes por bloco</div>
+                <div className="text-sm text-text-secondary">
+                  Agenda alerta antes de cada sessao nao concluida do dia.
+                </div>
+              </div>
+              <span
+                aria-hidden
+                className={cn(
+                  'relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors duration-200',
+                  notificationsEnabled ? 'bg-orange-500' : 'bg-card-border'
+                )}
+              >
+                <span
+                  className={cn(
+                    'pointer-events-none inline-block h-5 w-5 rounded-full bg-white transition-transform duration-200',
+                    notificationsEnabled ? 'translate-x-8' : 'translate-x-1'
+                  )}
+                />
+              </span>
+            </button>
+
+            <div className="space-y-2">
+              <label className="text-sm text-text-secondary">
+                Quantos minutos antes?
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {notificationLeadOptions.map((minutes) => (
+                  <button
+                    key={minutes}
+                    type="button"
+                    onClick={() => updateSetting('notificationMinutesBefore', minutes)}
+                    className={cn(
+                      'rounded-lg border px-3 py-1.5 text-sm transition-colors',
+                      notificationMinutesBefore === minutes
+                        ? 'border-neon-cyan bg-neon-cyan/10 text-neon-cyan'
+                        : 'border-card-border text-text-secondary hover:border-neon-cyan/40 hover:text-white'
+                    )}
+                  >
+                    {minutes} min
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-secondary">Personalizado</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={180}
+                  value={notificationMinutesBefore}
+                  onChange={(event) => {
+                    const parsed = Number(event.target.value);
+                    if (!Number.isFinite(parsed)) return;
+                    updateSetting(
+                      'notificationMinutesBefore',
+                      Math.min(180, Math.max(1, Math.round(parsed)))
+                    );
+                  }}
+                  className="input-field max-w-[110px] py-1.5 text-sm"
+                />
+                <span className="text-xs text-text-muted">1-180 min</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => updateSetting('backlogReminderEnabled', !backlogReminderEnabled)}
+              aria-pressed={backlogReminderEnabled}
+              className="w-full flex items-center justify-between gap-3 p-4 rounded-xl bg-background-light border border-card-border text-left touch-manipulation active:scale-[0.995]"
+            >
+              <div className="min-w-0 pr-2">
+                <div className="font-medium text-white">Avisar backlog acumulado</div>
+                <div className="text-sm text-text-secondary">
+                  Envia alerta quando houver pendencias vencidas para replanejar.
+                </div>
+              </div>
+              <span
+                aria-hidden
+                className={cn(
+                  'relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors duration-200',
+                  backlogReminderEnabled ? 'bg-orange-500' : 'bg-card-border'
+                )}
+              >
+                <span
+                  className={cn(
+                    'pointer-events-none inline-block h-5 w-5 rounded-full bg-white transition-transform duration-200',
+                    backlogReminderEnabled ? 'translate-x-8' : 'translate-x-1'
+                  )}
+                />
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                updateSetting('notificationSoundEnabled', !notificationSoundEnabled)
+              }
+              aria-pressed={notificationSoundEnabled}
+              className="w-full flex items-center justify-between gap-3 p-4 rounded-xl bg-background-light border border-card-border text-left touch-manipulation active:scale-[0.995]"
+            >
+              <div className="min-w-0 pr-2">
+                <div className="font-medium text-white">Som nas notificacoes</div>
+                <div className="text-sm text-text-secondary">
+                  Mantem audio ativo nos alertas de estudo deste dispositivo.
+                </div>
+              </div>
+              <span
+                aria-hidden
+                className={cn(
+                  'relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors duration-200',
+                  notificationSoundEnabled ? 'bg-orange-500' : 'bg-card-border'
+                )}
+              >
+                <span
+                  className={cn(
+                    'pointer-events-none inline-block h-5 w-5 rounded-full bg-white transition-transform duration-200',
+                    notificationSoundEnabled ? 'translate-x-8' : 'translate-x-1'
+                  )}
+                />
+              </span>
+            </button>
+          </div>
 
           {[
             {

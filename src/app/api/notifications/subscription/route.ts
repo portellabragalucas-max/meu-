@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { hasWebPush } from '@/lib/env';
 import { prisma } from '@/lib/prisma';
 
+const prismaAny = prisma as any;
+
 export const dynamic = 'force-dynamic';
 
 interface PushSubscriptionInput {
@@ -66,6 +68,23 @@ export async function POST(request: Request) {
       },
     });
 
+    try {
+      if (prismaAny.userPreferences) {
+        await prismaAny.userPreferences.upsert({
+          where: { userId },
+          update: {
+            pushSubscription: subscription,
+          },
+          create: {
+            userId,
+            pushSubscription: subscription,
+          },
+        });
+      }
+    } catch (error) {
+      console.warn('Falha ao sincronizar pushSubscription em preferencias.', error);
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Erro ao salvar assinatura de notificacao:', error);
@@ -98,12 +117,33 @@ export async function DELETE(request: Request) {
           endpoint,
         },
       });
+      try {
+        if (prismaAny.userPreferences) {
+          await prismaAny.userPreferences.updateMany({
+            where: { userId },
+            data: { pushSubscription: null },
+          });
+        }
+      } catch (error) {
+        console.warn('Falha ao limpar pushSubscription em preferencias.', error);
+      }
       return NextResponse.json({ success: true });
     }
 
     await prisma.pushSubscription.deleteMany({
       where: { userId },
     });
+
+    try {
+      if (prismaAny.userPreferences) {
+        await prismaAny.userPreferences.updateMany({
+          where: { userId },
+          data: { pushSubscription: null },
+        });
+      }
+    } catch (error) {
+      console.warn('Falha ao limpar pushSubscription em preferencias.', error);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

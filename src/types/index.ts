@@ -498,6 +498,11 @@ export interface UserSettings {
   streakReminder: boolean;
   achievementAlerts: boolean;
   weeklyReport: boolean;
+  notificationsEnabled: boolean;
+  notificationMinutesBefore: number;
+  notificationSoundEnabled: boolean;
+  backlogReminderEnabled: boolean;
+  pushSubscription?: Record<string, unknown> | null;
   alarmSound?: 'pulse' | 'beep' | 'chime' | 'soft';
   examDate?: string;
 }
@@ -531,6 +536,8 @@ export type AppNotificationType =
   | 'streak'
   | 'weekly'
   | 'achievement'
+  | 'study'
+  | 'backlog'
   | 'system';
 
 export interface AppNotification {

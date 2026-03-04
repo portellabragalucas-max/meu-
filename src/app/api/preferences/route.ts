@@ -54,6 +54,12 @@ export async function POST(request: Request) {
       studyPrefs?.blockDurationMinutes ||
       120;
     const persistedBreak = settings.breakMinutes || studyPrefs?.breakDurationMinutes || 15;
+    const notificationMinutesBefore = Number.isFinite(settings.notificationMinutesBefore)
+      ? Math.min(180, Math.max(1, Math.round(settings.notificationMinutesBefore)))
+      : 15;
+    const notificationsEnabled = settings.notificationsEnabled ?? false;
+    const notificationSoundEnabled = settings.notificationSoundEnabled ?? true;
+    const backlogReminderEnabled = settings.backlogReminderEnabled ?? false;
 
     try {
       if (settings.name) {
@@ -81,6 +87,10 @@ export async function POST(request: Request) {
             streakReminder: settings.streakReminder ?? true,
             achievementAlerts: settings.achievementAlerts ?? true,
             weeklyReport: settings.weeklyReport ?? true,
+            notificationsEnabled,
+            notificationMinutesBefore,
+            notificationSoundEnabled,
+            backlogReminderEnabled,
             dailyHoursByWeekday: persistedDailyHours,
             restDays: JSON.stringify(settings.excludeDays ?? []),
             examDate: persistedExamDate,
@@ -97,6 +107,10 @@ export async function POST(request: Request) {
             streakReminder: settings.streakReminder ?? true,
             achievementAlerts: settings.achievementAlerts ?? true,
             weeklyReport: settings.weeklyReport ?? true,
+            notificationsEnabled,
+            notificationMinutesBefore,
+            notificationSoundEnabled,
+            backlogReminderEnabled,
             dailyHoursByWeekday: persistedDailyHours,
             restDays: JSON.stringify(settings.excludeDays ?? []),
             examDate: persistedExamDate,

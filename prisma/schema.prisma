@@ -96,6 +96,11 @@ model UserPreferences {
   streakReminder  Boolean  @default(true)
   achievementAlerts Boolean @default(true)
   weeklyReport    Boolean  @default(true)
+  notificationsEnabled Boolean @default(false)
+  notificationMinutesBefore Int @default(15)
+  notificationSoundEnabled Boolean @default(true)
+  backlogReminderEnabled Boolean @default(false)
+  pushSubscription Json?
   restDays        String   @default("[]")
   examDate        String?
   updatedAt       DateTime @updatedAt
