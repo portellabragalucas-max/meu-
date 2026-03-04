@@ -30,6 +30,7 @@ import {
 } from '@/components/onboarding';
 import { useOnboarding, useLocalStorage } from '@/hooks';
 import { isSameDay, formatDate, formatHoursDuration, getWeekStart, getWeekDates } from '@/lib/utils';
+import { buildCompletedHoursByDate, computeGamificationSnapshot } from '@/lib/progressSnapshot';
 import { applyBlockCompletionMetrics } from '@/services/adaptiveStudyIntelligence';
 import type { StudyBlock, Subject, AnalyticsStore, StudyPreferences, UserSettings } from '@/types';
 import { StudyBlockSessionModal } from '@/components/session';
@@ -111,13 +112,7 @@ export default function DashboardPage() {
   }, [subjects, studyPrefs]);
 
   const completedHoursByDate = useMemo(() => {
-    const totals: Record<string, number> = {};
-    plannerBlocks.forEach((block) => {
-      if (block.isBreak || block.status !== 'completed') return;
-      const key = new Date(block.date).toISOString().split('T')[0];
-      totals[key] = (totals[key] ?? 0) + block.durationMinutes / 60;
-    });
-    return totals;
+    return buildCompletedHoursByDate(plannerBlocks);
   }, [plannerBlocks]);
 
   const weeklyData = useMemo(() => {
@@ -149,25 +144,10 @@ export default function DashboardPage() {
 
   const weeklyHours = weeklyData.reduce((sum, d) => sum + d.hours, 0);
   const focusScore = 0;
-
-  const streak = useMemo(() => {
-    let count = 0;
-    const today = new Date();
-    for (let i = 0; i < 365; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - i);
-      const key = date.toISOString().split('T')[0];
-      const analyticsHours = analytics.daily[key]?.hours ?? 0;
-      const blocksHours = completedHoursByDate[key] ?? 0;
-      const hours = Math.max(analyticsHours, blocksHours);
-      if (hours > 0) {
-        count += 1;
-      } else {
-        break;
-      }
-    }
-    return count;
-  }, [analytics, completedHoursByDate]);
+  const gamification = useMemo(
+    () => computeGamificationSnapshot({ plannerBlocks, analytics }),
+    [plannerBlocks, analytics]
+  );
 
   const completedThisWeek = useMemo(() => {
     const weekStart = getWeekStart(new Date());
@@ -603,8 +583,8 @@ export default function DashboardPage() {
               <StatsCard
                 title="Sequência Atual"
                 titleShort="Sequência"
-                value={`${streak} dias`}
-                subtitle="Recorde pessoal: 0 dias"
+                value={`${gamification.streak} dias`}
+                subtitle={`Recorde pessoal: ${gamification.longestStreak} dias`}
                 icon={Flame}
                 color="orange"
                 variant="mobile"
@@ -635,10 +615,10 @@ export default function DashboardPage() {
               {/* Progresso de nível */}
               <motion.div variants={itemVariants} data-tutorial="level">
                 <LevelProgress
-                  level={0}
-                  currentXp={0}
-                  xpForNextLevel={0}
-                  totalXp={0}
+                  level={gamification.level}
+                  currentXp={gamification.xpInCurrentLevel}
+                  xpForNextLevel={gamification.xpToNextLevel}
+                  totalXp={gamification.totalXp}
                   achievements={0}
                 />
               </motion.div>

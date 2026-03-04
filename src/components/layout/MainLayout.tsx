@@ -5,7 +5,7 @@
  * Envolve as paginas com sidebar, topbar e responsividade
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
@@ -15,11 +15,14 @@ import AppContainer from './AppContainer';
 import { useLocalStorage } from '@/hooks';
 import { useServerProgressSync } from '@/hooks/useServerProgressSync';
 import { defaultSettings } from '@/lib/defaultSettings';
-import type { UserSettings } from '@/types';
+import { computeGamificationSnapshot } from '@/lib/progressSnapshot';
+import type { AnalyticsStore, StudyBlock, UserSettings } from '@/types';
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
+
+const emptyAnalytics: AnalyticsStore = { daily: {} };
 
 export default function MainLayout({ children }: MainLayoutProps) {
   useServerProgressSync();
@@ -28,7 +31,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [userSettings] = useLocalStorage<UserSettings>('nexora_user_settings', defaultSettings);
+  const [plannerBlocks] = useLocalStorage<StudyBlock[]>('nexora_planner_blocks', []);
+  const [analytics] = useLocalStorage<AnalyticsStore>('nexora_analytics', emptyAnalytics);
   const displayName = userSettings.name || session?.user?.name || 'Estudante';
+  const gamification = useMemo(
+    () => computeGamificationSnapshot({ plannerBlocks, analytics }),
+    [plannerBlocks, analytics]
+  );
 
   // Gerenciar sidebar responsiva
   useEffect(() => {
@@ -76,15 +85,15 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {/* Barra superior */}
         <div className="shrink-0">
           <TopBar
-          user={{
-            name: displayName,
-            avatar: userSettings.avatar ?? session?.user?.image ?? undefined,
-            level: 0,
-            xp: 0,
-            xpToNextLevel: 0,
-            streak: 0,
-          }}
-        />
+            user={{
+              name: displayName,
+              avatar: userSettings.avatar ?? session?.user?.image ?? undefined,
+              level: gamification.level,
+              xp: gamification.xpInCurrentLevel,
+              xpToNextLevel: gamification.xpToNextLevel,
+              streak: gamification.streak,
+            }}
+          />
         </div>
 
         {/* Conteudo da pagina */}
