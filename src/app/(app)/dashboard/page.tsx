@@ -46,6 +46,7 @@ import { StudyBlockSessionModal } from '@/components/session';
 import { defaultSettings } from '@/lib/defaultSettings';
 
 const emptyAnalytics: AnalyticsStore = { daily: {} };
+const weekDayKeys = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'] as const;
 const defaultStudyPrefs: StudyPreferences = {
   hoursPerDay: 2,
   daysOfWeek: [1, 2, 3, 4, 5],
@@ -92,6 +93,14 @@ const comparePlannerBlocks = (a: StudyBlock, b: StudyBlock) => {
   return compareBlocksWithinDay(a, b);
 };
 
+const toLocalDateKey = (value: Date | string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate()
+  ).padStart(2, '0')}`;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const {
@@ -112,13 +121,6 @@ export default function DashboardPage() {
   const [isSessionOpen, setIsSessionOpen] = useState(false);
 
   // useLocalStorage já hidrata na montagem; evitar loops de re-hidratação
-
-  const weeklyGoal = useMemo(() => {
-    const subjectsGoal = subjects.reduce((sum, s) => sum + (s.targetHours || 0), 0);
-    const activeDaysCount = studyPrefs.daysOfWeek?.length ?? 0;
-    const prefsGoal = (studyPrefs.hoursPerDay || 0) * activeDaysCount;
-    return subjectsGoal > 0 ? subjectsGoal : prefsGoal;
-  }, [subjects, studyPrefs]);
 
   const completedHoursByDate = useMemo(() => {
     return buildCompletedHoursByDate(plannerBlocks);
@@ -150,28 +152,68 @@ export default function DashboardPage() {
   const weeklyData = useMemo(() => {
     const weekStart = getWeekStart(new Date());
     const weekDates = getWeekDates(weekStart);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
     const dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
     const mergedDaily = analyticsForSummary.daily || {};
-    const configuredDays = studyPrefs.daysOfWeek ?? [];
-    const activeDays =
-      configuredDays.length > 0
-        ? configuredDays
-        : weeklyGoal > 0
-          ? [0, 1, 2, 3, 4, 5, 6]
-          : [];
-    const perDayGoal = activeDays.length > 0 ? weeklyGoal / activeDays.length : 0;
+
+    const targetByDate = new Map<string, number>();
+
+    plannerBlocks.forEach((block) => {
+      if (block.isBreak || block.status === 'rescheduled') return;
+      const blockDate = new Date(block.date);
+      if (Number.isNaN(blockDate.getTime())) return;
+      if (blockDate < weekStart || blockDate >= weekEnd) return;
+
+      const dateKey = toLocalDateKey(blockDate);
+      if (!dateKey) return;
+
+      targetByDate.set(dateKey, (targetByDate.get(dateKey) ?? 0) + block.durationMinutes / 60);
+    });
+
+    const hasPlannedTarget = Array.from(targetByDate.values()).some((hours) => hours > 0);
+
+    if (!hasPlannedTarget) {
+      weekDates.forEach((date) => {
+        const dateKey = toLocalDateKey(date);
+        if (!dateKey) return;
+
+        if (userSettings.dailyHoursByWeekday) {
+          const weekdayKey = weekDayKeys[date.getDay()];
+          const target = userSettings.dailyHoursByWeekday[weekdayKey] ?? 0;
+          targetByDate.set(dateKey, Math.max(0, target));
+          return;
+        }
+
+        const activeDays = studyPrefs.daysOfWeek ?? [];
+        const isActiveDay = activeDays.length > 0 ? activeDays.includes(date.getDay()) : true;
+        targetByDate.set(dateKey, isActiveDay ? Math.max(0, studyPrefs.hoursPerDay || 0) : 0);
+      });
+    }
 
     return weekDates.map((date) => {
-      const dateKey = date.toISOString().split('T')[0];
-      const hours = mergedDaily[dateKey]?.hours ?? 0;
-      const dayIndex = date.getDay();
+      const dateKey = toLocalDateKey(date);
+      const isoDateKey = date.toISOString().split('T')[0];
+      const hours = Math.max(mergedDaily[dateKey]?.hours ?? 0, mergedDaily[isoDateKey]?.hours ?? 0);
+
       return {
-        day: dayLabels[dayIndex],
+        day: dayLabels[date.getDay()],
         hours,
-        target: activeDays.includes(dayIndex) ? perDayGoal : 0,
+        target: dateKey ? targetByDate.get(dateKey) ?? 0 : 0,
       };
     });
-  }, [analyticsForSummary.daily, studyPrefs, weeklyGoal]);
+  }, [
+    analyticsForSummary.daily,
+    plannerBlocks,
+    studyPrefs.daysOfWeek,
+    studyPrefs.hoursPerDay,
+    userSettings.dailyHoursByWeekday,
+  ]);
+
+  const weeklyGoal = useMemo(
+    () => weeklyData.reduce((sum, item) => sum + item.target, 0),
+    [weeklyData]
+  );
 
   const weeklyHours = weeklyData.reduce((sum, d) => sum + d.hours, 0);
   const focusScore = useMemo(() => {
