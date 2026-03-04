@@ -14,7 +14,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma migrate deploy && next build",
+    "vercel-build": "node scripts/vercel-build.cjs",
     "test:roadmap": "tsx scripts/roadmap.test.ts",
     "test:smoke:presets": "tsx scripts/smoke-presets.ts"
   },
