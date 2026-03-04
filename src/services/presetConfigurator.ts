@@ -210,7 +210,8 @@ export function computeStudyPreferences(
 
   const settings: UserSettings = {
     ...baseSettings,
-    dailyGoalHours: dailyGoalHours || baseSettings.dailyGoalHours || 2,
+    dailyGoalHours:
+      Number.isFinite(dailyGoalHours) ? dailyGoalHours : (baseSettings.dailyGoalHours ?? 2),
     dailyHoursByWeekday: normalizedHours,
     dailyAvailabilityByWeekday: normalizedAvailability,
     preferredStart: inferredWindow.preferredStart,
@@ -223,7 +224,7 @@ export function computeStudyPreferences(
   };
 
   const studyPrefs: StudyPreferences = {
-    hoursPerDay: dailyGoalHours || 0,
+    hoursPerDay: Number.isFinite(dailyGoalHours) ? dailyGoalHours : 0,
     weeklyHours,
     dailyHoursByWeekday: normalizedHours,
     daysOfWeek: activeDays,

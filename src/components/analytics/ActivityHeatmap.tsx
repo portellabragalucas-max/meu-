@@ -6,7 +6,7 @@
  */
 
 import { motion } from 'framer-motion';
-import { cn, formatHoursDuration } from '@/lib/utils';
+import { cn, formatHoursDuration, toLocalDateKey } from '@/lib/utils';
 import { Card } from '@/components/ui';
 
 interface HeatmapData {
@@ -46,7 +46,7 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
   for (let week = 0; week < weeks; week++) {
     const weekData: HeatmapData[] = [];
     for (let day = 0; day < 7; day++) {
-      const dateStr = currentDate.toISOString().split('T')[0];
+      const dateStr = toLocalDateKey(currentDate);
       const existingData = dataMap.get(dateStr);
       weekData.push(
         existingData || {

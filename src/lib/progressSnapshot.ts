@@ -1,4 +1,4 @@
-import { levelFromXp } from '@/lib/utils';
+import { levelFromXp, toLocalDateKey } from '@/lib/utils';
 import type { AnalyticsStore, DailyAnalyticsRecord, StudyBlock } from '@/types';
 
 type DailyAnalytics = AnalyticsStore['daily'];
@@ -12,7 +12,7 @@ export interface GamificationSnapshot {
   xpToNextLevel: number;
 }
 
-const toDateKey = (value: Date | string) => new Date(value).toISOString().split('T')[0];
+const toDateKey = (value: Date | string) => toLocalDateKey(value);
 
 export function buildCompletedHoursByDate(plannerBlocks: StudyBlock[]): Record<string, number> {
   const totals: Record<string, number> = {};
@@ -92,7 +92,7 @@ export function computeStudyStreak(
   for (let i = 0; i < 365; i += 1) {
     const date = new Date(now);
     date.setDate(now.getDate() - i);
-    const dateKey = date.toISOString().split('T')[0];
+    const dateKey = toLocalDateKey(date);
     const hours = getStudyHoursForDate(dateKey, dailyAnalytics, completedHoursByDate);
 
     if (hours > 0) {

@@ -482,4 +482,24 @@ assert.ok(
   'hardSubjectsPeriodPreference should prioritize harder subjects in the preferred period'
 );
 
+const zeroHoursCase = generateFromWizard(
+  {
+    ...baseWizardAnswers,
+    goal: 'outros',
+    dailyHoursByWeekday: makeDailyHours({}),
+    dailyAvailabilityByWeekday: makeDailyAvailability({}),
+    focusMinutes: 50,
+    focusBlockMinutes: 50,
+    breakMinutes: 10,
+  },
+  subjects,
+  '2026-03-02'
+);
+assert.strictEqual(zeroHoursCase.studyPrefs.hoursPerDay, 0, 'wizard must preserve 0h/day');
+assert.strictEqual(
+  zeroHoursCase.schedule.blocks.filter((b) => !b.isBreak).length,
+  0,
+  '0h/day must not generate study blocks'
+);
+
 console.log('wizard-driven roadmap tests passed');

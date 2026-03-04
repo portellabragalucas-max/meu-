@@ -1179,7 +1179,7 @@ export default function WeeklyPlanner({
 
         setAnalytics(metricsUpdate.analytics);
       } else {
-        const dateKey = new Date(completedBlock.date).toISOString().split('T')[0];
+        const dateKey = toLocalDateKey(new Date(completedBlock.date));
         setAnalytics((prev) => {
           const current = prev.daily[dateKey] || { hours: 0, sessions: 0 };
           return {
@@ -1556,7 +1556,7 @@ export default function WeeklyPlanner({
               }
             >
               {visibleDates.map((date) => {
-                const dateKey = date.toISOString().split('T')[0];
+                const dateKey = toLocalDateKey(date);
                 const dayBlocks = blocksByDay.get(dateKey) || [];
 
                 return (

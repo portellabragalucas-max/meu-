@@ -229,12 +229,14 @@ export async function POST(request: Request) {
     const preferredStart = userSettings.preferredStart || '09:00';
     const preferredEnd =
       userSettings.preferredEnd ||
-      minutesToTime(timeToMinutes(preferredStart) + Math.max(60, Math.round((studyPrefs.hoursPerDay || 2) * 60)));
+      minutesToTime(
+        timeToMinutes(preferredStart) + Math.max(60, Math.round((studyPrefs.hoursPerDay ?? 2) * 60))
+      );
     const blockMinutes = Math.max(
       25,
-      studyPrefs.focusBlockMinutes || studyPrefs.blockDurationMinutes || userSettings.maxBlockMinutes || 90
+      studyPrefs.focusBlockMinutes ?? studyPrefs.blockDurationMinutes ?? userSettings.maxBlockMinutes ?? 90
     );
-    const breakMinutes = Math.max(5, studyPrefs.breakDurationMinutes || userSettings.breakMinutes || 10);
+    const breakMinutes = Math.max(5, studyPrefs.breakDurationMinutes ?? userSettings.breakMinutes ?? 10);
 
     const schedule = generateChronologicalSchedule({
       subjects,

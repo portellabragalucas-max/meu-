@@ -28,7 +28,7 @@ import {
   buildCompletedSessionsByDate,
   buildMergedDailyStudyData,
 } from '@/lib/progressSnapshot';
-import { formatHoursDuration, getWeekDates, getWeekStart } from '@/lib/utils';
+import { formatHoursDuration, getWeekDates, getWeekStart, toLocalDateKey } from '@/lib/utils';
 import type { AnalyticsStore, StudyBlock, Subject } from '@/types';
 
 const emptyAnalytics: AnalyticsStore = { daily: {} };
@@ -89,7 +89,7 @@ export default function AnalyticsPage() {
     for (let i = 13; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
-      const dateKey = date.toISOString().split('T')[0];
+      const dateKey = toLocalDateKey(date);
       const dayRecord = mergedDaily[dateKey];
       const hours = dayRecord?.hours ?? 0;
 
@@ -120,7 +120,7 @@ export default function AnalyticsPage() {
 
       const analyticsBySubject: Record<string, number> = {};
       getWeekDates(weekStart).forEach((date) => {
-        const dateKey = date.toISOString().split('T')[0];
+        const dateKey = toLocalDateKey(date);
         const bySubject = mergedDaily[dateKey]?.bySubject || {};
         Object.entries(bySubject).forEach(([subjectId, record]) => {
           analyticsBySubject[subjectId] = (analyticsBySubject[subjectId] ?? 0) + (record?.hours ?? 0);
@@ -149,7 +149,7 @@ export default function AnalyticsPage() {
     for (let i = 84; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      const dateKey = date.toISOString().split('T')[0];
+      const dateKey = toLocalDateKey(date);
       const hours = mergedDaily[dateKey]?.hours ?? 0;
 
       let level: 0 | 1 | 2 | 3 | 4 = 0;
@@ -169,12 +169,12 @@ export default function AnalyticsPage() {
     const weekDates = getWeekDates(weekStart);
 
     const hours = weekDates.reduce((sum, date) => {
-      const dateKey = date.toISOString().split('T')[0];
+      const dateKey = toLocalDateKey(date);
       return sum + (mergedDaily[dateKey]?.hours ?? 0);
     }, 0);
 
     const sessions = weekDates.reduce((sum, date) => {
-      const dateKey = date.toISOString().split('T')[0];
+      const dateKey = toLocalDateKey(date);
       return sum + (mergedDaily[dateKey]?.sessions ?? 0);
     }, 0);
 

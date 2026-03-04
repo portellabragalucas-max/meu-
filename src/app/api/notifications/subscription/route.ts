@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { Prisma } from '@prisma/client';
 import { authOptions } from '@/lib/auth';
 import { hasWebPush } from '@/lib/env';
 import { prisma } from '@/lib/prisma';
-
-const prismaAny = prisma as any;
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +52,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const subscriptionJson = subscription as unknown as Prisma.InputJsonValue;
+
     await prisma.pushSubscription.upsert({
       where: { endpoint: subscription.endpoint },
       update: {
@@ -69,18 +70,16 @@ export async function POST(request: Request) {
     });
 
     try {
-      if (prismaAny.userPreferences) {
-        await prismaAny.userPreferences.upsert({
-          where: { userId },
-          update: {
-            pushSubscription: subscription,
-          },
-          create: {
-            userId,
-            pushSubscription: subscription,
-          },
-        });
-      }
+      await prisma.userPreferences.upsert({
+        where: { userId },
+        update: {
+          pushSubscription: subscriptionJson,
+        },
+        create: {
+          userId,
+          pushSubscription: subscriptionJson,
+        },
+      });
     } catch (error) {
       console.warn('Falha ao sincronizar pushSubscription em preferencias.', error);
     }
@@ -118,12 +117,10 @@ export async function DELETE(request: Request) {
         },
       });
       try {
-        if (prismaAny.userPreferences) {
-          await prismaAny.userPreferences.updateMany({
-            where: { userId },
-            data: { pushSubscription: null },
-          });
-        }
+        await prisma.userPreferences.updateMany({
+          where: { userId },
+          data: { pushSubscription: Prisma.JsonNull },
+        });
       } catch (error) {
         console.warn('Falha ao limpar pushSubscription em preferencias.', error);
       }
@@ -135,12 +132,10 @@ export async function DELETE(request: Request) {
     });
 
     try {
-      if (prismaAny.userPreferences) {
-        await prismaAny.userPreferences.updateMany({
-          where: { userId },
-          data: { pushSubscription: null },
-        });
-      }
+      await prisma.userPreferences.updateMany({
+        where: { userId },
+        data: { pushSubscription: Prisma.JsonNull },
+      });
     } catch (error) {
       console.warn('Falha ao limpar pushSubscription em preferencias.', error);
     }

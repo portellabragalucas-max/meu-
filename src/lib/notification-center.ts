@@ -84,6 +84,194 @@ const buildStudyBlockLabel = (subjectName: string | null | undefined, blockType:
   return `${baseName} - ${typeLabel}`;
 };
 
+interface ScheduledNotificationBlockCandidate {
+  id: string;
+  date: Date;
+  startTime: string;
+  type: string | null;
+  subjectName?: string | null;
+}
+
+interface SnapshotStudySignals {
+  studiedToday: boolean;
+  weekMinutes: number;
+  weekSessions: number;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const parseDateKeyToUtc = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  return Number.isNaN(utc.getTime()) ? null : utc;
+};
+
+const toLocalDayKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate()
+  ).padStart(2, '0')}`;
+
+const extractStudySignalsFromSnapshot = async ({
+  userId,
+  todayKeyUtc,
+  todayLocalKey,
+  todayStartUtc,
+  tomorrowStartUtc,
+  weekStartUtc,
+  weekEndUtc,
+}: {
+  userId: string;
+  todayKeyUtc: string;
+  todayLocalKey: string;
+  todayStartUtc: Date;
+  tomorrowStartUtc: Date;
+  weekStartUtc: Date;
+  weekEndUtc: Date;
+}): Promise<SnapshotStudySignals> => {
+  const snapshot = await prisma.userProgressSnapshot.findUnique({
+    where: { userId },
+    select: { payload: true },
+  });
+
+  const payload = snapshot?.payload;
+  if (!payload || !isRecord(payload)) {
+    return { studiedToday: false, weekMinutes: 0, weekSessions: 0 };
+  }
+
+  let studiedToday = false;
+  let analyticsWeekMinutes = 0;
+  let analyticsWeekSessions = 0;
+  let blockWeekMinutes = 0;
+  let blockWeekSessions = 0;
+
+  const analyticsRaw = payload.nexora_analytics;
+  if (isRecord(analyticsRaw) && isRecord(analyticsRaw.daily)) {
+    for (const [dateKey, record] of Object.entries(analyticsRaw.daily)) {
+      if (!isRecord(record)) continue;
+
+      const hours = typeof record.hours === 'number' && Number.isFinite(record.hours) ? record.hours : 0;
+      const sessions = typeof record.sessions === 'number' && Number.isFinite(record.sessions) ? record.sessions : 0;
+
+      if ((dateKey === todayKeyUtc || dateKey === todayLocalKey) && (hours > 0 || sessions > 0)) {
+        studiedToday = true;
+      }
+
+      const parsedKeyUtc = parseDateKeyToUtc(dateKey);
+      if (!parsedKeyUtc) continue;
+      if (parsedKeyUtc < weekStartUtc || parsedKeyUtc >= weekEndUtc) continue;
+
+      analyticsWeekMinutes += Math.max(0, Math.round(hours * 60));
+      analyticsWeekSessions += Math.max(0, Math.round(sessions));
+    }
+  }
+
+  const blocksRaw = payload.nexora_planner_blocks;
+  if (Array.isArray(blocksRaw)) {
+    blocksRaw.forEach((rawBlock) => {
+      if (!isRecord(rawBlock)) return;
+      if (rawBlock.isBreak === true) return;
+      if (rawBlock.status !== 'completed') return;
+
+      const completedAtRaw = rawBlock.completedAt;
+      const fallbackDateRaw = rawBlock.date;
+      const reference =
+        typeof completedAtRaw === 'string'
+          ? completedAtRaw
+          : typeof fallbackDateRaw === 'string'
+            ? fallbackDateRaw
+            : null;
+      if (!reference) return;
+
+      const completedAt = new Date(reference);
+      if (Number.isNaN(completedAt.getTime())) return;
+
+      const minutesRaw = rawBlock.durationMinutes;
+      const minutes =
+        typeof minutesRaw === 'number' && Number.isFinite(minutesRaw) ? Math.max(0, Math.round(minutesRaw)) : 0;
+
+      if (completedAt >= todayStartUtc && completedAt < tomorrowStartUtc) {
+        studiedToday = true;
+      }
+
+      if (completedAt >= weekStartUtc && completedAt < weekEndUtc) {
+        blockWeekMinutes += minutes;
+        blockWeekSessions += 1;
+      }
+    });
+  }
+
+  const hasAnalyticsWeeklyData = analyticsWeekMinutes > 0 || analyticsWeekSessions > 0;
+  const weekMinutes = hasAnalyticsWeeklyData ? analyticsWeekMinutes : blockWeekMinutes;
+  const weekSessions = hasAnalyticsWeeklyData ? analyticsWeekSessions : blockWeekSessions;
+
+  return { studiedToday, weekMinutes, weekSessions };
+};
+
+const extractCandidatesFromProgressSnapshot = async ({
+  userId,
+  rangeStart,
+  rangeEnd,
+}: {
+  userId: string;
+  rangeStart: Date;
+  rangeEnd: Date;
+}): Promise<ScheduledNotificationBlockCandidate[]> => {
+  const snapshot = await prisma.userProgressSnapshot.findUnique({
+    where: { userId },
+    select: { payload: true },
+  });
+
+  const payload = snapshot?.payload;
+  if (!payload || !isRecord(payload)) return [];
+
+  const rawBlocks = payload.nexora_planner_blocks;
+  if (!Array.isArray(rawBlocks) || rawBlocks.length === 0) return [];
+
+  const acceptedStatuses = new Set(['scheduled', 'rescheduled']);
+  const normalized: ScheduledNotificationBlockCandidate[] = [];
+  const seen = new Set<string>();
+
+  rawBlocks.forEach((rawBlock, index) => {
+    if (!isRecord(rawBlock)) return;
+
+    if (rawBlock.isBreak === true) return;
+    if (typeof rawBlock.status !== 'string' || !acceptedStatuses.has(rawBlock.status)) return;
+
+    const rawDate = rawBlock.date;
+    const parsedDate = new Date(typeof rawDate === 'string' || rawDate instanceof Date ? rawDate : Number.NaN);
+    if (Number.isNaN(parsedDate.getTime())) return;
+    if (parsedDate < rangeStart || parsedDate > rangeEnd) return;
+
+    const startTime = typeof rawBlock.startTime === 'string' ? rawBlock.startTime : '';
+    if (!/^\d{2}:\d{2}$/.test(startTime)) return;
+
+    const rawType = rawBlock.type;
+    const type = typeof rawType === 'string' ? rawType : null;
+    const rawId = typeof rawBlock.id === 'string' && rawBlock.id.trim().length > 0
+      ? rawBlock.id.trim()
+      : `snapshot-${parsedDate.toISOString()}-${startTime}-${index}`;
+
+    const subjectName = isRecord(rawBlock.subject) && typeof rawBlock.subject.name === 'string'
+      ? rawBlock.subject.name
+      : null;
+
+    if (seen.has(rawId)) return;
+    seen.add(rawId);
+
+    normalized.push({
+      id: rawId,
+      date: parsedDate,
+      startTime,
+      type,
+      subjectName,
+    });
+  });
+
+  return normalized;
+};
+
 const dispatchScheduledStudyNotifications = async ({
   userId,
   firstName,
@@ -107,14 +295,17 @@ const dispatchScheduledStudyNotifications = async ({
     return 0;
   }
 
-  const sanitizedMinutesBefore = Math.min(180, Math.max(1, Math.round(notificationMinutesBefore || 15)));
+  const sanitizedMinutesBefore = Math.min(
+    180,
+    Math.max(1, Math.round(notificationMinutesBefore ?? 15))
+  );
   const rangeStart = new Date(now.getTime() - BLOCK_LOOKAROUND_HOURS * 60 * 60 * 1000);
   const rangeEnd = new Date(now.getTime() + BLOCK_LOOKAROUND_HOURS * 60 * 60 * 1000);
   const dispatchWindowMs = STUDY_NOTIFICATION_DISPATCH_WINDOW_MINUTES * 60 * 1000;
 
   let createdCount = 0;
 
-  const candidateBlocks = await prisma.studyBlock.findMany({
+  const dbBlocks = await prisma.studyBlock.findMany({
     where: {
       userId,
       isBreak: false,
@@ -139,8 +330,35 @@ const dispatchScheduledStudyNotifications = async ({
     },
   });
 
+  const snapshotBlocks = await extractCandidatesFromProgressSnapshot({
+    userId,
+    rangeStart,
+    rangeEnd,
+  });
+
+  const candidateBlocks: ScheduledNotificationBlockCandidate[] = [];
+  const seenIds = new Set<string>();
+
+  dbBlocks.forEach((block) => {
+    if (seenIds.has(block.id)) return;
+    seenIds.add(block.id);
+    candidateBlocks.push({
+      id: block.id,
+      date: new Date(block.date),
+      startTime: block.startTime,
+      type: block.type,
+      subjectName: block.subject?.name,
+    });
+  });
+
+  snapshotBlocks.forEach((block) => {
+    if (seenIds.has(block.id)) return;
+    seenIds.add(block.id);
+    candidateBlocks.push(block);
+  });
+
   for (const block of candidateBlocks) {
-    const startAt = resolveBlockStartDateTime(new Date(block.date), block.startTime);
+    const startAt = resolveBlockStartDateTime(block.date, block.startTime);
     if (!startAt) continue;
 
     const notifyAt = new Date(startAt.getTime() - sanitizedMinutesBefore * 60 * 1000);
@@ -148,7 +366,7 @@ const dispatchScheduledStudyNotifications = async ({
 
     if (delayMs < 0 || delayMs > dispatchWindowMs) continue;
 
-    const label = buildStudyBlockLabel(block.subject?.name, block.type ?? null);
+    const label = buildStudyBlockLabel(block.subjectName, block.type ?? null);
     const result = await createNotificationForUser({
       userId,
       type: 'study',
@@ -384,7 +602,10 @@ export const syncNotificationsForUser = async (userId: string) => {
   const tomorrowStart = new Date(todayStart);
   tomorrowStart.setUTCDate(tomorrowStart.getUTCDate() + 1);
   const todayKey = toDayKey(now);
+  const todayLocalKey = toLocalDayKey(now);
   const weekKey = toIsoWeekKey(now);
+  const previousWeekStart = new Date(todayStart);
+  previousWeekStart.setUTCDate(previousWeekStart.getUTCDate() - 7);
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -425,6 +646,22 @@ export const syncNotificationsForUser = async (userId: string) => {
 
   let createdCount = 0;
 
+  let snapshotSignalsPromise: Promise<SnapshotStudySignals> | null = null;
+  const getSnapshotSignals = () => {
+    if (!snapshotSignalsPromise) {
+      snapshotSignalsPromise = extractStudySignalsFromSnapshot({
+        userId,
+        todayKeyUtc: todayKey,
+        todayLocalKey,
+        todayStartUtc: todayStart,
+        tomorrowStartUtc: tomorrowStart,
+        weekStartUtc: previousWeekStart,
+        weekEndUtc: todayStart,
+      });
+    }
+    return snapshotSignalsPromise;
+  };
+
   const sessionsToday = await prisma.studySession.count({
     where: {
       userId,
@@ -434,7 +671,11 @@ export const syncNotificationsForUser = async (userId: string) => {
       },
     },
   });
-  const hasStudiedToday = sessionsToday > 0;
+  let hasStudiedToday = sessionsToday > 0;
+  if (!hasStudiedToday) {
+    const snapshotSignals = await getSnapshotSignals();
+    hasStudiedToday = snapshotSignals.studiedToday;
+  }
 
   if (dailyReminderEnabled && !hasStudiedToday) {
     const dailyReminder = await createNotificationForUser({
@@ -469,9 +710,6 @@ export const syncNotificationsForUser = async (userId: string) => {
   }
 
   if (weeklyReportEnabled && now.getUTCDay() === 1) {
-    const previousWeekStart = new Date(todayStart);
-    previousWeekStart.setUTCDate(previousWeekStart.getUTCDate() - 7);
-
     const weeklyStats = await prisma.studySession.aggregate({
       where: {
         userId,
@@ -488,8 +726,14 @@ export const syncNotificationsForUser = async (userId: string) => {
       },
     });
 
-    const totalMinutes = weeklyStats._sum.actualMinutes ?? 0;
-    const totalSessions = weeklyStats._count._all;
+    let totalMinutes = weeklyStats._sum.actualMinutes ?? 0;
+    let totalSessions = weeklyStats._count._all;
+
+    if (totalMinutes <= 0 && totalSessions <= 0) {
+      const snapshotSignals = await getSnapshotSignals();
+      totalMinutes = snapshotSignals.weekMinutes;
+      totalSessions = snapshotSignals.weekSessions;
+    }
 
     const weeklyReport = await createNotificationForUser({
       userId,

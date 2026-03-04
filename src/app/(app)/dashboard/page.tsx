@@ -187,14 +187,13 @@ export default function DashboardPage() {
 
         const activeDays = studyPrefs.daysOfWeek ?? [];
         const isActiveDay = activeDays.length > 0 ? activeDays.includes(date.getDay()) : true;
-        targetByDate.set(dateKey, isActiveDay ? Math.max(0, studyPrefs.hoursPerDay || 0) : 0);
+        targetByDate.set(dateKey, isActiveDay ? Math.max(0, studyPrefs.hoursPerDay ?? 0) : 0);
       });
     }
 
     return weekDates.map((date) => {
       const dateKey = toLocalDateKey(date);
-      const isoDateKey = date.toISOString().split('T')[0];
-      const hours = Math.max(mergedDaily[dateKey]?.hours ?? 0, mergedDaily[isoDateKey]?.hours ?? 0);
+      const hours = mergedDaily[dateKey]?.hours ?? 0;
 
       return {
         day: dayLabels[date.getDay()],
@@ -226,7 +225,7 @@ export default function DashboardPage() {
     for (let i = 13; i >= 0; i -= 1) {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
-      const dateKey = date.toISOString().split('T')[0];
+      const dateKey = toLocalDateKey(date);
       const record = analyticsForSummary.daily[dateKey];
       const hours = record?.hours ?? 0;
       if (hours <= 0) continue;
@@ -244,7 +243,7 @@ export default function DashboardPage() {
   const completedThisWeek = useMemo(() => {
     const weekStart = getWeekStart(new Date());
     return getWeekDates(weekStart).reduce((sum, date) => {
-      const dateKey = date.toISOString().split('T')[0];
+      const dateKey = toLocalDateKey(date);
       return (
         sum +
         getStudySessionsForDate(
@@ -442,7 +441,7 @@ export default function DashboardPage() {
       }
     } else if (!targetBlock.isBreak) {
       // Fallback for cases where the subject was removed but the block still exists.
-      const dateKey = new Date(targetBlock.date).toISOString().split('T')[0];
+      const dateKey = toLocalDateKey(targetBlock.date);
       setAnalytics((prev) => {
         const current = prev.daily[dateKey] || { hours: 0, sessions: 0 };
         return {

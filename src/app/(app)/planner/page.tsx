@@ -12,7 +12,14 @@ import { WeeklyPlanner } from '@/components/planner';
 import { generateChronologicalSchedule, getPhaseForDate } from '@/services/roadmapEngine';
 import { buildSubjectPerformanceProfiles, inferUserLearningLevel } from '@/services/adaptiveStudyIntelligence';
 import { useLocalStorage } from '@/hooks';
-import { cn, getWeekStart, timeToMinutes, minutesToTime } from '@/lib/utils';
+import {
+  cn,
+  getWeekStart,
+  timeToMinutes,
+  minutesToTime,
+  parseLocalDateKey,
+  toLocalDateKey,
+} from '@/lib/utils';
 import { getStudyBlockTypeLabel } from '@/lib/studyBlockLabels';
 import { isEnemGoal, upgradeSubjectsToOfficialEnemStructure } from '@/lib/enemCatalog';
 import type {
@@ -30,18 +37,8 @@ const initialBlocks: StudyBlock[] = [];
 const weekDayKeys: WeekdayKey[] = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 const emptyAnalytics: AnalyticsStore = { daily: {} };
 
-const toLocalKey = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-    date.getDate()
-  ).padStart(2, '0')}`;
-
-const parseLocalKey = (value: string) => {
-  const [year, month, day] = value.split('-').map(Number);
-  if (!year || !month || !day) return null;
-  const parsed = new Date(year, month - 1, day);
-  parsed.setHours(0, 0, 0, 0);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
+const toLocalKey = (date: Date) => toLocalDateKey(date);
+const parseLocalKey = (value: string) => parseLocalDateKey(value);
 
 const getHoursForDate = (
   date: Date,
@@ -177,8 +174,8 @@ export default function PlannerPage() {
 
   const aiProfile = useMemo(() => {
     const baseBlock =
-      studyPrefs.focusBlockMinutes || studyPrefs.blockDurationMinutes || userSettings.maxBlockMinutes || 90;
-    const baseBreak = studyPrefs.breakDurationMinutes || userSettings.breakMinutes || 15;
+      studyPrefs.focusBlockMinutes ?? studyPrefs.blockDurationMinutes ?? userSettings.maxBlockMinutes ?? 90;
+    const baseBreak = studyPrefs.breakDurationMinutes ?? userSettings.breakMinutes ?? 15;
     const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
     const lockBlockAndBreak =
       (typeof studyPrefs.focusBlockMinutes === 'number' ||
@@ -192,7 +189,7 @@ export default function PlannerPage() {
       for (let i = 6; i >= 0; i -= 1) {
         const date = new Date(today);
         date.setDate(today.getDate() - i);
-        const key = date.toISOString().split('T')[0];
+        const key = toLocalDateKey(date);
         totalHours += analytics.daily[key]?.hours ?? 0;
       }
       const activeCount = activeDaysFromSettings.length || 7;

@@ -102,10 +102,35 @@ export function formatDate(date: Date, format: 'short' | 'long' | 'iso' = 'short
         day: 'numeric' 
       });
     case 'iso':
-      return date.toISOString().split('T')[0];
+      return toLocalDateKey(date);
     default:
       return date.toLocaleDateString();
   }
+}
+
+/**
+ * Build a local date key (YYYY-MM-DD) without UTC conversion.
+ */
+export function toLocalDateKey(value: Date | string | number): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate()
+  ).padStart(2, '0')}`;
+}
+
+/**
+ * Parse a local date key (YYYY-MM-DD) to local midnight Date.
+ */
+export function parseLocalDateKey(value?: string | null): Date | null {
+  if (!value) return null;
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return null;
+
+  const parsed = new Date(year, month - 1, day);
+  parsed.setHours(0, 0, 0, 0);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 /**

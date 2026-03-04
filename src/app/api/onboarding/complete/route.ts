@@ -16,33 +16,28 @@ export async function POST(request: Request) {
     }
 
     if (!answers) {
-      return NextResponse.json({ error: 'Respostas não enviadas' }, { status: 400 });
+      return NextResponse.json({ error: 'Respostas nao enviadas' }, { status: 400 });
     }
 
     const setup = createDefaultOnboardingSetup(answers);
     setup.profile.userId = userId;
 
-    // Persist profile if Prisma client supports it (ignora se modelo não estiver gerado)
     try {
-      // @ts-ignore - userProfile pode não existir se o client não foi regenerado
-      if (prisma.userProfile) {
-        // @ts-ignore
-        await prisma.userProfile.upsert({
-          where: { userId },
-          update: {
-            ...setup.profile,
-            active_days: JSON.stringify(setup.profile.active_days),
-            focus_subjects: JSON.stringify(setup.profile.focus_subjects),
-          },
-          create: {
-            ...setup.profile,
-            active_days: JSON.stringify(setup.profile.active_days),
-            focus_subjects: JSON.stringify(setup.profile.focus_subjects),
-          },
-        });
-      }
+      await prisma.userProfile.upsert({
+        where: { userId },
+        update: {
+          ...setup.profile,
+          active_days: JSON.stringify(setup.profile.active_days),
+          focus_subjects: JSON.stringify(setup.profile.focus_subjects),
+        },
+        create: {
+          ...setup.profile,
+          active_days: JSON.stringify(setup.profile.active_days),
+          focus_subjects: JSON.stringify(setup.profile.focus_subjects),
+        },
+      });
     } catch (err) {
-      console.warn('Não foi possível salvar no banco (Prisma):', err);
+      console.warn('Nao foi possivel salvar no banco (Prisma):', err);
     }
 
     return NextResponse.json(setup);

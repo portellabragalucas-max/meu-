@@ -44,16 +44,27 @@ const handleDispatch = async (request: Request) => {
     });
 
     let totalCreated = 0;
+    let usersProcessed = 0;
 
-    for (const user of users) {
-      const result = await syncNotificationsForUser(user.id);
-      totalCreated += result.createdCount;
+    const CHUNK_SIZE = 20;
+    for (let index = 0; index < users.length; index += CHUNK_SIZE) {
+      const chunk = users.slice(index, index + CHUNK_SIZE);
+      const results = await Promise.allSettled(chunk.map((user) => syncNotificationsForUser(user.id)));
+
+      results.forEach((result) => {
+        usersProcessed += 1;
+        if (result.status === 'fulfilled') {
+          totalCreated += result.value.createdCount;
+          return;
+        }
+        console.error('Falha ao sincronizar notificacoes de usuario no cron:', result.reason);
+      });
     }
 
     return NextResponse.json({
       success: true,
       data: {
-        usersProcessed: users.length,
+        usersProcessed,
         notificationsCreated: totalCreated,
       },
     });

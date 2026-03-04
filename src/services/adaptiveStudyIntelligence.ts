@@ -9,6 +9,7 @@ import type {
   UserLearningLevel,
 } from '@/types';
 import { getEnemDisciplineByName, normalizeEnemText } from '@/lib/enemCatalog';
+import { toLocalDateKey } from '@/lib/utils';
 
 export interface AdaptiveScoreFactors {
   weight: number;
@@ -286,7 +287,7 @@ export function applyBlockCompletionMetrics(params: {
   const focusScore = Math.round(clamp(70 + (minutesSpent >= block.durationMinutes ? 12 : 4), 45, 98));
   const productivityScore = Math.round(clamp(68 + accuracyRate * 20, 40, 98));
   const difficultyScore = clamp(subject.difficulty || 5, 1, 10);
-  const dateKey = new Date(block.date).toISOString().split('T')[0];
+  const dateKey = toLocalDateKey(block.date);
 
   const snapshot: PerformanceMetricsSnapshot = {
     date: now.toISOString(),
@@ -495,7 +496,7 @@ export function computeIntelligentAnalyticsSummary(params: {
   const last30DayRecords = Array.from({ length: 30 }, (_, index) => {
     const date = new Date(now);
     date.setDate(now.getDate() - index);
-    const dateKey = date.toISOString().split('T')[0];
+    const dateKey = toLocalDateKey(date);
     return analytics.daily[dateKey] || { hours: 0, sessions: 0 };
   });
   const studyDays = last30DayRecords.filter((record) => (record.hours || 0) > 0).length;

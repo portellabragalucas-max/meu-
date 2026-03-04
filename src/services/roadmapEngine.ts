@@ -6,7 +6,7 @@ import type {
   SubjectPerformanceProfile,
   UserLearningLevel,
 } from '@/types';
-import { generateId, minutesToTime, timeToMinutes } from '@/lib/utils';
+import { generateId, minutesToTime, timeToMinutes, toLocalDateKey } from '@/lib/utils';
 import {
   getEnemDisciplineByName,
   isEnemGoal,
@@ -345,7 +345,7 @@ function getEffectiveDayWindow(
   config: ChronologicalScheduleConfig,
   date: Date
 ): { start: string; end: string } {
-  const key = date.toISOString().split('T')[0];
+  const key = toLocalDateKey(date);
   const override = config.dailyTimeWindowByDate?.[key];
   if (
     override?.start &&
@@ -631,7 +631,7 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
       : [1, 7, 30];
   const hardSubjectsPeriodPreference = config.preferences.hardSubjectsPeriodPreference ?? 'any';
   const getDailyLimit = (date: Date) => {
-    const dayKey = date.toISOString().split('T')[0];
+    const dayKey = toLocalDateKey(date);
     const dayWindow = getEffectiveDayWindow(config, date);
     const windowMinutes = Math.max(
       0,
@@ -640,7 +640,7 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
     const dailyMinutes = getDailyMinutes(
       dayWindow.start,
       dayWindow.end,
-      config.preferences.hoursPerDay || 2
+      config.preferences.hoursPerDay ?? 2
     );
     const override = config.dailyLimitByDate?.[dayKey];
     if (typeof override === 'number') {
@@ -706,7 +706,7 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
   for (const date of dates) {
     if (excludeDays.includes(date.getDay())) continue;
     const phase = getPhaseForDate(date, config.startDate);
-    const dayKey = date.toISOString().split('T')[0];
+    const dayKey = toLocalDateKey(date);
     phaseByDate[dayKey] = phase.label;
 
     let lastSubjectId = globalLastSubjectId;
@@ -991,7 +991,7 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
           const reviewDate = new Date(date);
           reviewDate.setDate(reviewDate.getDate() + offset);
           if (reviewDate < config.startDate || reviewDate > config.endDate) return;
-          const key = reviewDate.toISOString().split('T')[0];
+          const key = toLocalDateKey(reviewDate);
           const list = reviewQueue.get(key) || [];
           list.push(chosen.subject.id);
           reviewQueue.set(key, list);
@@ -1068,7 +1068,7 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
     log(
       `Dia ${dayKey}: ${
         blocks.filter(
-          (b) => !b.isBreak && new Date(b.date).toISOString().split('T')[0] === dayKey
+          (b) => !b.isBreak && toLocalDateKey(b.date) === dayKey
         ).length
       } blocos.`
     );
