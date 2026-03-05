@@ -45,11 +45,25 @@ export function formatDuration(minutes: number): string {
 }
 
 /**
- * Format decimal hours to display duration (e.g. 0.8 -> 48 min, 1.8 -> 1:48)
+ * Format decimal hours to display duration (e.g. 0.8 -> 50 min, 1.8 -> 1:50)
  */
 export function formatHoursDuration(hours: number): string {
   if (!Number.isFinite(hours) || hours <= 0) return '0 min';
-  return formatDuration(hours * 60);
+
+  const safeHours = Math.max(0, hours);
+  const hasSingleDecimalPrecision =
+    Math.abs(safeHours * 10 - Math.round(safeHours * 10)) < 0.000001;
+
+  let minutes = safeHours * 60;
+
+  // Legacy snapshots sometimes store hours with only one decimal place (e.g. 0.8),
+  // which can display odd values like 48 min for a 50 min block.
+  if (hasSingleDecimalPrecision) {
+    const roundingStep = minutes < 30 ? 5 : 10;
+    minutes = Math.round(minutes / roundingStep) * roundingStep;
+  }
+
+  return formatDuration(minutes);
 }
 
 /**

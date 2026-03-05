@@ -28,7 +28,22 @@ interface WeeklyChartProps {
 }
 
 // Componente de tooltip personalizado
-const CustomTooltip = ({ active, payload, label }: any) => {
+type WeeklyTooltipEntry = {
+  value: number;
+  payload: {
+    target: number;
+  };
+};
+
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: WeeklyTooltipEntry[];
+  label?: string;
+}) => {
   if (active && payload && payload.length) {
     return (
       <div className="glass-card p-3">

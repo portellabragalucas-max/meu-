@@ -6,6 +6,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Calendar, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 import { Button, Card, ProgressBar } from '@/components/ui';
 import type {
+  ConcursoAreaFocus,
+  ConcursoExperienceLevel,
+  ConcursoLevel,
+  ConcursoStudyPriority,
   DailyAvailabilityByWeekday,
   DailyHoursByWeekday,
   HardSubjectsPeriodPreference,
@@ -50,6 +54,32 @@ const STUDY_STYLE_OPTIONS: Array<{ value: StudyStylePreference; label: string; d
   { value: 'theory', label: 'Mais teoria', desc: 'Maior proporcao de blocos AULA' },
   { value: 'practice', label: 'Mais exercicios', desc: 'Maior proporcao de blocos EXERCICIOS' },
   { value: 'balanced', label: 'Equilibrado', desc: 'Mix padrao com teoria e exercicios' },
+];
+const CONCURSO_AREA_OPTIONS: Array<{ value: ConcursoAreaFocus; label: string; desc: string }> = [
+  { value: 'policial', label: 'Area Policial / Seguranca Publica', desc: 'Penal, processual penal e legislacao especial' },
+  { value: 'tribunais', label: 'Tribunais / Juridica', desc: 'Civil, processo civil e base juridica' },
+  { value: 'fiscal', label: 'Area Fiscal / Controle', desc: 'Tributario, contabilidade e auditoria' },
+  { value: 'administrativa', label: 'Area Administrativa / Gestao', desc: 'Administracao publica e legislacao aplicada' },
+  { value: 'bancaria', label: 'Bancaria', desc: 'Conhecimentos bancarios e matematica financeira' },
+  { value: 'inss', label: 'INSS / Previdenciaria', desc: 'Previdenciario, seguridade e legislacao' },
+  { value: 'educacao', label: 'Educacao', desc: 'Didatica e legislacao educacional' },
+  { value: 'personalizado', label: 'Personalizado', desc: 'Base comum + ajuste manual por edital' },
+];
+const CONCURSO_LEVEL_OPTIONS: Array<{ value: ConcursoLevel; label: string }> = [
+  { value: 'medio', label: 'Medio' },
+  { value: 'superior', label: 'Superior' },
+  { value: 'ambos', label: 'Ambos' },
+];
+const CONCURSO_EXPERIENCE_OPTIONS: Array<{ value: ConcursoExperienceLevel; label: string }> = [
+  { value: 'nunca', label: 'Nunca comecei' },
+  { value: 'pouco', label: 'Ja estudei um pouco' },
+  { value: 'intermediaria', label: 'Tenho base intermediaria' },
+  { value: 'avancado', label: 'Nivel avancado' },
+];
+const CONCURSO_PRIORITY_OPTIONS: Array<{ value: ConcursoStudyPriority; label: string; desc: string }> = [
+  { value: 'teoria', label: 'Mais teoria', desc: 'Dar mais carga para leitura e consolidacao de base' },
+  { value: 'exercicios', label: 'Mais exercicios', desc: 'Priorizar blocos praticos e revisao por erro' },
+  { value: 'equilibrado', label: 'Equilibrado', desc: 'Distribuir teoria e pratica de forma proporcional' },
 ];
 const QUICK_HOURS = [2, 3, 4, 5, 6] as const;
 const SETTINGS_SECTION_CLASS =
@@ -130,9 +160,32 @@ const mapStudyStyleToContentPref = (style: StudyStylePreference): NonNullable<Pr
   return 'misto';
 };
 
+const mapStudyStyleToConcursoPriority = (style: StudyStylePreference): ConcursoStudyPriority => {
+  if (style === 'theory') return 'teoria';
+  if (style === 'practice') return 'exercicios';
+  return 'equilibrado';
+};
+
+const mapConcursoPriorityToStudyStyle = (priority: ConcursoStudyPriority): StudyStylePreference => {
+  if (priority === 'teoria') return 'theory';
+  if (priority === 'exercicios') return 'practice';
+  return 'balanced';
+};
+
 const buildDefaultAnswers = (presetId: string, presetName: string): PresetWizardAnswers => {
   const goal = resolveGoal(presetId, presetName);
   const focus = goal === 'medicina' ? 60 : 50;
+  const concursoDefaults =
+    goal === 'concurso'
+      ? {
+          concursoArea: 'administrativa' as const,
+          concursoLevel: 'superior' as const,
+          concursoExperience: 'nunca' as const,
+          concursoPriorityMode: 'equilibrado' as const,
+          concursoSubjectsRaw: '',
+        }
+      : {};
+
   return {
     goal,
     dailyHoursByWeekday: defaultDailyHours(goal),
@@ -145,6 +198,7 @@ const buildDefaultAnswers = (presetId: string, presetName: string): PresetWizard
     studyContentPreference: 'misto',
     startDate: toDateKey(new Date()),
     examDate: '',
+    ...concursoDefaults,
   };
 };
 
@@ -618,35 +672,156 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
               )}
 
               {step === 3 && (
-                <Card className={cn(SETTINGS_SECTION_CLASS, 'p-3 sm:p-4')}>
-                  <p className="mb-2 text-sm font-semibold text-white">Qual estilo voce prefere?</p>
-                  <div className="space-y-2">
-                    {STUDY_STYLE_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        className={cn(
-                          SETTINGS_ROW_CLASS,
-                          (answers.studyStyle || 'balanced') === opt.value
-                            ? 'border-neon-cyan/60 bg-neon-cyan/10 text-white'
-                            : 'text-text-secondary hover:text-white'
-                        )}
-                        onClick={() =>
-                          patchAnswers({
-                            studyStyle: opt.value,
-                            studyContentPreference: mapStudyStyleToContentPref(opt.value),
-                          })
-                        }
-                      >
-                        <div className="text-sm font-medium">{opt.label}</div>
-                        <div className="mt-0.5 text-xs opacity-80">{opt.desc}</div>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="mt-3 text-xs text-text-muted">
-                    Revisoes e simulados continuam automaticos; esta escolha ajusta o mix entre aula e exercicios.
-                  </p>
-                </Card>
+                <>
+                  <Card className={cn(SETTINGS_SECTION_CLASS, 'p-3 sm:p-4')}>
+                    <p className="mb-2 text-sm font-semibold text-white">Qual estilo voce prefere?</p>
+                    <div className="space-y-2">
+                      {STUDY_STYLE_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className={cn(
+                            SETTINGS_ROW_CLASS,
+                            (answers.studyStyle || 'balanced') === opt.value
+                              ? 'border-neon-cyan/60 bg-neon-cyan/10 text-white'
+                              : 'text-text-secondary hover:text-white'
+                          )}
+                          onClick={() =>
+                            patchAnswers({
+                              studyStyle: opt.value,
+                              studyContentPreference: mapStudyStyleToContentPref(opt.value),
+                              ...(answers.goal === 'concurso'
+                                ? {
+                                    concursoPriorityMode:
+                                      mapStudyStyleToConcursoPriority(opt.value),
+                                  }
+                                : {}),
+                            })
+                          }
+                        >
+                          <div className="text-sm font-medium">{opt.label}</div>
+                          <div className="mt-0.5 text-xs opacity-80">{opt.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs text-text-muted">
+                      Revisoes e simulados continuam automaticos; esta escolha ajusta o mix entre aula e exercicios.
+                    </p>
+                  </Card>
+
+                  {answers.goal === 'concurso' && (
+                    <>
+                      <Card className={cn(SETTINGS_SECTION_CLASS, 'p-3 sm:p-4')}>
+                        <p className="mb-2 text-sm font-semibold text-white">Qual area de concurso voce pretende focar?</p>
+                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                          {CONCURSO_AREA_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              className={cn(
+                                SETTINGS_ROW_CLASS,
+                                answers.concursoArea === opt.value
+                                  ? 'border-neon-blue/60 bg-neon-blue/10 text-white'
+                                  : 'text-text-secondary hover:text-white'
+                              )}
+                              onClick={() => patchAnswers({ concursoArea: opt.value })}
+                            >
+                              <div className="text-sm font-medium">{opt.label}</div>
+                              <div className="mt-0.5 text-xs opacity-80">{opt.desc}</div>
+                            </button>
+                          ))}
+                        </div>
+                      </Card>
+
+                      <Card className={cn(SETTINGS_SECTION_CLASS, 'space-y-4 p-3 sm:p-4')}>
+                        <div>
+                          <p className="mb-2 text-sm font-semibold text-white">Qual nivel do concurso?</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {CONCURSO_LEVEL_OPTIONS.map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                className={cn(
+                                  'rounded-xl border px-3 py-2 text-xs sm:text-sm',
+                                  answers.concursoLevel === opt.value
+                                    ? 'border-neon-cyan/60 bg-neon-cyan/10 text-white'
+                                    : 'border-white/10 text-text-secondary'
+                                )}
+                                onClick={() => patchAnswers({ concursoLevel: opt.value })}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="mb-2 text-sm font-semibold text-white">Voce ja estudou para concursos antes?</p>
+                          <div className="space-y-2">
+                            {CONCURSO_EXPERIENCE_OPTIONS.map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                className={cn(
+                                  SETTINGS_ROW_CLASS,
+                                  answers.concursoExperience === opt.value
+                                    ? 'border-neon-purple/60 bg-neon-purple/10 text-white'
+                                    : 'text-text-secondary hover:text-white'
+                                )}
+                                onClick={() => patchAnswers({ concursoExperience: opt.value })}
+                              >
+                                <div className="text-sm font-medium">{opt.label}</div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="mb-2 text-sm font-semibold text-white">Quer focar mais em:</p>
+                          <div className="space-y-2">
+                            {CONCURSO_PRIORITY_OPTIONS.map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                className={cn(
+                                  SETTINGS_ROW_CLASS,
+                                  (answers.concursoPriorityMode || 'equilibrado') === opt.value
+                                    ? 'border-neon-cyan/60 bg-neon-cyan/10 text-white'
+                                    : 'text-text-secondary hover:text-white'
+                                )}
+                                onClick={() => {
+                                  const mappedStyle = mapConcursoPriorityToStudyStyle(opt.value);
+                                  patchAnswers({
+                                    concursoPriorityMode: opt.value,
+                                    studyStyle: mappedStyle,
+                                    studyContentPreference: mapStudyStyleToContentPref(mappedStyle),
+                                  });
+                                }}
+                              >
+                                <div className="text-sm font-medium">{opt.label}</div>
+                                <div className="mt-0.5 text-xs opacity-80">{opt.desc}</div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="mb-1 text-sm font-semibold text-white">Disciplinas do edital (opcional)</p>
+                          <p className="mb-2 text-xs text-text-muted">
+                            Liste materias adicionais separadas por virgula ou quebra de linha.
+                          </p>
+                          <textarea
+                            value={answers.concursoSubjectsRaw || ''}
+                            onChange={(e) => patchAnswers({ concursoSubjectsRaw: e.target.value })}
+                            rows={4}
+                            className="input-field w-full resize-y"
+                            placeholder="Ex.: Direito Ambiental, Direitos Humanos, Estatistica"
+                          />
+                        </div>
+                      </Card>
+                    </>
+                  )}
+                </>
               )}
 
               {step === 4 && (

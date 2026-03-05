@@ -272,6 +272,42 @@ const extractCandidatesFromProgressSnapshot = async ({
   return normalized;
 };
 
+const extractOverdueBacklogCountFromProgressSnapshot = async ({
+  userId,
+  todayStart,
+}: {
+  userId: string;
+  todayStart: Date;
+}): Promise<number> => {
+  const snapshot = await prisma.userProgressSnapshot.findUnique({
+    where: { userId },
+    select: { payload: true },
+  });
+
+  const payload = snapshot?.payload;
+  if (!payload || !isRecord(payload)) return 0;
+
+  const rawBlocks = payload.nexora_planner_blocks;
+  if (!Array.isArray(rawBlocks) || rawBlocks.length === 0) return 0;
+
+  const backlogStatuses = new Set(['scheduled', 'rescheduled', 'skipped', 'in-progress']);
+
+  return rawBlocks.reduce<number>((count, rawBlock) => {
+    if (!isRecord(rawBlock)) return count;
+    if (rawBlock.isBreak === true) return count;
+    if (typeof rawBlock.status !== 'string' || !backlogStatuses.has(rawBlock.status)) return count;
+
+    const rawDate = rawBlock.date;
+    const blockDate = new Date(
+      typeof rawDate === 'string' || rawDate instanceof Date ? rawDate : Number.NaN
+    );
+    if (Number.isNaN(blockDate.getTime())) return count;
+    if (blockDate >= todayStart) return count;
+
+    return count + 1;
+  }, 0);
+};
+
 const dispatchScheduledStudyNotifications = async ({
   userId,
   firstName,
@@ -390,7 +426,7 @@ const dispatchScheduledStudyNotifications = async ({
   }
 
   if (backlogReminderEnabled) {
-    const overdueBacklogCount = await prisma.studyBlock.count({
+    let overdueBacklogCount = await prisma.studyBlock.count({
       where: {
         userId,
         isBreak: false,
@@ -402,6 +438,13 @@ const dispatchScheduledStudyNotifications = async ({
         },
       },
     });
+
+    if (overdueBacklogCount === 0) {
+      overdueBacklogCount = await extractOverdueBacklogCountFromProgressSnapshot({
+        userId,
+        todayStart,
+      });
+    }
 
     if (overdueBacklogCount > 0) {
       const backlogResult = await createNotificationForUser({

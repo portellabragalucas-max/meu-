@@ -11,7 +11,6 @@ import {
   Cell,
   ResponsiveContainer,
   Tooltip,
-  Legend,
 } from 'recharts';
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui';
@@ -25,7 +24,24 @@ interface SubjectDistributionProps {
   }[];
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
+type SubjectDistributionDatum = {
+  name: string;
+  hours: number;
+  color: string;
+  percentage: number;
+};
+
+type SubjectDistributionTooltipEntry = {
+  payload: SubjectDistributionDatum;
+};
+
+const CustomTooltip = ({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: SubjectDistributionTooltipEntry[];
+}) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (

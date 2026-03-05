@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
 import { generateChronologicalSchedule } from '@/services/roadmapEngine';
+import { authOptions } from '@/lib/auth';
 import { getWeekStart, minutesToTime, timeToMinutes } from '@/lib/utils';
 import type { StudyBlock, StudyPreferences, Subject, UserSettings, WeekdayKey } from '@/types';
 
@@ -168,6 +170,11 @@ function serializeBlock(block: StudyBlock) {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = (await request.json()) as GeneratePlannerRequest;
     const subjects = Array.isArray(body.subjects) ? body.subjects : [];
     const studyPrefs = body.studyPrefs;

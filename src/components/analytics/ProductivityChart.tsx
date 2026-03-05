@@ -28,16 +28,30 @@ interface ProductivityChartProps {
   }[];
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+type ProductivityTooltipEntry = {
+  name?: string;
+  value?: number;
+  color?: string;
+};
+
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: ProductivityTooltipEntry[];
+  label?: string;
+}) => {
   if (active && payload && payload.length) {
     return (
       <div className="glass-card p-3">
         <p className="text-sm font-medium text-white mb-2">{label}</p>
-        {payload.map((entry: any, index: number) => (
+        {payload.map((entry, index) => (
           <p key={index} className="text-sm" style={{ color: entry.color }}>
             {entry.name === 'Horas'
-              ? `${entry.name}: ${formatHoursDuration(entry.value)}`
-              : `${entry.name}: ${entry.value}%`}
+              ? `${entry.name}: ${formatHoursDuration(entry.value ?? 0)}`
+              : `${entry.name}: ${entry.value ?? 0}%`}
           </p>
         ))}
       </div>
