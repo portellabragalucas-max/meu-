@@ -948,7 +948,7 @@ export default function WeeklyPlanner({
       .filter((item) => toLocalKey(new Date(item.date)) === targetKey && item.id !== blockId)
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
     const targetStudyMinutes = targetDayBlocks
-      .filter((item) => !item.isBreak && item.status !== 'completed' && item.status !== 'skipped')
+      .filter((item) => isCapacityStudyBlock(item))
       .reduce((sum, item) => sum + item.durationMinutes, 0);
     const targetLimit = getDailyLimitMinutes(targetDate);
     if (targetLimit > 0 && targetStudyMinutes + block.durationMinutes > targetLimit) return false;
@@ -1824,7 +1824,7 @@ export default function WeeklyPlanner({
 
                     const sourceBlocks = blocks
                       .filter((block) => toLocalKey(new Date(block.date)) === sourceKey)
-                      .filter((block) => block.status !== 'completed');
+                      .filter((block) => !isLockedScheduleBlock(block));
 
                     if (sourceBlocks.length === 0) {
                       setRescheduleError('Não há blocos pendentes no dia selecionado.');
@@ -1834,12 +1834,17 @@ export default function WeeklyPlanner({
                     const targetBlocks = blocks.filter(
                       (block) => toLocalKey(new Date(block.date)) === targetKey
                     );
+                    const targetLimit = getDailyLimitMinutes(targetDate);
                     const lastEndMinutes = targetBlocks.reduce((max, block) => {
                       const endMinutes = timeToMinutes(block.endTime);
                       return Math.max(max, endMinutes);
                     }, timeToMinutes('09:00'));
+                    const existingTargetStudyMinutes = targetBlocks
+                      .filter((block) => isCapacityStudyBlock(block))
+                      .reduce((sum, block) => sum + block.durationMinutes, 0);
 
                     let cursorMinutes = lastEndMinutes;
+                    let movedStudyMinutes = 0;
                     const movedBlocks: StudyBlock[] = [];
 
                     const orderedSourceBlocks = [...sourceBlocks].sort((a, b) =>
@@ -1847,6 +1852,17 @@ export default function WeeklyPlanner({
                     );
 
                     for (const block of orderedSourceBlocks) {
+                      const additionalStudyMinutes = isCapacityStudyBlock(block) ? block.durationMinutes : 0;
+                      if (
+                        targetLimit > 0 &&
+                        existingTargetStudyMinutes + movedStudyMinutes + additionalStudyMinutes > targetLimit
+                      ) {
+                        setRescheduleError(
+                          'Não há capacidade suficiente no dia de destino.'
+                        );
+                        return;
+                      }
+
                       const nextEnd = cursorMinutes + block.durationMinutes;
                       if (nextEnd > 24 * 60) {
                         setRescheduleError(
@@ -1866,6 +1882,7 @@ export default function WeeklyPlanner({
                         updatedAt: new Date(),
                       });
                       cursorMinutes = nextEnd;
+                      movedStudyMinutes += additionalStudyMinutes;
                     }
 
                     const movedById = new Map(movedBlocks.map((block) => [block.id, block]));
