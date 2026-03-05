@@ -62,11 +62,17 @@ export default function DayColumn({
     id: date.toISOString(),
   });
 
+  const isPendingStudyBlock = (block: StudyBlock) =>
+    !block.isBreak && block.status !== 'completed' && block.status !== 'skipped';
+  const isCapacityConsumedStudyBlock = (block: StudyBlock) =>
+    !block.isBreak && block.status !== 'skipped';
+
   const isToday = isSameDay(date, new Date());
   const totalMinutes = blocks
-    .filter((b) => !b.isBreak && b.status !== 'completed' && b.status !== 'skipped')
+    .filter((b) => isCapacityConsumedStudyBlock(b))
     .reduce((sum, b) => sum + b.durationMinutes, 0);
   const totalHours = formatDuration(totalMinutes);
+  const pendingBlocksCount = blocks.filter((b) => isPendingStudyBlock(b)).length;
   const limitHours = dailyLimitMinutes > 0 ? formatDuration(dailyLimitMinutes) : null;
   const overMinutes = dailyLimitMinutes > 0 ? Math.max(0, totalMinutes - dailyLimitMinutes) : 0;
   const usageRatio = dailyLimitMinutes > 0 ? Math.min(1, totalMinutes / dailyLimitMinutes) : 0;
@@ -119,7 +125,7 @@ export default function DayColumn({
 
         {/* Estatísticas do Dia */}
         <div className="mt-2 flex items-center justify-between gap-2 text-xs text-text-secondary">
-          <span>{blocks.filter((b) => !b.isBreak && b.status !== 'completed' && b.status !== 'skipped').length} blocos</span>
+          <span>{pendingBlocksCount} blocos</span>
           <span className="font-semibold text-white">{totalHours}</span>
         </div>
         <div className="mt-2 flex items-center justify-between gap-2 text-xs text-text-secondary">

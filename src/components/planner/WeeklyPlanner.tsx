@@ -81,8 +81,11 @@ const hasManualSequence = (block: StudyBlock) =>
 const isLockedScheduleBlock = (block: StudyBlock) =>
   block.status === 'completed' || block.status === 'in-progress';
 
-const isCapacityStudyBlock = (block: StudyBlock) =>
+const isPendingStudyBlock = (block: StudyBlock) =>
   !block.isBreak && block.status !== 'completed' && block.status !== 'skipped';
+
+const isCapacityStudyBlock = (block: StudyBlock) =>
+  !block.isBreak && block.status !== 'skipped';
 
 const compareDayBlocks = (a: StudyBlock, b: StudyBlock) => {
   const aHasSequence = hasManualSequence(a);
@@ -392,9 +395,9 @@ export default function WeeklyPlanner({
   const mobileDayKey = mobileDay ? toLocalDateKey(mobileDay) : '';
   const mobileDayBlocks = mobileDayKey ? blocksByDay.get(mobileDayKey) ?? [] : [];
   const mobileStudyMinutes = mobileDayBlocks
-    .filter((block) => isCapacityStudyBlock(block))
+    .filter((block) => isPendingStudyBlock(block))
     .reduce((sum, block) => sum + block.durationMinutes, 0);
-  const mobileSessions = mobileDayBlocks.filter((block) => isCapacityStudyBlock(block)).length;
+  const mobileSessions = mobileDayBlocks.filter((block) => isPendingStudyBlock(block)).length;
   const visibleDates = isMobile ? [mobileDay] : weekDates;
   const todayKey = useMemo(() => toLocalDateKey(new Date()), []);
 
@@ -1130,17 +1133,12 @@ export default function WeeklyPlanner({
     setBlocks((prev) => {
       const next = prev.map((block) =>
         block.id === blockId
-          ? (() => {
-              return {
-                ...block,
-                status: 'completed' as const,
-                completedAt: new Date(),
-                updatedAt: new Date(),
-                durationMinutes: hasExplicitMinutes
-                  ? Math.max(1, Math.round(effectiveMinutes))
-                  : block.durationMinutes,
-              };
-            })()
+          ? {
+              ...block,
+              status: 'completed' as const,
+              completedAt: new Date(),
+              updatedAt: new Date(),
+            }
           : block
       );
       onBlocksChange(next);
@@ -1301,7 +1299,7 @@ export default function WeeklyPlanner({
   const isCurrentWeek = isSameDay(currentWeekStart, getWeekStart());
   const isViewingToday = isMobile && mobileDay ? isSameDay(mobileDay, new Date()) : false;
   const plannedStudyBlocks = useMemo(
-    () => blocks.filter((block) => isCapacityStudyBlock(block)),
+    () => blocks.filter((block) => isPendingStudyBlock(block)),
     [blocks]
   );
   const plannedStudyMinutes = useMemo(
