@@ -41,6 +41,7 @@ export default function QuickSessionModal({
   subjects,
 }: QuickSessionModalProps) {
   const [sessionState, setSessionState] = useState<SessionState>('setup');
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [duration, setDuration] = useState(25); // minutos
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -70,6 +71,12 @@ export default function QuickSessionModal({
     const interval = setInterval(tick, 250);
     return () => clearInterval(interval);
   }, [sessionState, timeRemaining]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShowExitConfirm(false);
+    }
+  }, [isOpen]);
 
   // Formatar tempo
   const formatTime = (seconds: number) => {
@@ -118,6 +125,7 @@ export default function QuickSessionModal({
   // Resetar
   const resetSession = () => {
     sessionEndAtRef.current = null;
+    setShowExitConfirm(false);
     setSessionState('setup');
     setSelectedSubject(null);
     setDuration(25);
@@ -128,14 +136,17 @@ export default function QuickSessionModal({
   // Fechar modal
   const handleClose = () => {
     if (sessionState === 'running' || sessionState === 'paused') {
-      if (confirm('Tem certeza que deseja sair? A sessão será perdida.')) {
-        resetSession();
-        onClose();
-      }
-    } else {
-      resetSession();
-      onClose();
+      setShowExitConfirm(true);
+      return;
     }
+
+    resetSession();
+    onClose();
+  };
+
+  const confirmExitAndClose = () => {
+    resetSession();
+    onClose();
   };
 
   // Calcular XP ganho
@@ -164,6 +175,37 @@ export default function QuickSessionModal({
             className="app-modal-panel max-w-[360px] sm:max-w-xl lg:max-w-2xl"
           >
             <Card className="relative overflow-hidden" padding="none">
+              <AnimatePresence>
+                {showExitConfirm && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/90 p-4"
+                  >
+                    <motion.div
+                      initial={{ scale: 0.96, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.96, opacity: 0 }}
+                      className="w-full max-w-sm rounded-2xl border border-card-border bg-card-bg p-5"
+                    >
+                      <h3 className="text-lg font-heading font-semibold text-white">Sair da sessão?</h3>
+                      <p className="mt-2 text-sm text-text-secondary">
+                        A sessão atual será perdida. Deseja continuar?
+                      </p>
+                      <div className="mt-4 flex justify-end gap-2">
+                        <Button variant="secondary" onClick={() => setShowExitConfirm(false)}>
+                          Continuar estudando
+                        </Button>
+                        <Button variant="danger" onClick={confirmExitAndClose}>
+                          Sair
+                        </Button>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Header gradient */}
               <div
                 className="h-2"

@@ -8,13 +8,35 @@ import { Card, Button, ProgressBar } from '@/components/ui';
 import type { OnboardingAnswers, OnboardingResult, StudyGoal } from '@/types';
 import { setClientStoreEntries } from '@/hooks/useLocalStorage';
 
+type OnboardingStepKey = keyof OnboardingAnswers;
+type OnboardingOptionValue = OnboardingAnswers[OnboardingStepKey];
+
+type OnboardingOption =
+  | OnboardingOptionValue
+  | {
+      label: string;
+      value: OnboardingOptionValue;
+    };
+
+type OnboardingStep = {
+  id: string;
+  title: string;
+  key: OnboardingStepKey;
+  options: OnboardingOption[];
+  extra?: {
+    title: string;
+    key: OnboardingStepKey;
+    options: Array<{ label: string; value: OnboardingOptionValue }>;
+  };
+};
+
 const stepVariants = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -12 },
 };
 
-const steps = [
+const steps: ReadonlyArray<OnboardingStep> = [
   {
     id: 'goal',
     title: 'Qual é seu principal objetivo?',
@@ -98,9 +120,13 @@ export default function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
 
   const current = steps[step];
+  const currentExtra = current.extra;
   const progress = Math.round(((step + 1) / steps.length) * 100);
 
-  const updateAnswer = (key: keyof OnboardingAnswers, value: any) => {
+  const updateAnswer = (
+    key: OnboardingStepKey,
+    value: OnboardingAnswers[OnboardingStepKey]
+  ) => {
     setAnswers((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -158,8 +184,8 @@ export default function OnboardingPage() {
       }
 
       router.push('/dashboard');
-    } catch (err: any) {
-      setError(err?.message || 'Erro inesperado');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro inesperado');
     } finally {
       setLoading(false);
     }
@@ -195,10 +221,11 @@ export default function OnboardingPage() {
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {(current.options as any[]).map((option) => {
+                  {current.options.map((option) => {
                     const value = typeof option === 'object' ? option.value : option;
-                    const label = typeof option === 'object' ? option.label : option;
-                    const selected = (answers as any)[current.key] === value;
+                    const label =
+                      typeof option === 'object' ? option.label : String(option);
+                    const selected = answers[current.key] === value;
                     return (
                       <button
                         key={value}
@@ -207,7 +234,7 @@ export default function OnboardingPage() {
                             ? 'border-cyan-500 bg-cyan-500/10 text-white'
                             : 'border-slate-800 hover:border-cyan-600 text-slate-200'
                         }`}
-                        onClick={() => updateAnswer(current.key as keyof OnboardingAnswers, value)}
+                        onClick={() => updateAnswer(current.key, value)}
                       >
                         {label}
                       </button>
@@ -215,12 +242,12 @@ export default function OnboardingPage() {
                   })}
                 </div>
 
-                {'extra' in current && current.extra ? (
+                {currentExtra ? (
                   <div className="mt-6">
-                    <p className="text-sm text-slate-400 mb-2">{current.extra.title}</p>
+                    <p className="text-sm text-slate-400 mb-2">{currentExtra.title}</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {current.extra.options.map((opt: any) => {
-                        const selected = (answers as any)[current.extra.key] === opt.value;
+                      {currentExtra.options.map((opt) => {
+                        const selected = answers[currentExtra.key] === opt.value;
                         return (
                           <button
                             key={opt.value}
@@ -229,7 +256,7 @@ export default function OnboardingPage() {
                                 ? 'border-cyan-500 bg-cyan-500/10 text-white'
                                 : 'border-slate-800 hover:border-cyan-600 text-slate-200'
                             }`}
-                            onClick={() => updateAnswer(current.extra.key as keyof OnboardingAnswers, opt.value)}
+                            onClick={() => updateAnswer(currentExtra.key, opt.value)}
                           >
                             {opt.label}
                           </button>

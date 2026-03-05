@@ -46,6 +46,39 @@ const toLocalDateKey = (date: Date) =>
     date.getDate()
   ).padStart(2, '0')}`;
 
+type ImportedSubjectApi = {
+  id: string;
+  userId: string;
+  name: string;
+  color: string;
+  icon: string;
+  priority: number;
+  difficulty: number;
+  targetHours: number;
+  completedHours?: number;
+  totalHours?: number;
+  sessionsCount?: number;
+  averageScore?: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type SerializedBlockApi = Omit<
+  StudyBlock,
+  'date' | 'originalDate' | 'completedAt' | 'createdAt' | 'updatedAt' | 'subject'
+> & {
+  date: string;
+  originalDate?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  subject?: (Omit<Subject, 'createdAt' | 'updatedAt'> & {
+    createdAt: string;
+    updatedAt: string;
+  }) | undefined;
+};
+
 export default function SubjectsPage() {
   const router = useRouter();
   const { markFirstSubjectAdded, hasAddedFirstSubject } = useOnboarding();
@@ -55,7 +88,7 @@ export default function SubjectsPage() {
   const [editingSubject, setEditingSubject] = useState<Subject | undefined>();
   const [showPresetSelector, setShowPresetSelector] = useState(false);
   const [autoOpenedPresetSelector, setAutoOpenedPresetSelector] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
   const [studyPrefs, setStudyPrefs] = useLocalStorage<StudyPreferences>('nexora_study_prefs', {
     hoursPerDay: 2,
     daysOfWeek: [1, 2, 3, 4, 5],
@@ -70,6 +103,8 @@ export default function SubjectsPage() {
   );
   const [firstCycleAllSubjects] = useLocalStorage<boolean>('nexora_first_cycle_all_subjects', true);
   const [dailyLimits] = useLocalStorage<Record<string, number>>('nexora_daily_limits', {});
+  const [importPresetError, setImportPresetError] = useState<string | null>(null);
+  const [pendingDeleteSubject, setPendingDeleteSubject] = useState<Subject | null>(null);
 
   // Mostrar preset selector automaticamente quando não há disciplinas
   useEffect(() => {
@@ -182,7 +217,7 @@ export default function SubjectsPage() {
     return Array.from(merged.values());
   };
 
-  const deserializeBlock = (raw: any): StudyBlock => ({
+  const deserializeBlock = (raw: SerializedBlockApi): StudyBlock => ({
     ...raw,
     date: new Date(raw.date),
     originalDate: raw.originalDate ? new Date(raw.originalDate) : undefined,
@@ -260,6 +295,7 @@ export default function SubjectsPage() {
     presetId: string,
     options?: { source: 'api' | 'local'; wizardAnswers?: PresetWizardAnswers }
   ) => {
+    setImportPresetError(null);
     setIsLoading(true);
     try {
       // First try API
@@ -279,7 +315,7 @@ export default function SubjectsPage() {
             const data = await response.json();
 
             if (data.success && data.data?.subjects?.length > 0) {
-              const importedSubjects: Subject[] = data.data.subjects.map((s: any) => ({
+              const importedSubjects: Subject[] = (data.data.subjects as ImportedSubjectApi[]).map((s) => ({
                 id: s.id,
                 userId: s.userId,
                 name: s.name,
@@ -313,7 +349,7 @@ export default function SubjectsPage() {
               return;
             }
           }
-        } catch (apiError) {
+        } catch (_apiError) {
         }
       }
 
@@ -357,7 +393,7 @@ export default function SubjectsPage() {
 
     } catch (error) {
       console.error('Error importing preset:', error);
-      alert(`Erro ao importar predefinição: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      setImportPresetError(`Erro ao importar predefinição: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
       throw error;
     } finally {
       setIsLoading(false);
@@ -419,9 +455,15 @@ export default function SubjectsPage() {
   };
 
   const handleDeleteSubject = (subjectId: string) => {
-    if (confirm('Tem certeza que deseja excluir esta disciplina?')) {
-      setSubjects((prev) => prev.filter((s) => s.id !== subjectId));
-    }
+    const target = subjects.find((subject) => subject.id === subjectId);
+    if (!target) return;
+    setPendingDeleteSubject(target);
+  };
+
+  const confirmDeleteSubject = () => {
+    if (!pendingDeleteSubject) return;
+    setSubjects((prev) => prev.filter((subject) => subject.id !== pendingDeleteSubject.id));
+    setPendingDeleteSubject(null);
   };
 
   const handleFormSubmit = (data: Partial<Subject>) => {
@@ -516,6 +558,12 @@ export default function SubjectsPage() {
           )}
         </div>
       </div>
+
+      {importPresetError && (
+        <Card className="border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">
+          {importPresetError}
+        </Card>
+      )}
 
       {/* Barra de Estatísticas */}
       {subjects.length > 0 && (
@@ -619,6 +667,42 @@ export default function SubjectsPage() {
             onSubmit={handleFormSubmit}
             onCancel={() => setShowForm(false)}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {pendingDeleteSubject && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="app-modal-overlay"
+            onClick={() => setPendingDeleteSubject(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              className="app-modal-panel max-w-md"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Card className="space-y-4 p-5">
+                <h3 className="text-lg font-semibold text-white">Excluir disciplina</h3>
+                <p className="text-sm text-text-secondary">
+                  Tem certeza que deseja excluir{' '}
+                  <span className="font-semibold text-white">{pendingDeleteSubject.name}</span>?
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" onClick={() => setPendingDeleteSubject(null)}>
+                    Cancelar
+                  </Button>
+                  <Button variant="danger" onClick={confirmDeleteSubject}>
+                    Excluir
+                  </Button>
+                </div>
+              </Card>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

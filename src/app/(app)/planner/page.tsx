@@ -117,6 +117,7 @@ export default function PlannerPage() {
   const [dailyLimits] = useLocalStorage<Record<string, number>>('nexora_daily_limits', {});
   const [analytics] = useLocalStorage<AnalyticsStore>('nexora_analytics', emptyAnalytics);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [plannerNotice, setPlannerNotice] = useState<string | null>(null);
   const [firstCycleAllSubjects, setFirstCycleAllSubjects] = useLocalStorage<boolean>(
     'nexora_first_cycle_all_subjects',
     true
@@ -340,13 +341,16 @@ export default function PlannerPage() {
 
   const handleGenerateSchedule = useCallback(async (range?: { startDate: Date; endDate: Date }) => {
     if (subjects.length === 0) {
-      alert('Adicione disciplinas antes de gerar a agenda.');
+      setPlannerNotice('Adicione disciplinas antes de gerar a agenda.');
       return;
     }
     if (!userSettings.autoSchedule) {
-      alert('Agendamento automatico desativado. Ative nas configuracoes de IA para gerar o cronograma.');
+      setPlannerNotice(
+        'Agendamento automatico desativado. Ative nas configuracoes de IA para gerar o cronograma.'
+      );
       return;
     }
+    setPlannerNotice(null);
     setIsGenerating(true);
 
     // Simular delay da API
@@ -693,6 +697,12 @@ export default function PlannerPage() {
           </div>
         </div>
         </motion.div>
+      )}
+
+      {plannerNotice && (
+        <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-200">
+          {plannerNotice}
+        </div>
       )}
 
       <WeeklyPlanner
