@@ -6,6 +6,7 @@ export interface BacklogRescheduleConfig {
   today?: Date;
   dailyLimitByDate?: Record<string, number>;
   allowedDays?: number[];
+  breakMinutes?: number;
   backlogQuotaRatio?: number;
   lookaheadDays?: number;
   maxBacklogSubjectsPerDay?: number;
@@ -330,6 +331,7 @@ function appendBlockToDay(
     incrementReschedule?: boolean;
     dayEndLimitMinutes?: number;
     preferDayStart?: boolean;
+    breakMinutes?: number;
   }
 ) {
   const allBlocks = Array.from(blocksById.values());
@@ -340,34 +342,37 @@ function appendBlockToDay(
   const dayBlocks = allBlocks
     .filter((b) => getBlockDateKey(b) === dayKey)
     .filter((b) => b.id !== block.id);
-  const dayWindow = inferDayWindow(dayBlocks);
+  const dayStudyBlocks = dayBlocks.filter((item) => !item.isBreak);
+  const dayWindow = inferDayWindow(dayStudyBlocks);
   const hardEnd = opts.dayEndLimitMinutes ?? timeToMinutes(dayWindow.end);
+  const breakGapMinutes = Math.max(0, Math.round(opts.breakMinutes ?? 0));
 
   const originalDate = block.originalDate ? new Date(block.originalDate) : new Date(block.date);
   originalDate.setHours(0, 0, 0, 0);
 
   if (opts.preferDayStart) {
     const dayStart = timeToMinutes(dayWindow.start);
-    const lockedEnd = dayBlocks
+    const lockedEnd = dayStudyBlocks
       .filter((item) => isLockedForDayStartShift(item.status))
       .reduce((max, item) => Math.max(max, timeToMinutes(item.endTime)), dayStart);
     const insertionStart = Math.max(dayStart, lockedEnd);
     const insertionEnd = insertionStart + block.durationMinutes;
 
     if (insertionEnd <= hardEnd) {
-      const shiftTargets = dayBlocks
+      const shiftTargets = dayStudyBlocks
         .filter((item) => !isLockedForDayStartShift(item.status))
         .filter((item) => timeToMinutes(item.startTime) >= insertionStart)
         .sort((a, b) => a.startTime.localeCompare(b.startTime));
+      const insertionSpan = block.durationMinutes + (shiftTargets.length > 0 ? breakGapMinutes : 0);
 
       const canShift = shiftTargets.every(
-        (item) => timeToMinutes(item.endTime) + block.durationMinutes <= hardEnd
+        (item) => timeToMinutes(item.endTime) + insertionSpan <= hardEnd
       );
 
       if (canShift) {
         shiftTargets.forEach((item) => {
-          const shiftedStart = timeToMinutes(item.startTime) + block.durationMinutes;
-          const shiftedEnd = timeToMinutes(item.endTime) + block.durationMinutes;
+          const shiftedStart = timeToMinutes(item.startTime) + insertionSpan;
+          const shiftedEnd = timeToMinutes(item.endTime) + insertionSpan;
 
           updateBlock(blocksById, {
             ...item,
@@ -393,11 +398,14 @@ function appendBlockToDay(
     }
   }
 
-  const lastEnd = dayBlocks.reduce(
+  const lastEnd = dayStudyBlocks.reduce(
     (max, item) => Math.max(max, timeToMinutes(item.endTime)),
     timeToMinutes(dayWindow.start)
   );
-  const start = Math.max(lastEnd, timeToMinutes(dayWindow.start));
+  const start = Math.max(
+    dayStudyBlocks.length > 0 ? lastEnd + breakGapMinutes : lastEnd,
+    timeToMinutes(dayWindow.start)
+  );
   const end = start + block.durationMinutes;
   if (end > hardEnd) return false;
 
@@ -533,6 +541,7 @@ export function autoRescheduleBacklog(config: BacklogRescheduleConfig): BacklogR
       const moved = appendBlockToDay(blocksById, targetDayKey, block.id, {
         status: 'rescheduled',
         incrementReschedule: true,
+        breakMinutes: config.breakMinutes,
       });
       if (moved) {
         changedIds.add(block.id);
@@ -584,6 +593,7 @@ export function autoRescheduleBacklog(config: BacklogRescheduleConfig): BacklogR
       incrementReschedule: true,
       dayEndLimitMinutes: dayEndMinute,
       preferDayStart: true,
+      breakMinutes: config.breakMinutes,
     });
     if (!placed) return false;
 
