@@ -17,6 +17,10 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
   OAuthAccountNotLinked: 'Ja existe conta com este e-mail. Entre com e-mail e senha.',
   OAuthSignin: 'Falha ao iniciar login social. Tente novamente.',
   OAuthCallback: 'Falha na validacao do login social. Tente novamente.',
+  Configuration:
+    'Falha de configuracao no servidor. Verifique NEXTAUTH_SECRET e DATABASE_URL.',
+  Callback:
+    'Falha ao validar sua sessao. Tente novamente ou contate o suporte.',
   SessionRequired: 'Sua sessao expirou. Faca login novamente.',
 };
 
