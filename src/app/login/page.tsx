@@ -14,7 +14,8 @@ const DEFAULT_CALLBACK_URL = '/dashboard';
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   CredentialsSignin: 'E-mail ou senha invalidos.',
   AccessDenied: 'Acesso negado. Verifique suas credenciais.',
-  OAuthAccountNotLinked: 'Ja existe conta com este e-mail. Entre com e-mail e senha.',
+  OAuthAccountNotLinked:
+    'Conta criada via Google. Use o Google ou redefina sua senha.',
   OAuthSignin: 'Falha ao iniciar login social. Tente novamente.',
   OAuthCallback: 'Falha na validacao do login social. Tente novamente.',
   Configuration:

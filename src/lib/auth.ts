@@ -21,11 +21,20 @@ providers.push(
 
       if (!email || !password) return null;
 
-      const user = await prisma.user.findUnique({
-        where: { email },
-      });
+      let user;
+      try {
+        user = await prisma.user.findUnique({
+          where: { email },
+        });
+      } catch (error) {
+        console.error('Erro ao consultar usuario para login:', error);
+        throw new Error('Configuration');
+      }
 
-      if (!user?.passwordHash) return null;
+      if (!user) return null;
+      if (!user.passwordHash) {
+        throw new Error('OAuthAccountNotLinked');
+      }
 
       const isValidPassword = await verifyPassword(password, user.passwordHash);
       if (!isValidPassword) return null;
