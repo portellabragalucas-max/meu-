@@ -38,6 +38,7 @@ export const defaultSettings: UserSettings = {
   notificationMinutesBefore: 15,
   notificationSoundEnabled: true,
   backlogReminderEnabled: false,
+  allowSundayBacklog: false,
   alarmSound: 'pulse',
 
   // Prova

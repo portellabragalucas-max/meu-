@@ -274,6 +274,7 @@ export default function SettingsPage() {
   const emailValue = settings.email || session?.user?.email || '';
   const notificationsEnabled = Boolean(settings.notificationsEnabled);
   const backlogReminderEnabled = Boolean(settings.backlogReminderEnabled);
+  const allowSundayBacklog = Boolean(settings.allowSundayBacklog);
   const notificationSoundEnabled = settings.notificationSoundEnabled !== false;
   const notificationMinutesBefore = Number.isFinite(settings.notificationMinutesBefore)
     ? Math.min(180, Math.max(1, Math.round(settings.notificationMinutesBefore)))
@@ -407,19 +408,49 @@ export default function SettingsPage() {
         if (!payload?.success || !payload?.data) return;
 
         const remote = payload.data;
-        const restDays =
+        const parsedRestDays =
           typeof remote.restDays === 'string'
             ? (() => {
                 try {
-                  const parsed = JSON.parse(remote.restDays);
-                  return Array.isArray(parsed) ? parsed : [];
+                  return JSON.parse(remote.restDays);
                 } catch {
-                  return [];
+                  return null;
                 }
               })()
-            : Array.isArray(remote.restDays)
-              ? remote.restDays
-              : [];
+            : remote.restDays ?? null;
+        const restDays = (() => {
+          if (Array.isArray(parsedRestDays)) {
+            return parsedRestDays.filter(
+              (value: unknown): value is number =>
+                typeof value === 'number' &&
+                Number.isInteger(value) &&
+                value >= 0 &&
+                value <= 6
+            );
+          }
+          if (
+            parsedRestDays &&
+            typeof parsedRestDays === 'object' &&
+            'excludeDays' in parsedRestDays &&
+            Array.isArray(parsedRestDays.excludeDays)
+          ) {
+            return parsedRestDays.excludeDays.filter(
+              (value: unknown): value is number =>
+                typeof value === 'number' &&
+                Number.isInteger(value) &&
+                value >= 0 &&
+                value <= 6
+            );
+          }
+          return [];
+        })();
+        const remoteAllowSundayBacklog =
+          parsedRestDays &&
+          typeof parsedRestDays === 'object' &&
+          'allowSundayBacklog' in parsedRestDays &&
+          typeof parsedRestDays.allowSundayBacklog === 'boolean'
+            ? parsedRestDays.allowSundayBacklog
+            : null;
         const remoteDailyHours =
           typeof remote.dailyHoursByWeekday === 'string'
             ? (() => {
@@ -473,6 +504,10 @@ export default function SettingsPage() {
               : prev.pushSubscription ?? null,
           dailyHoursByWeekday: remoteDailyHours ?? prev.dailyHoursByWeekday,
           excludeDays: restDays.length > 0 ? restDays : prev.excludeDays,
+          allowSundayBacklog:
+            typeof remoteAllowSundayBacklog === 'boolean'
+              ? remoteAllowSundayBacklog
+              : prev.allowSundayBacklog,
           examDate: remote.examDate ?? prev.examDate,
         }));
         const resolvedDaily =
@@ -1300,6 +1335,34 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => updateSetting('allowSundayBacklog', !allowSundayBacklog)}
+            aria-pressed={allowSundayBacklog}
+            className="w-full flex items-center justify-between gap-3 p-4 rounded-xl bg-card-bg border border-card-border text-left touch-manipulation active:scale-[0.995]"
+          >
+            <div className="min-w-0 pr-2">
+              <div className="font-medium text-white">Permitir pendencias no domingo</div>
+              <div className="text-sm text-text-secondary">
+                Usa domingo apenas para reagendamento/backlog, sem alterar a grade fixa.
+              </div>
+            </div>
+            <span
+              aria-hidden
+              className={cn(
+                'relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors duration-200',
+                allowSundayBacklog ? 'bg-neon-cyan' : 'bg-card-border'
+              )}
+            >
+              <span
+                className={cn(
+                  'pointer-events-none inline-block h-5 w-5 rounded-full bg-white transition-transform duration-200',
+                  allowSundayBacklog ? 'translate-x-8' : 'translate-x-1'
+                )}
+              />
+            </span>
+          </button>
         </div>
       </Card>
 

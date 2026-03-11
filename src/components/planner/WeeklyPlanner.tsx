@@ -316,8 +316,14 @@ export default function WeeklyPlanner({
   const parseLocalKey = (value: string) => {
     return parseLocalDateKey(value) ?? new Date(Number.NaN);
   };
-  const isAllowedDay = (date: Date) =>
-    allowedDays.length === 0 || allowedDays.includes(date.getDay());
+  const allowSundayBacklog = Boolean(userSettings.allowSundayBacklog);
+  const backlogAllowedDays = useMemo(() => {
+    if (!allowSundayBacklog) return allowedDays;
+    if (allowedDays.length === 0 || allowedDays.includes(0)) return allowedDays;
+    return [...allowedDays, 0].sort((a, b) => a - b);
+  }, [allowSundayBacklog, allowedDays]);
+  const isAllowedBacklogDay = (date: Date) =>
+    backlogAllowedDays.length === 0 || backlogAllowedDays.includes(date.getDay());
 
   useEffect(() => {
     if (!selectedScheduleStartDate) return;
@@ -570,7 +576,7 @@ export default function WeeklyPlanner({
 
     let cursorDate = new Date(sourceBaseDate);
     cursorDate.setDate(cursorDate.getDate() + 1);
-    while (!isAllowedDay(cursorDate)) {
+    while (!isAllowedBacklogDay(cursorDate)) {
       cursorDate.setDate(cursorDate.getDate() + 1);
     }
 
@@ -631,7 +637,7 @@ export default function WeeklyPlanner({
           }
         } else {
           cursorDate.setDate(cursorDate.getDate() + 1);
-          while (!isAllowedDay(cursorDate)) {
+          while (!isAllowedBacklogDay(cursorDate)) {
             cursorDate.setDate(cursorDate.getDate() + 1);
           }
         }
@@ -816,7 +822,7 @@ export default function WeeklyPlanner({
       if (moved) return;
     }
   }, [
-    allowedDays,
+    backlogAllowedDays,
     blocks,
     dailyHoursByWeekday,
     dailyLimits,
@@ -849,7 +855,7 @@ export default function WeeklyPlanner({
       blocks,
       today: now,
       dailyLimitByDate: buildDailyLimitMapForBacklog(now, 14),
-      allowedDays,
+      allowedDays: backlogAllowedDays,
       breakMinutes: userSettings.breakMinutes,
       backlogQuotaRatio: 0.35,
       lookaheadDays: 14,
@@ -933,7 +939,7 @@ export default function WeeklyPlanner({
     const block = blocks.find((item) => item.id === blockId);
     if (!block) return false;
     if (block.isBreak) return false;
-    if (!isAllowedDay(targetDate)) return false;
+    if (!isAllowedBacklogDay(targetDate)) return false;
 
     const targetKey = toLocalKey(targetDate);
     const targetDayBlocks = blocks
@@ -1796,6 +1802,13 @@ export default function WeeklyPlanner({
                     targetDate.setHours(0, 0, 0, 0);
                     if (Number.isNaN(targetDate.getTime())) {
                       setRescheduleError('Escolha um destino válido.');
+                      return;
+                    }
+
+                    if (!isAllowedBacklogDay(targetDate)) {
+                      setRescheduleError(
+                        'Dia de destino indisponivel. Ative domingo para pendencias em Config.'
+                      );
                       return;
                     }
 

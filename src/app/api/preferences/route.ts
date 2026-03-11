@@ -64,6 +64,10 @@ export async function POST(request: Request) {
     const notificationsEnabled = settings.notificationsEnabled ?? false;
     const notificationSoundEnabled = settings.notificationSoundEnabled ?? true;
     const backlogReminderEnabled = settings.backlogReminderEnabled ?? false;
+    const serializedRestDays = JSON.stringify({
+      excludeDays: settings.excludeDays ?? [],
+      allowSundayBacklog: settings.allowSundayBacklog ?? false,
+    });
 
     const dailyHoursByWeekdayJson =
       persistedDailyHours == null
@@ -100,7 +104,7 @@ export async function POST(request: Request) {
           notificationSoundEnabled,
           backlogReminderEnabled,
           dailyHoursByWeekday: dailyHoursByWeekdayJson,
-          restDays: JSON.stringify(settings.excludeDays ?? []),
+          restDays: serializedRestDays,
           examDate: persistedExamDate,
         },
         create: {
@@ -120,7 +124,7 @@ export async function POST(request: Request) {
           notificationSoundEnabled,
           backlogReminderEnabled,
           dailyHoursByWeekday: dailyHoursByWeekdayJson,
-          restDays: JSON.stringify(settings.excludeDays ?? []),
+          restDays: serializedRestDays,
           examDate: persistedExamDate,
         },
       });

@@ -502,6 +502,7 @@ export interface UserSettings {
   notificationMinutesBefore: number;
   notificationSoundEnabled: boolean;
   backlogReminderEnabled: boolean;
+  allowSundayBacklog: boolean;
   pushSubscription?: Record<string, unknown> | null;
   alarmSound?: 'pulse' | 'beep' | 'chime' | 'soft';
   examDate?: string;
