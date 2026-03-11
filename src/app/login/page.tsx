@@ -69,6 +69,8 @@ export default function LoginPage() {
   const [providersError, setProvidersError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [linkMessage, setLinkMessage] = useState<string | null>(null);
+  const [linkingPassword, setLinkingPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [queryState, setQueryState] = useState<{ callbackUrl: string | null; resetSuccess: boolean; authError: string | null }>({
@@ -122,9 +124,15 @@ export default function LoginPage() {
     setInfoMessage(queryState.resetSuccess ? 'Senha redefinida com sucesso. Faca login.' : null);
     if (queryState.authError) {
       setErrorMessage(mapAuthErrorMessage(queryState.authError));
+      setLinkMessage(
+        queryState.authError === 'OAuthAccountNotLinked'
+          ? 'Conta criada via Google. Clique abaixo para criar senha.'
+          : null
+      );
       return;
     }
     setErrorMessage(null);
+    setLinkMessage(null);
   }, [queryState.authError, queryState.resetSuccess]);
 
   useEffect(() => {
@@ -143,6 +151,7 @@ export default function LoginPage() {
     if (isBusy || !hasCredentials) return;
 
     setErrorMessage(null);
+    setLinkMessage(null);
     setIsLoading(true);
 
     try {
@@ -155,6 +164,11 @@ export default function LoginPage() {
 
       if (result?.error) {
         setErrorMessage(mapAuthErrorMessage(result?.error));
+        setLinkMessage(
+          result.error === 'OAuthAccountNotLinked'
+            ? 'Conta criada via Google. Clique abaixo para criar senha.'
+            : null
+        );
         return;
       }
 
@@ -186,6 +200,37 @@ export default function LoginPage() {
       setErrorMessage('Falha ao iniciar login social. Tente novamente.');
     } finally {
       setLoadingProvider(null);
+    }
+  };
+
+  const handleCreatePassword = async () => {
+    if (linkingPassword || isBusy) return;
+    const email = formData.email.trim().toLowerCase();
+    if (!email) {
+      setErrorMessage('Informe seu e-mail para criar senha.');
+      return;
+    }
+    setLinkingPassword(true);
+    setErrorMessage(null);
+    setInfoMessage(null);
+
+    try {
+      const response = await fetch('/api/auth/password-reset/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setErrorMessage(payload?.message || 'Nao foi possivel iniciar a criacao de senha.');
+        return;
+      }
+      setInfoMessage(payload?.message || 'Enviamos um link para criar sua senha.');
+      setLinkMessage(null);
+    } catch {
+      setErrorMessage('Falha ao solicitar criacao de senha.');
+    } finally {
+      setLinkingPassword(false);
     }
   };
 
@@ -332,6 +377,11 @@ export default function LoginPage() {
                   {errorMessage}
                 </div>
               )}
+              {linkMessage && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+                  {linkMessage}
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">E-mail</label>
@@ -394,6 +444,18 @@ export default function LoginPage() {
               >
                 Entrar
               </Button>
+              {linkMessage && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full min-h-[42px] px-4 py-2.5 text-sm"
+                  loading={linkingPassword}
+                  disabled={linkingPassword || isBusy}
+                  onClick={handleCreatePassword}
+                >
+                  Criar senha para este e-mail
+                </Button>
+              )}
             </form>
 
             <p className="mt-5 text-center text-sm text-text-secondary">
