@@ -46,24 +46,15 @@ if (process.env.DATABASE_URL) {
       process.env.DATABASE_URL = normalizedUrl;
       console.log('[vercel-build] Normalized CockroachDB sslmode to require.');
     }
-    console.log('[vercel-build] Detected CockroachDB. Running prisma db push...');
-    const pushOk = runNpx(
-      ['prisma', 'db', 'push', '--skip-generate', '--accept-data-loss'],
-      { allowFailure: process.env.VERCEL_ENV !== 'production' }
-    );
-    if (!pushOk) {
-      console.warn('[vercel-build] prisma db push failed.');
-      if (process.env.VERCEL_ENV === 'production') {
-        process.exit(1);
-      }
-    }
-  } else {
-    console.log('[vercel-build] Running prisma migrate deploy...');
-    const migrateOk = runNpx(['prisma', 'migrate', 'deploy'], { allowFailure: true });
-    if (!migrateOk) {
-      console.warn(
-        '[vercel-build] prisma migrate deploy failed. Continuing deployment with current schema.'
-      );
+  }
+  console.log('[vercel-build] Running prisma migrate deploy...');
+  const migrateOk = runNpx(['prisma', 'migrate', 'deploy'], {
+    allowFailure: process.env.VERCEL_ENV !== 'production',
+  });
+  if (!migrateOk) {
+    console.warn('[vercel-build] prisma migrate deploy failed.');
+    if (process.env.VERCEL_ENV === 'production') {
+      process.exit(1);
     }
   }
 } else {
