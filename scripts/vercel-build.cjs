@@ -27,18 +27,35 @@ function runNpx(args, { allowFailure = false } = {}) {
   return result.status === 0;
 }
 
+function normalizeCockroachUrl(url) {
+  if (!url || !url.includes('cockroachlabs.cloud')) return url;
+  if (!url.includes('sslmode=verify-full')) return url;
+  if (url.includes('sslrootcert=')) return url;
+  return url.replace('sslmode=verify-full', 'sslmode=require');
+}
+
 console.log('[vercel-build] Running prisma generate...');
 runNpx(['prisma', 'generate']);
 
 if (process.env.DATABASE_URL) {
-  const isCockroach = process.env.DATABASE_URL.includes('cockroachlabs.cloud');
+  const rawDatabaseUrl = process.env.DATABASE_URL;
+  const isCockroach = rawDatabaseUrl.includes('cockroachlabs.cloud');
   if (isCockroach) {
+    const normalizedUrl = normalizeCockroachUrl(rawDatabaseUrl);
+    if (normalizedUrl !== rawDatabaseUrl) {
+      process.env.DATABASE_URL = normalizedUrl;
+      console.log('[vercel-build] Normalized CockroachDB sslmode to require.');
+    }
     console.log('[vercel-build] Detected CockroachDB. Running prisma db push...');
-    const pushOk = runNpx(['prisma', 'db', 'push', '--skip-generate', '--accept-data-loss'], {
-      allowFailure: true,
-    });
+    const pushOk = runNpx(
+      ['prisma', 'db', 'push', '--skip-generate', '--accept-data-loss'],
+      { allowFailure: process.env.VERCEL_ENV !== 'production' }
+    );
     if (!pushOk) {
-      console.warn('[vercel-build] prisma db push failed. Continuing deployment.');
+      console.warn('[vercel-build] prisma db push failed.');
+      if (process.env.VERCEL_ENV === 'production') {
+        process.exit(1);
+      }
     }
   } else {
     console.log('[vercel-build] Running prisma migrate deploy...');
