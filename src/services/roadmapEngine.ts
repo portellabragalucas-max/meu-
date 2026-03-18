@@ -6,7 +6,7 @@ import type {
   SubjectPerformanceProfile,
   UserLearningLevel,
 } from '@/types';
-import { generateId, minutesToTime, timeToMinutes, toLocalDateKey } from '@/lib/utils';
+import { generateId, minutesToTime, timeToMinutes, toLocalDateKey, parseBlockDate } from '@/lib/utils';
 import {
   getEnemDisciplineByName,
   isEnemGoal,
@@ -161,7 +161,7 @@ const roadmapScheduleCache = new Map<
 function cloneBlock(block: StudyBlock): StudyBlock {
   return {
     ...block,
-    date: new Date(block.date),
+    date: parseBlockDate(block.date),
     subject: block.subject ? { ...block.subject, createdAt: new Date(block.subject.createdAt), updatedAt: new Date(block.subject.updatedAt) } : block.subject,
     createdAt: new Date(block.createdAt),
     updatedAt: new Date(block.updatedAt),
@@ -1076,7 +1076,7 @@ export function generateChronologicalSchedule(config: ChronologicalScheduleConfi
   }
 
   const sortedBlocks = [...blocks].sort((a, b) => {
-    const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+    const dateDiff = parseBlockDate(a.date).getTime() - parseBlockDate(b.date).getTime();
     if (dateDiff !== 0) return dateDiff;
     return a.startTime.localeCompare(b.startTime);
   });
@@ -1120,3 +1120,5 @@ export function replanAfterPerformanceUpdate(
   });
   return generateChronologicalSchedule({ ...config, subjects: updatedSubjects, debug: true });
 }
+
+

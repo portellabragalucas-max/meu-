@@ -1,5 +1,5 @@
 import type { StudyBlock } from '@/types';
-import { generateId, minutesToTime, timeToMinutes } from '@/lib/utils';
+import { generateId, minutesToTime, timeToMinutes, parseBlockDate } from '@/lib/utils';
 
 export interface BacklogRescheduleConfig {
   blocks: StudyBlock[];
@@ -66,10 +66,10 @@ const isReviewType = (block: StudyBlock) => block.type === 'REVISAO';
 const isSimuladoType = (block: StudyBlock) =>
   block.type === 'SIMULADO_AREA' || block.type === 'SIMULADO_COMPLETO';
 
-const getBlockDateKey = (block: StudyBlock) => toDateKey(new Date(block.date));
+const getBlockDateKey = (block: StudyBlock) => toDateKey(parseBlockDate(block.date));
 
 const getOriginalDateKey = (block: StudyBlock) => {
-  const original = block.originalDate ? new Date(block.originalDate) : new Date(block.date);
+  const original = block.originalDate ? parseBlockDate(block.originalDate) : parseBlockDate(block.date);
   original.setHours(0, 0, 0, 0);
   return toDateKey(original);
 };
@@ -84,7 +84,7 @@ function getSubjectWeight(block: StudyBlock) {
 }
 
 export function computeBacklogPriorityScore(block: StudyBlock, today: Date) {
-  const blockDate = new Date(block.date);
+  const blockDate = parseBlockDate(block.date);
   blockDate.setHours(0, 0, 0, 0);
   const daysOverdue = Math.max(0, Math.floor((today.getTime() - blockDate.getTime()) / DAY_MS));
   const reschedules = block.rescheduleCount || 0;
@@ -107,12 +107,12 @@ export function getBacklogEntries(blocks: StudyBlock[], today = new Date()): Bac
     .filter((block) => !block.isBreak)
     .filter((block) => isBacklogStatus(block.status))
     .filter((block) => {
-      const blockDate = new Date(block.date);
+      const blockDate = parseBlockDate(block.date);
       blockDate.setHours(0, 0, 0, 0);
       return blockDate < now || (blockDate.getTime() === now.getTime() && block.status === 'skipped');
     })
     .map((block) => {
-      const blockDate = new Date(block.date);
+      const blockDate = parseBlockDate(block.date);
       blockDate.setHours(0, 0, 0, 0);
       const daysOverdue = Math.max(0, Math.floor((now.getTime() - blockDate.getTime()) / DAY_MS));
       return {
@@ -176,7 +176,7 @@ function expandRecoveryBacklogBlocks(blocksById: Map<string, StudyBlock>) {
     const durations = buildRecoveryDurations(block.durationMinutes);
     if (durations.length <= 1) continue;
 
-    const originalDate = block.originalDate ? new Date(block.originalDate) : new Date(block.date);
+    const originalDate = block.originalDate ? parseBlockDate(block.originalDate) : parseBlockDate(block.date);
     originalDate.setHours(0, 0, 0, 0);
     const referenceStart = timeToMinutes(block.startTime);
     const total = durations.length;
@@ -245,7 +245,7 @@ function inferDayWindow(blocks: StudyBlock[]): { start: string; end: string } {
 
 function sortBlocksChronologically(blocks: StudyBlock[]) {
   return [...blocks].sort((a, b) => {
-    const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+    const dateDiff = parseBlockDate(a.date).getTime() - parseBlockDate(b.date).getTime();
     if (dateDiff !== 0) return dateDiff;
     return a.startTime.localeCompare(b.startTime);
   });
@@ -254,7 +254,7 @@ function sortBlocksChronologically(blocks: StudyBlock[]) {
 function cloneBlocks(blocks: StudyBlock[]) {
   return blocks.map((block) => ({
     ...block,
-    date: new Date(block.date),
+    date: parseBlockDate(block.date),
     originalDate: cloneDate(block.originalDate),
     completedAt: cloneDate(block.completedAt),
     createdAt: new Date(block.createdAt),
@@ -347,7 +347,7 @@ function appendBlockToDay(
   const hardEnd = opts.dayEndLimitMinutes ?? timeToMinutes(dayWindow.end);
   const breakGapMinutes = Math.max(0, Math.round(opts.breakMinutes ?? 0));
 
-  const originalDate = block.originalDate ? new Date(block.originalDate) : new Date(block.date);
+  const originalDate = block.originalDate ? parseBlockDate(block.originalDate) : parseBlockDate(block.date);
   originalDate.setHours(0, 0, 0, 0);
 
   if (opts.preferDayStart) {
@@ -689,3 +689,5 @@ export function autoRescheduleBacklog(config: BacklogRescheduleConfig): BacklogR
     suggestion,
   };
 }
+
+

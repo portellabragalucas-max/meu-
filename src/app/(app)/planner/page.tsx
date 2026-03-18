@@ -18,6 +18,7 @@ import {
   timeToMinutes,
   minutesToTime,
   parseLocalDateKey,
+  parseBlockDate,
   toLocalDateKey,
 } from '@/lib/utils';
 import { getStudyBlockTypeLabel } from '@/lib/studyBlockLabels';
@@ -521,13 +522,13 @@ export default function PlannerPage() {
       rangeEnd.setHours(23, 59, 59, 999);
 
       const remaining = prev.filter((block) => {
-        const blockDate = new Date(block.date);
+        const blockDate = parseBlockDate(block.date);
         return blockDate < rangeStart || blockDate > rangeEnd;
       });
 
       const merged = [...remaining, ...schedule.blocks];
       merged.sort((a, b) => {
-        const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+        const dateDiff = parseBlockDate(a.date).getTime() - parseBlockDate(b.date).getTime();
         if (dateDiff !== 0) return dateDiff;
         return a.startTime.localeCompare(b.startTime);
       });
@@ -565,7 +566,7 @@ export default function PlannerPage() {
       const subjectBlocks = blocks
         .filter((block) => !block.isBreak && block.subjectId === subject.id)
         .sort((a, b) => {
-          const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+          const dateDiff = parseBlockDate(a.date).getTime() - parseBlockDate(b.date).getTime();
           if (dateDiff !== 0) return dateDiff;
           return a.startTime.localeCompare(b.startTime);
         });
@@ -689,7 +690,7 @@ export default function PlannerPage() {
                 </div>
                 {item.nextBlock?.date && (
                   <p className="mt-1 text-[11px] text-text-muted">
-                    {new Date(item.nextBlock.date).toLocaleDateString('pt-BR')} - {item.nextBlock.startTime}
+                    {parseBlockDate(item.nextBlock.date).toLocaleDateString('pt-BR')} - {item.nextBlock.startTime}
                   </p>
                 )}
               </div>
@@ -720,3 +721,5 @@ export default function PlannerPage() {
     </motion.div>
   );
 }
+
+

@@ -486,18 +486,18 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
 
                       {showMassAdvanced && (
                         <div className="space-y-2 rounded-xl border border-white/10 bg-[#171a25]/80 p-2.5">
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             <input
                               type="time"
                               value={massStart}
                               onChange={(e) => setMassStart(e.target.value)}
-                              className="input-field h-9 min-h-0 text-sm sm:h-10"
+                              className="input-field h-9 min-h-0 w-full min-w-0 text-sm sm:h-10"
                             />
                             <input
                               type="time"
                               value={massEnd}
                               onChange={(e) => setMassEnd(e.target.value)}
-                              className="input-field h-9 min-h-0 text-sm sm:h-10"
+                              className="input-field h-9 min-h-0 w-full min-w-0 text-sm sm:h-10"
                             />
                           </div>
                           <div className="flex flex-wrap gap-2">
@@ -578,18 +578,18 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                             </div>
 
                             {showDayWindows && active && (
-                              <div className="mt-2 grid grid-cols-2 gap-2">
+                              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                                 <input
                                   type="time"
                                   value={w.start}
                                   onChange={(e) => updateDayWindow(d.key, 'start', e.target.value)}
-                                  className="input-field h-8 min-h-0 text-sm sm:h-9"
+                                  className="input-field h-8 min-h-0 w-full min-w-0 text-sm sm:h-9"
                                 />
                                 <input
                                   type="time"
                                   value={w.end}
                                   onChange={(e) => updateDayWindow(d.key, 'end', e.target.value)}
-                                  className="input-field h-8 min-h-0 text-sm sm:h-9"
+                                  className="input-field h-8 min-h-0 w-full min-w-0 text-sm sm:h-9"
                                 />
                               </div>
                             )}

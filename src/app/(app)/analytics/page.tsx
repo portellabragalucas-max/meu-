@@ -1,8 +1,8 @@
-ï»¿'use client';
+'use client';
 
 /**
  * Analytics Page
- * AnÃ¡lises abrangentes de produtividade e visualizaÃ§Ãµes
+ * Análises abrangentes de produtividade e visualizações
  */
 
 import { motion } from 'framer-motion';
@@ -28,12 +28,12 @@ import {
   buildCompletedSessionsByDate,
   buildMergedDailyStudyData,
 } from '@/lib/progressSnapshot';
-import { formatHoursDuration, getWeekDates, getWeekStart, toLocalDateKey } from '@/lib/utils';
+import { formatHoursDuration, getWeekDates, getWeekStart, toLocalDateKey, parseBlockDate } from '@/lib/utils';
 import type { AnalyticsStore, StudyBlock, Subject } from '@/types';
 
 const emptyAnalytics: AnalyticsStore = { daily: {} };
 
-// Variantes de animaÃ§Ã£o
+// Variantes de animação
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -113,7 +113,7 @@ export default function AnalyticsPage() {
       const blocksBySubject: Record<string, number> = {};
       plannerBlocks.forEach((block) => {
         if (block.isBreak || block.status !== 'completed' || !block.subjectId) return;
-        const blockDate = new Date(block.date);
+        const blockDate = parseBlockDate(block.date);
         if (blockDate < weekStart || blockDate >= weekEnd) return;
         blocksBySubject[block.subjectId] = (blocksBySubject[block.subjectId] ?? 0) + block.durationMinutes / 60;
       });
@@ -207,7 +207,7 @@ export default function AnalyticsPage() {
     return (
       <div className="space-y-6 max-[479px]:space-y-4">
         <div className="glass-card p-6 max-[479px]:p-4 animate-pulse">
-          <h1 className="text-2xl font-heading font-bold text-white">AnÃ¡lises</h1>
+          <h1 className="text-2xl font-heading font-bold text-white">Análises</h1>
           <p className="text-sm text-text-secondary mt-1">Carregando insights...</p>
         </div>
       </div>
@@ -221,15 +221,15 @@ export default function AnalyticsPage() {
       animate="visible"
       className="app-page max-[479px]:[&>*+*]:mt-3"
     >
-      {/* CabeÃ§alho */}
+      {/* Cabeçalho */}
       <motion.div variants={itemVariants} className="min-w-0">
-        <h1 className="text-2xl max-[479px]:text-xl font-heading font-bold text-white">AnÃ¡lises</h1>
+        <h1 className="text-2xl max-[479px]:text-xl font-heading font-bold text-white">Análises</h1>
         <p className="text-sm max-[479px]:text-xs text-text-secondary mt-1">
           Acompanhe seu desempenho e progresso nos estudos
         </p>
       </motion.div>
 
-      {/* EstatÃ­sticas de Resumo */}
+      {/* Estatísticas de Resumo */}
       <motion.div
         variants={itemVariants}
         className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-[479px]:gap-2"
@@ -245,38 +245,38 @@ export default function AnalyticsPage() {
           variant="mobile"
         />
         <StatsCard
-          title="Taxa MÃ©dia de Acerto"
+          title="Taxa Média de Acerto"
           titleShort="Acerto"
           value={`${avgAccuracy}%`}
-          subtitle="MÃ©dia adaptativa"
+          subtitle="Média adaptativa"
           icon={Target}
           trend={{ value: 0, isPositive: avgAccuracy >= 70 }}
           color="purple"
           variant="mobile"
         />
         <StatsCard
-          title="PontuaÃ§Ã£o MÃ©dia de Foco"
+          title="Pontuação Média de Foco"
           titleShort="Foco"
           value={`${avgFocus}%`}
-          subtitle="Ãšltimos 14 dias"
+          subtitle="Últimos 14 dias"
           icon={Brain}
           trend={{ value: 0, isPositive: false }}
           color="purple"
           variant="mobile"
         />
         <StatsCard
-          title="Produtividade MÃ©dia"
+          title="Produtividade Média"
           titleShort="Prod."
           value={`${avgProductivity}%`}
-          subtitle="Ãšltimos 14 dias"
+          subtitle="Últimos 14 dias"
           icon={TrendingUp}
           trend={{ value: 0, isPositive: false }}
           color="cyan"
           variant="mobile"
         />
         <StatsCard
-          title="SessÃµes ConcluÃ­das"
-          titleShort="SessÃµes"
+          title="Sessões Concluídas"
+          titleShort="Sessões"
           value={weeklySummary.sessions}
           subtitle="Esta semana"
           icon={Award}
@@ -285,7 +285,7 @@ export default function AnalyticsPage() {
         />
       </motion.div>
 
-      {/* Linha de GrÃ¡ficos */}
+      {/* Linha de Gráficos */}
       <div className="grid grid-cols-1 gap-4 max-[479px]:gap-3 sm:gap-6 lg:grid-cols-2">
         <motion.div variants={itemVariants} className="min-w-0">
           <ProductivityChart data={productivityData} />
@@ -300,14 +300,14 @@ export default function AnalyticsPage() {
         <ActivityHeatmap data={heatmapData} weeks={12} />
       </motion.div>
 
-      {/* SeÃ§Ã£o de Insights */}
+      {/* Seção de Insights */}
       <motion.div variants={itemVariants} className="min-w-0">
         <Card>
           <h2 className="text-xl max-[479px]:text-lg font-heading font-bold text-white mb-4 max-[479px]:mb-3">
             Insights da IA
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-[479px]:gap-2 sm:gap-4">
-            {/* HorÃ¡rio de Pico de Performance */}
+            {/* Horário de Pico de Performance */}
             <div className="p-4 max-[479px]:p-3 rounded-xl bg-neon-blue/10 border border-neon-blue/20">
               <div className="flex items-center gap-2 mb-2 max-[479px]:mb-1">
                 <Clock className="w-5 h-5 max-[479px]:w-4 max-[479px]:h-4 text-neon-blue" />
@@ -333,11 +333,11 @@ export default function AnalyticsPage() {
               </p>
             </div>
 
-            {/* MatÃ©ria mais fraca */}
+            {/* Matéria mais fraca */}
             <div className="p-4 max-[479px]:p-3 rounded-xl bg-neon-cyan/10 border border-neon-cyan/20">
               <div className="flex items-center gap-2 mb-2 max-[479px]:mb-1">
                 <Calendar className="w-5 h-5 max-[479px]:w-4 max-[479px]:h-4 text-neon-cyan" />
-                <span className="font-medium text-white">MatÃ©ria Mais Fraca</span>
+                <span className="font-medium text-white">Matéria Mais Fraca</span>
               </div>
               <p className="text-2xl max-[479px]:text-[22px] font-heading font-bold text-neon-cyan">
                 {intelligentSummary.weakestSubject?.name ?? '--'}
@@ -350,34 +350,34 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* RecomendaÃ§Ã£o */}
+          {/* Recomendação */}
           <div className="mt-6 max-[479px]:mt-4 p-4 max-[479px]:p-3 rounded-xl bg-gradient-to-r from-neon-blue/5 to-neon-purple/5 border border-card-border">
             <p className="text-sm max-[479px]:text-xs text-text-secondary">
-              <span className="text-neon-blue font-medium">ðŸ’¡ RecomendaÃ§Ã£o:</span>{' '}
+              <span className="text-neon-blue font-medium">?? Recomendação:</span>{' '}
               {subjects.length === 0
-                ? 'Sem recomendaÃ§Ãµes ainda. Inicie seus estudos para gerar insights.'
+                ? 'Sem recomendações ainda. Inicie seus estudos para gerar insights.'
                 : intelligentSummary.weakestSubject
-                ? `Priorize ${intelligentSummary.weakestSubject.name} nos prÃ³ximos dias. PrevisÃ£o de evoluÃ§Ã£o em 30 dias: ${intelligentSummary.projectedImprovement30d > 0 ? '+' : ''}${intelligentSummary.projectedImprovement30d.toFixed(1)} pontos percentuais.`
-                : 'Continue registrando sessÃµes para gerar recomendaÃ§Ãµes adaptativas.'}
+                ? `Priorize ${intelligentSummary.weakestSubject.name} nos próximos dias. Previsão de evolução em 30 dias: ${intelligentSummary.projectedImprovement30d > 0 ? '+' : ''}${intelligentSummary.projectedImprovement30d.toFixed(1)} pontos percentuais.`
+                : 'Continue registrando sessões para gerar recomendações adaptativas.'}
             </p>
           </div>
 
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 max-[479px]:gap-2 sm:gap-4">
             <div className="p-4 max-[479px]:p-3 rounded-xl bg-white/5 border border-card-border">
-              <p className="text-xs text-text-secondary">ConsistÃªncia (30 dias)</p>
+              <p className="text-xs text-text-secondary">Consistência (30 dias)</p>
               <p className="text-xl font-heading font-bold text-white mt-1">
                 {Math.round((intelligentSummary.consistencyRate || 0) * 100)}%
               </p>
             </div>
             <div className="p-4 max-[479px]:p-3 rounded-xl bg-white/5 border border-card-border">
-              <p className="text-xs text-text-secondary">PrevisÃ£o de EvoluÃ§Ã£o</p>
+              <p className="text-xs text-text-secondary">Previsão de Evolução</p>
               <p className="text-xl font-heading font-bold text-white mt-1">
                 {intelligentSummary.projectedImprovement30d > 0 ? '+' : ''}
                 {intelligentSummary.projectedImprovement30d.toFixed(1)} pp / 30d
               </p>
             </div>
             <div className="p-4 max-[479px]:p-3 rounded-xl bg-white/5 border border-card-border">
-              <p className="text-xs text-text-secondary">Produtividade MÃ©dia</p>
+              <p className="text-xs text-text-secondary">Produtividade Média</p>
               <p className="text-xl font-heading font-bold text-white mt-1">
                 {avgProductivity}%
               </p>
@@ -388,3 +388,6 @@ export default function AnalyticsPage() {
     </motion.div>
   );
 }
+
+
+

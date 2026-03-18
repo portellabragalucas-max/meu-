@@ -1,6 +1,7 @@
 import { getStudyBlockDisplayTitle } from '@/lib/studyBlockLabels';
 import type { StudyBlock, UserSettings } from '@/types';
 import { getBacklogEntries } from '@/services/backlogRescheduler';
+import { parseBlockDate } from '@/lib/utils';
 
 export interface StudyNotificationSettings {
   notificationsEnabled: boolean;
@@ -83,7 +84,7 @@ const resolveSettings = (
 });
 
 const resolveBlockStartDate = (block: StudyBlock): Date | null => {
-  const date = new Date(block.date);
+  const date = parseBlockDate(block.date);
   if (Number.isNaN(date.getTime())) return null;
 
   const [hourString, minuteString] = block.startTime.split(':');
@@ -343,3 +344,4 @@ export const recalculateStudyNotificationSchedule = ({
     reason: 'ok',
   };
 };
+

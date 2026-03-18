@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
-import { cn } from '@/lib/utils';
+import { cn, parseBlockDate } from '@/lib/utils';
 import type { StudyBlock, Subject } from '@/types';
 
 export interface BlockFormData {
@@ -87,7 +87,7 @@ export default function BlockFormModal({
   useEffect(() => {
     if (!isOpen) return;
 
-    setDateValue(toDateInputValue(block?.date ? new Date(block.date) : date));
+    setDateValue(toDateInputValue(block?.date ? parseBlockDate(block.date) : date));
     setStartTime(block?.startTime || defaultStartTime);
     setDurationMinutes(block?.durationMinutes || defaultDurationMinutes);
     setIsBreak(Boolean(block?.isBreak));
@@ -256,3 +256,4 @@ export default function BlockFormModal({
     </AnimatePresence>
   );
 }
+

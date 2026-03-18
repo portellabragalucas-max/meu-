@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { hasWebPush } from '@/lib/env';
 import { sendWebPushNotification } from '@/lib/web-push';
+import { parseBlockDate } from '@/lib/utils';
 import type { Prisma } from '@prisma/client';
 
 export type NotificationType =
@@ -380,7 +381,7 @@ const dispatchScheduledStudyNotifications = async ({
     seenIds.add(block.id);
     candidateBlocks.push({
       id: block.id,
-      date: new Date(block.date),
+      date: parseBlockDate(block.date),
       startTime: block.startTime,
       type: block.type,
       subjectName: block.subject?.name,
@@ -852,3 +853,4 @@ export const syncNotificationsForUser = async (userId: string) => {
 
   return { createdCount };
 };
+

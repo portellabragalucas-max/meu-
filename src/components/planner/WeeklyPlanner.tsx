@@ -38,6 +38,7 @@ import {
   formatDuration,
   isSameDay,
   generateId,
+  parseBlockDate,
   timeToMinutes,
   minutesToTime,
 } from '@/lib/utils';
@@ -103,7 +104,7 @@ const compareDayBlocks = (a: StudyBlock, b: StudyBlock) => {
 
 const sortBlocksChronologically = (blocks: StudyBlock[]) =>
   [...blocks].sort((a, b) => {
-    const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+    const dateDiff = parseBlockDate(a.date).getTime() - parseBlockDate(b.date).getTime();
     if (dateDiff !== 0) return dateDiff;
     return a.startTime.localeCompare(b.startTime);
   });
@@ -116,7 +117,7 @@ const areBlocksEquivalent = (a: StudyBlock[], b: StudyBlock[]) => {
     const one = first[i];
     const two = second[i];
     if (one.id !== two.id) return false;
-    if (new Date(one.date).getTime() !== new Date(two.date).getTime()) return false;
+    if (parseBlockDate(one.date).getTime() !== parseBlockDate(two.date).getTime()) return false;
     if (one.startTime !== two.startTime || one.endTime !== two.endTime) return false;
     if (one.durationMinutes !== two.durationMinutes) return false;
     if (one.status !== two.status) return false;
@@ -389,7 +390,7 @@ export default function WeeklyPlanner({
       grouped.set(
         dateKey,
         blocks
-          .filter((b) => isSameDay(new Date(b.date), date))
+          .filter((b) => isSameDay(parseBlockDate(b.date), date))
           .sort(compareDayBlocks)
       );
     });
@@ -466,7 +467,7 @@ export default function WeeklyPlanner({
       blocks
         .filter((block) => !block.isBreak && block.status === 'completed')
         .map((block) =>
-          block.completedAt ? toLocalDateKey(new Date(block.completedAt)) : toLocalDateKey(new Date(block.date))
+          block.completedAt ? toLocalDateKey(new Date(block.completedAt)) : toLocalDateKey(parseBlockDate(block.date))
         )
     );
     if (completedKeys.size === 0) return 0;
@@ -507,16 +508,16 @@ export default function WeeklyPlanner({
   useEffect(() => {
     if (blocks.length === 0) return;
     const weekHasBlocks = blocks.some((block) =>
-      weekDates.some((date) => isSameDay(new Date(block.date), date))
+      weekDates.some((date) => isSameDay(parseBlockDate(block.date), date))
     );
     if (weekHasBlocks) return;
 
     const sortedBlocks = [...blocks].sort((a, b) => {
-      const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+      const dateDiff = parseBlockDate(a.date).getTime() - parseBlockDate(b.date).getTime();
       if (dateDiff !== 0) return dateDiff;
       return a.startTime.localeCompare(b.startTime);
     });
-    const firstDate = new Date(sortedBlocks[0].date);
+    const firstDate = parseBlockDate(sortedBlocks[0].date);
     const nextWeekStart = getWeekStart(firstDate);
     if (!isSameDay(nextWeekStart, currentWeekStart)) {
       setCurrentWeekStart(nextWeekStart);
@@ -564,7 +565,7 @@ export default function WeeklyPlanner({
 
     const blocksMap = new Map<string, StudyBlock[]>();
     for (const block of baseBlocks) {
-      const key = toLocalKey(new Date(block.date));
+      const key = toLocalKey(parseBlockDate(block.date));
       const list = blocksMap.get(key) ?? [];
       list.push(block);
       blocksMap.set(key, list);
@@ -605,7 +606,7 @@ export default function WeeklyPlanner({
           !block.isBreak && dayLimit > 0 && dayStudyMinutes + block.durationMinutes > dayLimit;
 
         if (endMinutes <= defaultEnd && !exceedsDailyLimit) {
-          const originalDate = block.originalDate ? new Date(block.originalDate) : new Date(block.date);
+          const originalDate = block.originalDate ? parseBlockDate(block.originalDate) : parseBlockDate(block.date);
           originalDate.setHours(0, 0, 0, 0);
 
           const moved: StudyBlock = {
@@ -628,7 +629,7 @@ export default function WeeklyPlanner({
           placed = true;
 
           if (
-            new Date(moved.date).getTime() !== new Date(block.date).getTime() ||
+            parseBlockDate(moved.date).getTime() !== parseBlockDate(block.date).getTime() ||
             moved.startTime !== block.startTime ||
             moved.endTime !== block.endTime ||
             moved.status !== block.status
@@ -674,7 +675,7 @@ export default function WeeklyPlanner({
     const targetKey = toLocalKey(targetDate);
 
     const existingBlocks = blocks
-      .filter((block) => toLocalKey(new Date(block.date)) === targetKey)
+      .filter((block) => toLocalKey(parseBlockDate(block.date)) === targetKey)
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
     const existingStudyBlocks = existingBlocks.filter((block) => !block.isBreak);
     let cursorMinutes = existingStudyBlocks.reduce(
@@ -687,7 +688,7 @@ export default function WeeklyPlanner({
 
     const candidates = blocks
       .filter((block) => {
-        const blockDate = new Date(block.date);
+        const blockDate = parseBlockDate(block.date);
         blockDate.setHours(0, 0, 0, 0);
         return (
           !block.isBreak &&
@@ -697,7 +698,7 @@ export default function WeeklyPlanner({
         );
       })
       .sort((a, b) => {
-        const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+        const dateDiff = parseBlockDate(a.date).getTime() - parseBlockDate(b.date).getTime();
         if (dateDiff !== 0) return dateDiff;
         return a.startTime.localeCompare(b.startTime);
       });
@@ -723,7 +724,7 @@ export default function WeeklyPlanner({
         startTime: minutesToTime(cursorMinutes),
         endTime: minutesToTime(nextEnd),
         status: 'rescheduled' as const,
-        originalDate: block.originalDate ? new Date(block.originalDate) : new Date(block.date),
+        originalDate: block.originalDate ? parseBlockDate(block.originalDate) : parseBlockDate(block.date),
         rescheduleCount: (block.rescheduleCount || 0) + 1,
         updatedAt: new Date(),
       });
@@ -738,7 +739,7 @@ export default function WeeklyPlanner({
     const updatedBlocks = blocks.map((block) => movedMap.get(block.id) ?? block);
 
     updatedBlocks.sort((a, b) => {
-      const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+      const dateDiff = parseBlockDate(a.date).getTime() - parseBlockDate(b.date).getTime();
       if (dateDiff !== 0) return dateDiff;
       return a.startTime.localeCompare(b.startTime);
     });
@@ -787,7 +788,7 @@ export default function WeeklyPlanner({
     if (blocks.length === 0) return;
 
     const dayKeys = Array.from(
-      new Set(blocks.map((block) => toLocalKey(new Date(block.date))))
+      new Set(blocks.map((block) => toLocalKey(parseBlockDate(block.date))))
     ).sort();
 
     for (const dayKey of dayKeys) {
@@ -797,7 +798,7 @@ export default function WeeklyPlanner({
       if (dailyLimit <= 0) continue;
 
       const dayBlocks = blocks
-        .filter((block) => toLocalKey(new Date(block.date)) === dayKey)
+        .filter((block) => toLocalKey(parseBlockDate(block.date)) === dayKey)
         .sort(compareDayBlocks);
       const activeStudyMinutes = getDayStudyMinutesForCapacity(dayBlocks);
       if (activeStudyMinutes <= dailyLimit) continue;
@@ -901,7 +902,7 @@ export default function WeeklyPlanner({
   const handleSkipBlockToday = (block: StudyBlock) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const blockDate = new Date(block.date);
+    const blockDate = parseBlockDate(block.date);
     blockDate.setHours(0, 0, 0, 0);
 
     const nextBlocks = blocks.map((item) => {
@@ -909,7 +910,7 @@ export default function WeeklyPlanner({
       return {
         ...item,
         status: 'skipped' as const,
-        originalDate: item.originalDate ? new Date(item.originalDate) : new Date(item.date),
+        originalDate: item.originalDate ? parseBlockDate(item.originalDate) : parseBlockDate(item.date),
         updatedAt: new Date(),
       };
     });
@@ -924,7 +925,7 @@ export default function WeeklyPlanner({
   };
 
   const handleRequestQuickReschedule = (block: StudyBlock) => {
-    const sourceDate = new Date(block.date);
+    const sourceDate = parseBlockDate(block.date);
     sourceDate.setHours(0, 0, 0, 0);
     const tomorrow = new Date(sourceDate);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -943,7 +944,7 @@ export default function WeeklyPlanner({
 
     const targetKey = toLocalKey(targetDate);
     const targetDayBlocks = blocks
-      .filter((item) => toLocalKey(new Date(item.date)) === targetKey && item.id !== blockId)
+      .filter((item) => toLocalKey(parseBlockDate(item.date)) === targetKey && item.id !== blockId)
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
     const targetStudyBlocks = targetDayBlocks.filter((item) => !item.isBreak);
     const targetStudyMinutes = targetStudyBlocks
@@ -970,7 +971,7 @@ export default function WeeklyPlanner({
         startTime: minutesToTime(startMinutes),
         endTime: minutesToTime(endMinutes),
         status: 'rescheduled' as const,
-        originalDate: item.originalDate ? new Date(item.originalDate) : new Date(item.date),
+        originalDate: item.originalDate ? parseBlockDate(item.originalDate) : parseBlockDate(item.date),
         rescheduleCount: (item.rescheduleCount || 0) + 1,
         updatedAt: new Date(),
       };
@@ -1048,12 +1049,12 @@ export default function WeeklyPlanner({
       const overBlock = blocks.find((b) => b.id === over.id);
 
       if (activeBlock && overBlock) {
-        const activeDate = new Date(activeBlock.date);
-        const overDate = new Date(overBlock.date);
+        const activeDate = parseBlockDate(activeBlock.date);
+        const overDate = parseBlockDate(overBlock.date);
         if (!isSameDay(activeDate, overDate)) return;
 
         const dayBlocks = blocks
-          .filter((block) => isSameDay(new Date(block.date), activeDate))
+          .filter((block) => isSameDay(parseBlockDate(block.date), activeDate))
           .sort(compareDayBlocks);
 
         const oldIndex = dayBlocks.findIndex((block) => block.id === activeBlock.id);
@@ -1082,7 +1083,7 @@ export default function WeeklyPlanner({
   // Handlers de blocos
   const handleAddBlock = (date: Date) => {
     const dayBlocks = blocks
-      .filter((b) => isSameDay(new Date(b.date), date))
+      .filter((b) => isSameDay(parseBlockDate(b.date), date))
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
     const defaultDurationMinutes = 60;
     const fallbackStartMinutes = 9 * 60;
@@ -1106,7 +1107,7 @@ export default function WeeklyPlanner({
 
   const handleEditBlock = (block: StudyBlock) => {
     setEditingBlock(block);
-    setBlockModalDate(new Date(block.date));
+    setBlockModalDate(parseBlockDate(block.date));
     setIsBlockModalOpen(true);
   };
 
@@ -1178,7 +1179,7 @@ export default function WeeklyPlanner({
 
         setAnalytics(metricsUpdate.analytics);
       } else {
-        const dateKey = toLocalDateKey(new Date(completedBlock.date));
+        const dateKey = toLocalDateKey(parseBlockDate(completedBlock.date));
         setAnalytics((prev) => {
           const current = prev.daily[dateKey] || { hours: 0, sessions: 0 };
           return {
@@ -1202,7 +1203,7 @@ export default function WeeklyPlanner({
           (block) =>
             block.isBreak &&
             block.status !== 'completed' &&
-            isSameDay(new Date(block.date), new Date(completedBlock.date))
+            isSameDay(parseBlockDate(block.date), parseBlockDate(completedBlock.date))
         )
         .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
 
@@ -1258,7 +1259,7 @@ export default function WeeklyPlanner({
         isBreak: data.isBreak,
         subjectId: data.isBreak ? 'break' : subject?.id || 'default',
         subject,
-        originalDate: editingBlock.originalDate ? new Date(editingBlock.originalDate) : editingBlock.originalDate,
+        originalDate: editingBlock.originalDate ? parseBlockDate(editingBlock.originalDate) : editingBlock.originalDate,
         completedAt: editingBlock.completedAt ? new Date(editingBlock.completedAt) : editingBlock.completedAt,
         rescheduleCount: editingBlock.rescheduleCount || 0,
         updatedAt: new Date(),
@@ -1281,7 +1282,7 @@ export default function WeeklyPlanner({
         status: 'scheduled' as const,
         isBreak: data.isBreak,
         isAutoGenerated: false,
-        originalDate: data.isBreak ? undefined : new Date(data.date),
+        originalDate: data.isBreak ? undefined : parseBlockDate(data.date),
         completedAt: undefined,
         rescheduleCount: 0,
         createdAt: new Date(),
@@ -1831,7 +1832,7 @@ export default function WeeklyPlanner({
                     const targetKey = toLocalKey(targetDate);
 
                     const sourceBlocks = blocks
-                      .filter((block) => toLocalKey(new Date(block.date)) === sourceKey)
+                      .filter((block) => toLocalKey(parseBlockDate(block.date)) === sourceKey)
                       .filter((block) => !block.isBreak && !isLockedScheduleBlock(block));
 
                     if (sourceBlocks.length === 0) {
@@ -1840,7 +1841,7 @@ export default function WeeklyPlanner({
                     }
 
                     const targetBlocks = blocks.filter(
-                      (block) => toLocalKey(new Date(block.date)) === targetKey
+                      (block) => toLocalKey(parseBlockDate(block.date)) === targetKey
                     );
                     const targetStudyBlocks = targetBlocks.filter((block) => !block.isBreak);
                     const targetLimit = getDailyLimitMinutes(targetDate);
@@ -1888,7 +1889,7 @@ export default function WeeklyPlanner({
                         startTime: minutesToTime(cursorMinutes),
                         endTime: minutesToTime(nextEnd),
                         status: block.isBreak ? block.status : 'rescheduled',
-                        originalDate: block.originalDate ? new Date(block.originalDate) : new Date(block.date),
+                        originalDate: block.originalDate ? parseBlockDate(block.originalDate) : parseBlockDate(block.date),
                         rescheduleCount: block.isBreak ? block.rescheduleCount : (block.rescheduleCount || 0) + 1,
                         updatedAt: new Date(),
                       });
@@ -1900,7 +1901,7 @@ export default function WeeklyPlanner({
                     const updatedBlocks = blocks.map((block) => movedById.get(block.id) ?? block);
 
                     updatedBlocks.sort((a, b) => {
-                      const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+                      const dateDiff = parseBlockDate(a.date).getTime() - parseBlockDate(b.date).getTime();
                       if (dateDiff !== 0) return dateDiff;
                       return a.startTime.localeCompare(b.startTime);
                     });
@@ -1969,7 +1970,7 @@ export default function WeeklyPlanner({
                   ) : (
                     backlogEntries.map((entry) => {
                       const block = entry.block;
-                      const blockDate = new Date(block.date);
+                      const blockDate = parseBlockDate(block.date);
                       const isOverdue = entry.dateKey < todayKey;
                       return (
                         <div
@@ -2021,6 +2022,8 @@ export default function WeeklyPlanner({
     </div>
   );
 }
+
+
 
 
 

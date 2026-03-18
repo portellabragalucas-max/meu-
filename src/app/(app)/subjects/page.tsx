@@ -13,7 +13,7 @@ import { Button, Card } from '@/components/ui';
 import { SubjectCard, SubjectForm, PresetSelector } from '@/components/subjects';
 import { EmptySubjects } from '@/components/onboarding';
 import { useOnboarding, useLocalStorage } from '@/hooks';
-import { formatHoursDuration, generateId } from '@/lib/utils';
+import { formatHoursDuration, generateId, parseBlockDate } from '@/lib/utils';
 import {
   createEnemSubjectBank,
   isEnemGoal,
@@ -219,8 +219,8 @@ export default function SubjectsPage() {
 
   const deserializeBlock = (raw: SerializedBlockApi): StudyBlock => ({
     ...raw,
-    date: new Date(raw.date),
-    originalDate: raw.originalDate ? new Date(raw.originalDate) : undefined,
+    date: parseBlockDate(raw.date),
+    originalDate: raw.originalDate ? parseBlockDate(raw.originalDate) : undefined,
     completedAt: raw.completedAt ? new Date(raw.completedAt) : undefined,
     createdAt: new Date(raw.createdAt),
     updatedAt: new Date(raw.updatedAt),
@@ -709,6 +709,8 @@ export default function SubjectsPage() {
     </motion.div>
   );
 }
+
+
 
 
 

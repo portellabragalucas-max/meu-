@@ -6,7 +6,7 @@
  */
 
 import { motion } from 'framer-motion';
-import { cn, formatHoursDuration, toLocalDateKey } from '@/lib/utils';
+import { cn, formatHoursDuration, toLocalDateKey, parseBlockDate } from '@/lib/utils';
 import { Card } from '@/components/ui';
 
 interface HeatmapData {
@@ -126,7 +126,7 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
                       <div className="glass-card px-2 py-1 text-xs whitespace-nowrap">
                         <div className="font-medium text-white">
-                          {new Date(day.date).toLocaleDateString('pt-BR', {
+                          {parseBlockDate(day.date).toLocaleDateString('pt-BR', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',

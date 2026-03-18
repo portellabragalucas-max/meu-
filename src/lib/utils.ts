@@ -148,6 +148,31 @@ export function parseLocalDateKey(value?: string | null): Date | null {
 }
 
 /**
+ * Parse a block date (date-only or ISO string) into a local midnight Date.
+ * Avoids timezone shifting when the backend stores midnight UTC.
+ */
+export function parseBlockDate(value?: Date | string | null): Date {
+  if (!value) return new Date(Number.NaN);
+  if (value instanceof Date) {
+    const parsed = new Date(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
+    parsed.setHours(0, 0, 0, 0);
+    return parsed;
+  }
+  if (typeof value === 'string') {
+    const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) {
+      const [year, month, day] = match[1].split('-').map(Number);
+      if (year && month && day) {
+        const parsed = new Date(year, month - 1, day);
+        parsed.setHours(0, 0, 0, 0);
+        return parsed;
+      }
+    }
+  }
+  return new Date(value);
+}
+
+/**
  * Get day name from date
  */
 export function getDayName(date: Date, format: 'short' | 'long' = 'short'): string {

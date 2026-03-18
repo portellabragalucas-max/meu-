@@ -5,6 +5,19 @@
 
 import { PrismaClient } from '@prisma/client';
 
+const normalizeDatabaseUrl = () => {
+  const raw = process.env.DATABASE_URL ?? '';
+  if (!raw) return;
+  if (!raw.includes('cockroachlabs.cloud')) return;
+  if (!raw.includes('sslmode=verify-full')) return;
+  if (raw.includes('sslrootcert=')) return;
+
+  // Cockroach Cloud requires TLS. If no CA is provided, fall back to sslmode=require.
+  process.env.DATABASE_URL = raw.replace('sslmode=verify-full', 'sslmode=require');
+};
+
+normalizeDatabaseUrl();
+
 // Extend global type to include prisma
 declare global {
   // eslint-disable-next-line no-var

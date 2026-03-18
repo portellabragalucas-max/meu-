@@ -29,7 +29,7 @@ import {
   dashboardEmptyTutorialSteps,
 } from '@/components/onboarding';
 import { useOnboarding, useLocalStorage } from '@/hooks';
-import { isSameDay, formatDate, formatHoursDuration, getWeekStart, getWeekDates } from '@/lib/utils';
+import { isSameDay, formatDate, formatHoursDuration, getWeekStart, getWeekDates, parseBlockDate } from '@/lib/utils';
 import {
   buildCompletedHoursByDate,
   buildCompletedSessionsByDate,
@@ -88,7 +88,7 @@ const compareBlocksWithinDay = (a: StudyBlock, b: StudyBlock) => {
 };
 
 const comparePlannerBlocks = (a: StudyBlock, b: StudyBlock) => {
-  const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+  const dateDiff = parseBlockDate(a.date).getTime() - parseBlockDate(b.date).getTime();
   if (dateDiff !== 0) return dateDiff;
   return compareBlocksWithinDay(a, b);
 };
@@ -161,7 +161,7 @@ export default function DashboardPage() {
 
     plannerBlocks.forEach((block) => {
       if (block.isBreak || block.status === 'rescheduled') return;
-      const blockDate = new Date(block.date);
+      const blockDate = parseBlockDate(block.date);
       if (Number.isNaN(blockDate.getTime())) return;
       if (blockDate < weekStart || blockDate >= weekEnd) return;
 
@@ -264,7 +264,7 @@ export default function DashboardPage() {
 
     plannerBlocks.forEach((block) => {
       if (block.isBreak || block.status !== 'completed' || !block.subjectId) return;
-      const blockDate = new Date(block.date);
+      const blockDate = parseBlockDate(block.date);
       if (blockDate < weekStart || blockDate >= weekEnd) return;
 
       const previous = totals.get(block.subjectId) ?? 0;
@@ -281,12 +281,12 @@ export default function DashboardPage() {
     const normalizedBlocks = plannerBlocks
       .map((block) => ({
         ...block,
-        date: new Date(block.date),
+        date: parseBlockDate(block.date),
       }))
       .sort(comparePlannerBlocks);
 
     const blocksForToday = normalizedBlocks.filter((block) =>
-      isSameDay(new Date(block.date), today)
+      isSameDay(parseBlockDate(block.date), today)
     );
 
     if (blocksForToday.length > 0) {
@@ -296,10 +296,10 @@ export default function DashboardPage() {
     // Fallback: show next available day blocks if none scheduled today
     const nextBlock = normalizedBlocks.find((block) => block.date >= todayStart);
     if (nextBlock) {
-      const nextDate = new Date(nextBlock.date);
+      const nextDate = parseBlockDate(nextBlock.date);
       return {
         blocks: normalizedBlocks.filter((block) =>
-          isSameDay(new Date(block.date), nextDate)
+          isSameDay(parseBlockDate(block.date), nextDate)
         ),
         date: nextDate,
         source: 'next' as const,
@@ -307,10 +307,10 @@ export default function DashboardPage() {
     }
 
     if (normalizedBlocks.length > 0) {
-      const lastDate = new Date(normalizedBlocks[normalizedBlocks.length - 1].date);
+      const lastDate = parseBlockDate(normalizedBlocks[normalizedBlocks.length - 1].date);
       return {
         blocks: normalizedBlocks.filter((block) =>
-          isSameDay(new Date(block.date), lastDate)
+          isSameDay(parseBlockDate(block.date), lastDate)
         ),
         date: lastDate,
         source: 'latest' as const,
@@ -464,7 +464,7 @@ export default function DashboardPage() {
           (block) =>
             block.isBreak &&
             block.status !== 'completed' &&
-            isSameDay(new Date(block.date), new Date(targetBlock.date))
+            isSameDay(parseBlockDate(block.date), parseBlockDate(targetBlock.date))
         )
         .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
@@ -802,6 +802,9 @@ export default function DashboardPage() {
     </>
   );
 }
+
+
+
 
 
 
