@@ -220,7 +220,13 @@ export function computeStudyPreferences(
     breakMinutes,
     excludeDays,
     examDate: effectiveExamDate,
-    aiDifficulty: baseSettings.aiDifficulty,
+    aiDifficulty: answers.aiDifficulty ?? baseSettings.aiDifficulty,
+    focusMode:
+      typeof answers.focusMode === 'boolean' ? answers.focusMode : baseSettings.focusMode,
+    autoSchedule:
+      typeof answers.autoSchedule === 'boolean' ? answers.autoSchedule : baseSettings.autoSchedule,
+    smartBreaks:
+      typeof answers.smartBreaks === 'boolean' ? answers.smartBreaks : baseSettings.smartBreaks,
   };
 
   const studyPrefs: StudyPreferences = {

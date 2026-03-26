@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Calendar, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 import { Button, Card, ProgressBar } from '@/components/ui';
 import type {
+  AIDifficulty,
   ConcursoAreaFocus,
   ConcursoExperienceLevel,
   ConcursoLevel,
@@ -54,6 +55,12 @@ const STUDY_STYLE_OPTIONS: Array<{ value: StudyStylePreference; label: string; d
   { value: 'theory', label: 'Mais teoria', desc: 'Maior proporcao de blocos AULA' },
   { value: 'practice', label: 'Mais exercicios', desc: 'Maior proporcao de blocos EXERCICIOS' },
   { value: 'balanced', label: 'Equilibrado', desc: 'Mix padrao com teoria e exercicios' },
+];
+const AI_DIFFICULTY_OPTIONS: Array<{ value: AIDifficulty; label: string; desc: string }> = [
+  { value: 'easy', label: 'Leve', desc: 'Sessoes mais curtas, mais pausas' },
+  { value: 'medium', label: 'Moderado', desc: 'Equilibrio entre estudo e descanso' },
+  { value: 'hard', label: 'Intenso', desc: 'Sessoes longas, menos pausas' },
+  { value: 'adaptive', label: 'Adaptativo', desc: 'A IA ajusta com base no seu desempenho' },
 ];
 const PRESET_FLOW_OPTIONS: Array<{ value: boolean; label: string; desc: string }> = [
   {
@@ -184,7 +191,11 @@ const mapConcursoPriorityToStudyStyle = (priority: ConcursoStudyPriority): Study
   return 'balanced';
 };
 
-const buildDefaultAnswers = (presetId: string, presetName: string): PresetWizardAnswers => {
+const buildDefaultAnswers = (
+  presetId: string,
+  presetName: string,
+  baseSettings?: UserSettings
+): PresetWizardAnswers => {
   const goal = resolveGoal(presetId, presetName);
   const focus = goal === 'medicina' ? 60 : 50;
   const concursoDefaults =
@@ -198,6 +209,11 @@ const buildDefaultAnswers = (presetId: string, presetName: string): PresetWizard
         }
       : {};
 
+  const baseAiDifficulty = baseSettings?.aiDifficulty ?? 'adaptive';
+  const baseFocusMode = baseSettings?.focusMode ?? false;
+  const baseAutoSchedule = baseSettings?.autoSchedule ?? true;
+  const baseSmartBreaks = baseSettings?.smartBreaks ?? true;
+
   return {
     goal,
     dailyHoursByWeekday: defaultDailyHours(goal),
@@ -206,6 +222,10 @@ const buildDefaultAnswers = (presetId: string, presetName: string): PresetWizard
     focusBlockMinutes: focus,
     breakMinutes: 10,
     firstCycleAllSubjects: true,
+    aiDifficulty: baseAiDifficulty,
+    focusMode: baseFocusMode,
+    autoSchedule: baseAutoSchedule,
+    smartBreaks: baseSmartBreaks,
     hardSubjectsPeriodPreference: 'any',
     studyStyle: 'balanced',
     studyContentPreference: 'misto',
@@ -218,7 +238,9 @@ const buildDefaultAnswers = (presetId: string, presetName: string): PresetWizard
 export default function PresetConfigWizard({ isOpen, presetId, presetName, baseSettings, onClose, onApply }: PresetConfigWizardProps) {
   const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<PresetWizardAnswers>(() => buildDefaultAnswers(presetId, presetName));
+  const [answers, setAnswers] = useState<PresetWizardAnswers>(() =>
+    buildDefaultAnswers(presetId, presetName, baseSettings)
+  );
   const [error, setError] = useState<string | null>(null);
   const [massHours, setMassHours] = useState(4);
   const [massDays, setMassDays] = useState<number[]>([1, 2, 3, 4, 5]);
@@ -245,7 +267,7 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
 
   useEffect(() => {
     if (!isOpen) return;
-    const next = buildDefaultAnswers(presetId, presetName);
+    const next = buildDefaultAnswers(presetId, presetName, baseSettings);
     setAnswers(next);
     setStep(0);
     setError(null);
@@ -256,7 +278,7 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
     setHasExamDate(Boolean(next.examDate));
     setShowMassAdvanced(false);
     setShowDayWindows(false);
-  }, [isOpen, presetId, presetName]);
+  }, [isOpen, presetId, presetName, baseSettings]);
 
   const summary = useMemo(() => computeStudyPreferences(baseSettings, answers), [baseSettings, answers]);
   const progress = Math.round(((step + 1) / STEP_TITLES.length) * 100);
@@ -279,7 +301,7 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
   const resetAndClose = () => {
     setStep(0);
     setError(null);
-    setAnswers(buildDefaultAnswers(presetId, presetName));
+    setAnswers(buildDefaultAnswers(presetId, presetName, baseSettings));
     onClose();
   };
 
@@ -747,6 +769,96 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                     <p className="mt-3 text-xs text-text-muted">
                       Voce pode mudar isso depois na Agenda (Trilha de aprovacao).
                     </p>
+                  </Card>
+
+                  <Card className={cn(SETTINGS_SECTION_CLASS, 'space-y-3 p-3 sm:p-4')}>
+                    <p className="text-sm font-semibold text-white">Como a IA deve agendar seus estudos?</p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {AI_DIFFICULTY_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className={cn(
+                            'rounded-xl border px-3 py-2 text-xs sm:text-sm',
+                            (answers.aiDifficulty || 'adaptive') === opt.value
+                              ? 'border-neon-cyan/60 bg-neon-cyan/10 text-white'
+                              : 'border-white/10 text-text-secondary'
+                          )}
+                          onClick={() => patchAnswers({ aiDifficulty: opt.value })}
+                        >
+                          <div className="text-sm font-medium">{opt.label}</div>
+                          <div className="mt-0.5 text-[11px] opacity-80">{opt.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#1a1d28]/85 px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-white">Modo Foco</p>
+                          <p className="text-xs text-text-secondary">Minimizar distracoes durante as sessoes</p>
+                        </div>
+                        <button
+                          className={cn(
+                            'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                            answers.focusMode ? 'bg-neon-cyan' : 'bg-white/10'
+                          )}
+                          onClick={() => patchAnswers({ focusMode: !answers.focusMode })}
+                          aria-label="Alternar modo foco"
+                        >
+                          <span
+                            className={cn(
+                              'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                              answers.focusMode ? 'translate-x-6' : 'translate-x-1'
+                            )}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#1a1d28]/85 px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-white">Agendamento automatico</p>
+                          <p className="text-xs text-text-secondary">A IA cria automaticamente agendas semanais</p>
+                        </div>
+                        <button
+                          className={cn(
+                            'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                            answers.autoSchedule ? 'bg-neon-cyan' : 'bg-white/10'
+                          )}
+                          onClick={() => patchAnswers({ autoSchedule: !answers.autoSchedule })}
+                          aria-label="Alternar agendamento automatico"
+                        >
+                          <span
+                            className={cn(
+                              'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                              answers.autoSchedule ? 'translate-x-6' : 'translate-x-1'
+                            )}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#1a1d28]/85 px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-white">Pausas inteligentes</p>
+                          <p className="text-xs text-text-secondary">A IA sugere pausas com base nos niveis de foco</p>
+                        </div>
+                        <button
+                          className={cn(
+                            'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                            answers.smartBreaks ? 'bg-neon-cyan' : 'bg-white/10'
+                          )}
+                          onClick={() => patchAnswers({ smartBreaks: !answers.smartBreaks })}
+                          aria-label="Alternar pausas inteligentes"
+                        >
+                          <span
+                            className={cn(
+                              'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                              answers.smartBreaks ? 'translate-x-6' : 'translate-x-1'
+                            )}
+                          />
+                        </button>
+                      </div>
+                    </div>
                   </Card>
 
                   {answers.goal === 'concurso' && (

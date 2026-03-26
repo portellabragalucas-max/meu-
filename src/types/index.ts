@@ -460,6 +460,10 @@ export interface PresetWizardAnswers {
   focusBlockMinutes?: number;
   breakMinutes: BreakDuration;
   firstCycleAllSubjects?: boolean;
+  aiDifficulty?: AIDifficulty;
+  focusMode?: boolean;
+  autoSchedule?: boolean;
+  smartBreaks?: boolean;
   hardSubjectsPeriodPreference?: HardSubjectsPeriodPreference;
   studyStyle?: StudyStylePreference;
   studyContentPreference?: StudyContentPreference; // compat legado
