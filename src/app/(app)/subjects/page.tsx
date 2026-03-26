@@ -101,7 +101,7 @@ export default function SubjectsPage() {
     'nexora_schedule_range',
     null
   );
-  const [firstCycleAllSubjects] = useLocalStorage<boolean>('nexora_first_cycle_all_subjects', true);
+  const [firstCycleAllSubjects, setFirstCycleAllSubjects] = useLocalStorage<boolean>('nexora_first_cycle_all_subjects', true);
   const [dailyLimits] = useLocalStorage<Record<string, number>>('nexora_daily_limits', {});
   const [importPresetError, setImportPresetError] = useState<string | null>(null);
   const [pendingDeleteSubject, setPendingDeleteSubject] = useState<Subject | null>(null);
@@ -240,6 +240,10 @@ export default function SubjectsPage() {
     if (mergedSubjects.length === 0) return;
 
     const computed = computeStudyPreferences(userSettings, wizardAnswers);
+    const firstCycleMode =
+      typeof wizardAnswers.firstCycleAllSubjects === 'boolean'
+        ? wizardAnswers.firstCycleAllSubjects
+        : firstCycleAllSubjects;
     const startKey = wizardAnswers.startDate || toLocalDateKey(new Date());
     const startDate = new Date(`${startKey}T00:00:00`);
     const safeStart = Number.isNaN(startDate.getTime()) ? new Date() : startDate;
@@ -261,7 +265,7 @@ export default function SubjectsPage() {
           studyPrefs: computed.studyPrefs,
           userSettings: computed.settings,
           scheduleRange: requestedRange,
-          firstCycleAllSubjects,
+          firstCycleAllSubjects: firstCycleMode,
           dailyLimits,
         }),
       });
@@ -407,6 +411,9 @@ export default function SubjectsPage() {
   ) => {
     setUserSettings(settings);
     setStudyPrefs(prefs);
+    if (typeof answers.firstCycleAllSubjects === 'boolean') {
+      setFirstCycleAllSubjects(answers.firstCycleAllSubjects);
+    }
     const startKey = answers.startDate || toLocalDateKey(new Date());
     const startDate = new Date(`${startKey}T00:00:00`);
     if (!Number.isNaN(startDate.getTime())) {

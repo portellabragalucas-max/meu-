@@ -55,6 +55,18 @@ const STUDY_STYLE_OPTIONS: Array<{ value: StudyStylePreference; label: string; d
   { value: 'practice', label: 'Mais exercicios', desc: 'Maior proporcao de blocos EXERCICIOS' },
   { value: 'balanced', label: 'Equilibrado', desc: 'Mix padrao com teoria e exercicios' },
 ];
+const PRESET_FLOW_OPTIONS: Array<{ value: boolean; label: string; desc: string }> = [
+  {
+    value: true,
+    label: 'Ciclo completo',
+    desc: 'Garante 1 aula de cada materia antes de repetir.',
+  },
+  {
+    value: false,
+    label: 'Foco nas prioridades',
+    desc: 'Comeca pelas materias mais importantes, mesmo repetindo mais cedo.',
+  },
+];
 const CONCURSO_AREA_OPTIONS: Array<{ value: ConcursoAreaFocus; label: string; desc: string }> = [
   { value: 'policial', label: 'Area Policial / Seguranca Publica', desc: 'Penal, processual penal e legislacao especial' },
   { value: 'tribunais', label: 'Tribunais / Juridica', desc: 'Civil, processo civil e base juridica' },
@@ -193,6 +205,7 @@ const buildDefaultAnswers = (presetId: string, presetName: string): PresetWizard
     focusMinutes: focus,
     focusBlockMinutes: focus,
     breakMinutes: 10,
+    firstCycleAllSubjects: true,
     hardSubjectsPeriodPreference: 'any',
     studyStyle: 'balanced',
     studyContentPreference: 'misto',
@@ -706,6 +719,33 @@ export default function PresetConfigWizard({ isOpen, presetId, presetName, baseS
                     </div>
                     <p className="mt-3 text-xs text-text-muted">
                       Revisoes e simulados continuam automaticos; esta escolha ajusta o mix entre aula e exercicios.
+                    </p>
+                  </Card>
+
+                  <Card className={cn(SETTINGS_SECTION_CLASS, 'p-3 sm:p-4')}>
+                    <p className="mb-2 text-sm font-semibold text-white">
+                      Como voce quer que o preset funcione no inicio?
+                    </p>
+                    <div className="space-y-2">
+                      {PRESET_FLOW_OPTIONS.map((opt) => (
+                        <button
+                          key={String(opt.value)}
+                          type="button"
+                          className={cn(
+                            SETTINGS_ROW_CLASS,
+                            (answers.firstCycleAllSubjects ?? true) === opt.value
+                              ? 'border-neon-blue/60 bg-neon-blue/10 text-white'
+                              : 'text-text-secondary hover:text-white'
+                          )}
+                          onClick={() => patchAnswers({ firstCycleAllSubjects: opt.value })}
+                        >
+                          <div className="text-sm font-medium">{opt.label}</div>
+                          <div className="mt-0.5 text-xs opacity-80">{opt.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs text-text-muted">
+                      Voce pode mudar isso depois na Agenda (Trilha de aprovacao).
                     </p>
                   </Card>
 
